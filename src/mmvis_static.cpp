@@ -23,10 +23,10 @@ namespace {
             : ::megamol::core::utility::plugins::Plugin200Instance(
 
                 /* machine-readable plugin assembly name */
-                "mmvis_static", // TODO: Change this!
+                "mmvis_static",
 
                 /* human-readable plugin description */
-                "Describing mmvis_static (TODO: Change this!)") {
+                "MegaMol Plugin for detection and static visualization of structural processes.") {
 
             // here we could perform addition initialization
         };

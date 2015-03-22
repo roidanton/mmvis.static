@@ -12,10 +12,10 @@
 
 #ifdef _WIN32
 // The following ifdef block is the standard way of creating macros which make exporting 
-// from a DLL simpler. All files within this DLL are compiled with the TRISOUPPLUGIN_EXPORTS
+// from a DLL simpler. All files within this DLL are compiled with the MMVIS_STATIC_EXPORTS
 // symbol defined on the command line. this symbol should not be defined on any project
 // that uses this DLL. This way any other project whose source files include this file see 
-// TRISOUPPLUGIN_API functions as being imported from a DLL, whereas this DLL sees symbols
+// MMVIS_STATIC_API functions as being imported from a DLL, whereas this DLL sees symbols
 // defined with this macro as being exported.
 #ifdef MMVIS_STATIC_EXPORTS
 #define MMVIS_STATIC_API __declspec(dllexport)
