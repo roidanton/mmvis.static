@@ -12,6 +12,7 @@
 #include "mmcore/versioninfo.h"
 #include "vislib/vislibversion.h"
 
+#include "TestModule.h"
 
 /* anonymous namespace hides this type from any other object files */
 namespace {
@@ -38,6 +39,7 @@ namespace {
         virtual void registerClasses(void) {
 
             // register modules here:
+			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::TestModule>();
 
             //
             // TODO: Register your plugin's modules here
