@@ -3,6 +3,7 @@
 	<PropertyGroup Label="UserMacros">
 		<OutputBin>C:\Users\Roi\Bachelor\megamol\bin\</OutputBin>
 		<MegaMolCorePath>C:\Users\Roi\Bachelor\megamol\core\</MegaMolCorePath>
+        <MegaMolDatatoolsPath>C:\Users\Roi\Bachelor\megamol\plugins\mmstd_datatools\</MegaMolDatatoolsPath>
 		<VISlibPath>C:\Users\Roi\Bachelor\vislib\</VISlibPath>
 	</PropertyGroup>
 	<PropertyGroup>
@@ -14,6 +15,9 @@
 		</BuildMacro>
 		<BuildMacro Include="MegaMolCorePath">
 			<Value>$(MegaMolCorePath)</Value>
+		</BuildMacro>
+		<BuildMacro Include="MegaMolDatatoolsPath">
+			<Value>$(MegaMolDatatoolsPath)</Value>
 		</BuildMacro>
 		<BuildMacro Include="VISlibPath">
 			<Value>$(VISlibPath)</Value>

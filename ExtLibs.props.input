@@ -3,6 +3,7 @@
 	<PropertyGroup Label="UserMacros">
 		<OutputBin>%outbin%</OutputBin>
 		<MegaMolCorePath>%mmcorePath%</MegaMolCorePath>
+        <MegaMolDatatoolsPath>%mmdatatoolsPath%</MegaMolDatatoolsPath>
 		<VISlibPath>%vislib%</VISlibPath>
 	</PropertyGroup>
 	<PropertyGroup>
@@ -14,6 +15,9 @@
 		</BuildMacro>
 		<BuildMacro Include="MegaMolCorePath">
 			<Value>$(MegaMolCorePath)</Value>
+		</BuildMacro>
+		<BuildMacro Include="MegaMolDatatoolsPath">
+			<Value>$(MegaMolDatatoolsPath)</Value>
 		</BuildMacro>
 		<BuildMacro Include="VISlibPath">
 			<Value>$(VISlibPath)</Value>
