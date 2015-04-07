@@ -1,0 +1,214 @@
+\RequirePackage[ngerman=ngerman-x-latest]{hyphsubst}
+\documentclass[english,ngerman]{tudscrreprt}
+\usepackage{babel}
+\usepackage{selinput}
+\SelectInputMappings{adieresis={ä},germandbls={ß}}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{scrhack}
+\usepackage{tudscrsupervisor}
+\usepackage{xcolor}
+\usepackage{gensymb}
+
+%%%
+% Glossar
+%
+\AfterPackage*{hyperref}{%
+	\usepackage[%
+		automake,% Alphabetische Sortierung, da xindy aktiv, kein makeindex benötigt
+		% mit Tex Live einfach verwendbar
+		xindy={language=german-din}, % Alphabetische Sortierung nach UTF-8 und Duden oder DIN.
+		acronym,% Abkürzungen
+		symbols,% Formelzeichen
+		%nomain,% kein Glossar
+		translate=babel,% Überschriften der Glossare in der Dokumentsprache gesetzt
+		nogroupskip,% automatischer Abstand zwischen den Einträgen zur Gruppierung innerhalb eines Glossars entfernen
+		toc,% fügt die Verzeichnisse dem Inhaltsverzeichnis hinzu
+		section=chapter,% bestimmt die Gliederungsebene der Überschrift
+	]{glossaries}
+	\makeglossaries
+	
+\newglossarystyle{acrotabu}{%
+	\renewenvironment{theglossary}{%
+		\begin{tabu}spread 0pt{@{}lX<{\strut}l@{}}%
+	}{%
+		\end{tabu}\par\bigskip%
+	}%
+	\renewcommand*{\glossaryheader}{}%
+	\renewcommand*{\glsgroupheading}[1]{}%
+	\renewcommand*{\glsgroupskip}{}%
+	\renewcommand*{\glossentry}[2]{%
+		\glsentryitem{##1}% Entry number if required
+		\glstarget{##1}{\sffamily\bfseries\glossentryname{##1}} &
+		\glsentrydesc{##1} &
+		##2\tabularnewline
+	}
+}
+
+\newcommand*{\newsymbol}[5][]{%
+	\newglossaryentry{#2}{%
+		type=symbols,%
+		description={},%
+		name={#3},%
+		symbol={\ensuremath{#4}},%
+		user1={\ensuremath{\mathrm{#5}}},%
+		sort={#2},%
+		#1%
+	}%
+}
+
+\defglsentryfmt[symbols]{%
+	\ifmmode%
+	\glssymbol{\glslabel}%
+	\else%
+	\glsgenentryfmt~\glsentrysymbol{\glslabel}%
+	\fi%
+}
+\newglossarystyle{symblongtabu}{%
+	\renewenvironment{theglossary}{%
+		\begin{longtabu}spread 0pt[l]{ccX<{\strut}l}%
+		}{%
+		\end{longtabu}%
+	}%
+	\renewcommand*{\glossaryheader}{%
+		\toprule
+		\bfseries Symbol & \bfseries Einheit &
+		\bfseries Name & \bfseries Seite(n)
+		\tabularnewline\midrule\endhead%
+		\bottomrule\endfoot%
+	}%
+	\renewcommand*{\glsgroupheading}[1]{}%
+	\renewcommand*{\glsgroupskip}{}%
+	\renewcommand*{\glossentry}[2]{%
+		\glsentryitem{##1}% Entry number if required
+		\glstarget{##1}{\glossentrysymbol{##1}} &
+		\glsentryuseri{##1} &
+		\glossentryname{##1} &
+		##2\tabularnewline%
+	}%
+}
+}% Ende von AfterPackage*
+
+%%%
+% Zitate
+%
+\usepackage{csquotes}
+\usepackage[backend=biber,style=alphabetic]{biblatex}
+\addbibresource{bib/MMandCountourTrees.bib}
+\addbibresource{bib/Polyeder.bib}
+
+%%%
+% Caption
+%
+\usepackage{caption}
+\captionsetup{font=sf,labelfont=bf,labelsep=space}
+\usepackage{floatrow}
+\floatsetup{font=sf}
+\floatsetup[table]{style=plaintop}
+\captionsetup{singlelinecheck=off,format=hang,justification=raggedright}
+\DeclareCaptionSubType[alph]{figure}
+\DeclareCaptionSubType[alph]{table}
+\captionsetup[subfloat]{labelformat=brace,list=off}
+
+%%%
+% Tabellen
+%
+\usepackage{booktabs} % Linien für Tabellen.
+\usepackage{array} % Definitionen für Spalten.
+\usepackage{tabularx} % Tabellen mit gleicher Spaltenbreite.
+\usepackage{tabulary}
+\usepackage{tabu}
+
+
+%%%
+% Index
+%
+\usepackage{imakeidx}
+\indexsetup{%
+	level=\chapter*,
+	noclearpage, firstpagestyle=headings, headers={\indexname}{\indexname},
+	othercode={\renewcommand*\subitem{\@idxitem\hspace*{15\p@}}}
+}\makeindex
+
+%%%
+% Bilder
+%
+\usepackage{graphicx}
+\graphicspath{ {./media/} }
+
+%%%
+% Quellcode
+%
+\usepackage{listings}
+% UTF8
+\lstset{%
+	inputencoding = utf8,
+	extendedchars = true, % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+	literate=%
+	{ä}{{\"a}}1 {ö}{{\"o}}1 {ü}{{\"u}}1
+	{Ä}{{\"A}}1 {Ö}{{\"O}}1 {Ü}{{\"U}}1
+	{~}{{\textasciitilde}}1 {ß}{{\ss}}1
+}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+\lstset{ %
+	backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+	basicstyle=\footnotesize,        % the size of the fonts that are used for the code
+	breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+	breaklines=true,                 % sets automatic line breaking
+	captionpos=b,                    % sets the caption-position to bottom
+	commentstyle=\color{dkgreen},    % comment style
+	deletekeywords={...},            % if you want to delete keywords from the given language
+	escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+	frame=single,                    % adds a frame around the code
+	keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+	keywordstyle=\color{blue},       % keyword style
+	language=Octave,                 % the language of the code
+	morekeywords={*,...},            % if you want to add more keywords to the set
+	numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+	numbersep=5pt,                   % how far the line-numbers are from the code
+	numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+	rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+	showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+	showstringspaces=false,          % underline spaces within strings only
+	showtabs=false,                  % show tabs within strings adding particular underscores
+	stepnumber=2,                    % the step between two line-numbers. If it's 1, each line will be numbered
+	stringstyle=\color{mymauve},     % string literal style
+	tabsize=2,                       % sets default tabsize to 2 spaces
+	title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+%%%
+% Links
+%
+\usepackage{hyperref} % Möglichst am Ende stehen, da es viele Befehle neu definiert.
+\hypersetup{
+	colorlinks   = true, %Colours links instead of ugly boxes
+	urlcolor     = HKS41!70, %Colour for external hyperlinks
+	linkcolor    = HKS44!70, %Colour of internal links
+	citecolor    = HKS33!80 %Colour of citations
+}
+
+\usepackage{quoting}
+
+\usepackage[babel]{microtype}
+
+\usepackage{xfrac}
+
+%%%
+% Aufzählungen
+%
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep}
+\setlist[description]{noitemsep}
+
+\usepackage{isodate}
+
+\usepackage{ellipsis}
+\let\ellipsispunctuation\relax
+
+\usepackage{amssymb} % Muss nach hyperref kommen, sonst Fehler "\newsymbol already defined". Alternative: http://tex.stackexchange.com/questions/73684/are-there-any-situtations-where-it-is-better-to-load-a-package-after-other-code
+
+\usepackage{tikz}
+\usetikzlibrary{arrows,positioning,scopes,trees}

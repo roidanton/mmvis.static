@@ -1,0 +1,55 @@
+%%%
+% Index
+%
+\newcommand{\visattr}[1]{\textit{#1}\index{#1}}
+\newcommand{\visattrs}[2]{\textit{#1}\index{#2}}
+\newcommand{\vis}[1]{\textit{#1}\index{#1}} %Visuelles
+\newcommand{\viss}[2]{\textit{#1}\index{#2}} %Visuelles
+\newcommand{\dataparam}[1]{\textit{#1}\index{#1}}
+\newcommand{\dataparams}[2]{\textit{#1}\index{#2}}
+\newcommand{\tool}[1]{\textit{#1}\index{#1}}
+\newcommand{\tools}[2]{\textit{#1}\index{#2}}
+\newcommand{\propername}[1]{\textit{#1}\index{#1}} % Allgemein.
+\newcommand{\propernames}[2]{\textit{#1}\index{#2}} % Allgemein.
+
+%%%
+% Auszeichnungen
+%
+\newcommand{\wichtig}[1]{\textit{#1}}
+\newcommand{\mrkg}[1]{\textcolor{orange}{#1}} % Markierung, etwa in Gleichungen
+\newcommand{\mrkgb}[1]{\textcolor{magenta}{#1}} % Markierung, etwa in Gleichungen
+
+%%%
+% Tabelle
+%
+\newcolumntype{F}{>{\hspace{0pt}}X}
+\newcolumntype{L}{>{\raggedright}F}
+\newcolumntype{C}{>{\centering}F}
+\newcolumntype{D}{>{\centering}F}
+\newcolumntype{R}{>{\raggedleft}F}
+
+%%%
+% Symbole
+%
+\newcommand{\kreuz}{ $\times$ }
+\newcommand{\esfolgt}{ $\to$ }
+\newcommand{\eqtxt}[1]{\stackrel{\text{#1}}{=}} %Gleichheitszeichen mit Text drüber
+\newcommand{\intxt}[1]{\stackrel{\text{#1}}{\in}} %Element von mit Text drüber
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+\newcommand{\qed}{$_\square$} %Was zu beweisen war; quod erat demonstrandum
+
+%%%
+% TikZ
+%
+\tikzset {
+	value/.style={rectangle, draw},
+	vocab/.style={rectangle, draw, rounded corners=.8ex},
+	verticalChild/.style={grow=down, xshift=.5em, anchor=west, font = \small,
+					edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}},
+	first/.style={level distance=6ex},
+	second/.style={level distance=12ex},
+	third/.style={level distance=18ex},
+	fourth/.style={level distance=24ex},
+	level 1/.style={sibling distance=3cm}
+}
