@@ -238,10 +238,12 @@ if exist "$(ProjectDir)\PostBuild.bat" cmd /Q /C "$(ProjectDir)\PostBuild.bat"
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\mmvis_static\mmvis_static.h" />
+    <ClInclude Include="src\ContourTree.h" />
     <ClInclude Include="src\stdafx.h" />
     <ClInclude Include="src\targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\ContourTree.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\mmvis_static.cpp" />
     <ClCompile Include="src\stdafx.cpp">

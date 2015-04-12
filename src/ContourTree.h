@@ -51,8 +51,24 @@ namespace megamol {
 
 			/** Dtor. */
 			virtual ~ContourTree(void);
+		protected:
+
+			/**
+			* Manipulates the particle data
+			*
+			* @remarks the default implementation does not changed the data
+			*
+			* @param outData The call receiving the manipulated data
+			* @param inData The call holding the original data
+			*
+			* @return True on success
+			*/
+			virtual bool manipulateData(
+				megamol::core::moldyn::MultiParticleDataCall& outData,
+				megamol::core::moldyn::MultiParticleDataCall& inData);
 
 		private:
+			core::param::ParamSlot thresholdSlot;
 		};
 
 	} /* namespace mmvis_static */
