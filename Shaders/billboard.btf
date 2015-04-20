@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<btf type="MegaMolGLSLShader" version="1.0" namespace="billboard">
+    <!--<include file="common" />-->
+
+    <shader name="vertex">
+        <snippet type="version">330</snippet>
+        <!--<snippet name="common::defines" />-->
+        <snippet name="shaderVar" type="string">
+            <![CDATA[
+layout (location = 0) in vec3 vertexPosition_modelspace; // in = input data, 0 = attribute in glVertexAttribPointer
+layout (location = 1) in vec2 texCoord;
+out vec2 texCoord0;
+            ]]>
+        </snippet>
+        <snippet name="uniformVar" type="string">
+            <![CDATA[
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 worldMatrix; // Translation.
+            ]]>
+        </snippet>
+        <snippet name="generic" type="string">
+            <![CDATA[
+void main(void) {
+    gl_Position.xyzw = worldMatrix * vec4(vertexPosition_modelspace, 1.0f);
+    //gl_Position.xyzw = projectionMatrix * viewMatrix * worldMatrix * vec4(vertexPosition_modelspace, 1.0f);
+    texCoord0 = texCoord;
+    
+    /**
+     * Explanations.
+    gl_Position.w = 1.0; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
+    
+        out gl_PerVertex {
+        vec4 gl_Position;
+        float gl_PointSize;
+        float gl_ClipDistance[];
+    };
+    */
+}
+            ]]>
+        </snippet>
+    </shader>
+
+    <shader name="fragment">
+        <snippet type="version">330</snippet>
+        <!--<snippet name="common::defines" />-->
+        <!--<snippet name="common::lighting::simple" />--><!-- lighting -->
+        <snippet name="generic" type="string">
+            <![CDATA[
+in vec2 TexCoord0;
+uniform sampler2D gSampler;
+out vec3 fragColor;
+ 
+void main(){
+    fragColor = vec3(1,0,0);
+    //fragColor = texture2D(gSampler, TexCoord0.st);
+}
+            ]]>
+        </snippet>
+    </shader>
+</btf>

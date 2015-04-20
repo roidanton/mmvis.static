@@ -13,6 +13,10 @@
 #include "vislib/vislibversion.h"
 
 #include "StaticRenderer.h"
+#include "StructureEventsCalculator.h"
+#include "StructureEventsDataCall.h"
+#include "StructureEventsDataSource.h"
+#include "StructureEventsWriter.h"
 
 /* anonymous namespace hides this type from any other object files */
 namespace {
@@ -40,6 +44,9 @@ namespace {
 
             // register modules here:
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StaticRenderer>();
+			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsCalculator>();
+			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsDataSource>();
+			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsWriter>();
 
             //
             // TODO: Register your plugin's modules here
@@ -50,6 +57,7 @@ namespace {
             //
 
             // register calls here:
+			this->call_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsDataCall>();
 
             //
             // TODO: Register your plugin's calls here

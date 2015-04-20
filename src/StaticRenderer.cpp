@@ -1,22 +1,27 @@
-/*
-* StaticRenderer.cpp
-*
-* Copyright (C) 2009-2015 by MegaMol Team
-* Alle Rechte vorbehalten.
-*
-* TODO:
-* - Custom renderer.
-* - Create own eventDataCall.
-*/
+/**
+ * StaticRenderer.cpp
+ *
+ * Copyright (C) 2009-2015 by MegaMol Team
+ * Alle Rechte vorbehalten.
+ *
+ * TODO:
+ * - Texture handling.
+ * - Embed own StructureEventDataCall.
+ */
 
 #include "stdafx.h"
 #include "vislib/graphics/gl/IncludeAllGL.h"
+#include "vislib/graphics/gl/OpenGLTexture2D.h"
 #include "StaticRenderer.h"
 #include "mmcore/CoreInstance.h"
 #include "mmcore/view/CallClipPlane.h"
 #include "mmcore/view/CallGetTransferFunction.h"
 #include "mmcore/view/CallRender3D.h"
 #include "mmcore/param/IntParam.h"
+#include "mmcore/param/FilePathParam.h"
+#include "mmcore/moldyn/MultiParticleDataCall.h" // Should be replaced by #include "StructureEventsDataCall.h"
+#include "StructureEventsDataCall.h"
+#include "mmcore/misc/PngBitmapCodec.h"
 #include "vislib/assert.h"
 
 using namespace megamol;
@@ -27,19 +32,31 @@ using namespace megamol::core;
  */
 mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	getDataSlot("getdata", "Connects to the data source"),
+	getDataSlot2("getdataSED", "Connects to the data source"),
 	getTFSlot("gettransferfunction", "Connects to the transfer function module"),
 	getClipPlaneSlot("getclipplane", "Connects to a clipping plane module"),
+	filePathBirthTextureSlot("filePathBirthTextureSlot", "The image file for birth events"),
+	filePathDeathTextureSlot("filePathDeathTextureSlot", "The image file for death events"),
+	filePathMergeTextureSlot("filePathMergeTextureSlot", "The image file for merge events"),
+	filePathSplitTextureSlot("filePathSplitTextureSlot", "The image file for split events"),
 	greyTF(0),
-	polygonShader() {
+	billboardShader() {
 
 	this->getDataSlot.SetCompatibleCall<moldyn::MultiParticleDataCallDescription>();
 	this->MakeSlotAvailable(&this->getDataSlot);
+	
+	this->getDataSlot2.SetCompatibleCall<StructureEventsDataCallDescription>();
+	this->MakeSlotAvailable(&this->getDataSlot2);
 
 	this->getTFSlot.SetCompatibleCall<view::CallGetTransferFunctionDescription>();
 	this->MakeSlotAvailable(&this->getTFSlot);
 
 	this->getClipPlaneSlot.SetCompatibleCall<view::CallClipPlaneDescription>();
 	this->MakeSlotAvailable(&this->getClipPlaneSlot);
+
+	this->filePathBirthTextureSlot << new param::FilePathParam("");
+	this->MakeSlotAvailable(&this->filePathBirthTextureSlot);
+
 }
 
 /*
@@ -55,12 +72,34 @@ mmvis_static::StaticRenderer::~StaticRenderer(void) {
 bool mmvis_static::StaticRenderer::create(void) {
 	ASSERT(IsAvailable());
 
+	// An array of 4 vectors which represents 4 vertices for the quad.
+	static const GLfloat fQuad[12] = {
+		-.2f, -.1f, 0.0f,
+		-.2f, -.6f, 0.0f,
+		 .2f, -.1f, 0.0f,
+		 .2f, -.6f, 0.0f
+	};
+
+	/**
+	 * Create a VBO.
+	 * A VBO is a collection of Vectors which in this case resemble the location of each vertex.
+	 */
+	// Generate 1 (generic) buffer, put the resulting identifier in the vertex buffer object
+	glGenBuffers(1, &vbo);
+	// Bind the buffer to GL_ARRAY_BUFFER (array of vertices)
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	// Give our vertices to OpenGL (fill the buffer with data).
+	glBufferData(GL_ARRAY_BUFFER, sizeof(fQuad), fQuad, GL_STATIC_DRAW);
+
+	/**
+	 * Load shader
+	 */
 	vislib::graphics::gl::ShaderSource vert, frag;
 
-	if (!instance()->ShaderSourceFactory().MakeShaderSource("polygon::vertex", vert)) {
+	if (!instance()->ShaderSourceFactory().MakeShaderSource("billboard::vertex", vert)) {
 		return false;
 	}
-	if (!instance()->ShaderSourceFactory().MakeShaderSource("polygon::fragment", frag)) {
+	if (!instance()->ShaderSourceFactory().MakeShaderSource("billboard::fragment", frag)) {
 		return false;
 	}
 
@@ -69,31 +108,36 @@ bool mmvis_static::StaticRenderer::create(void) {
 	//    frag.WholeCode().PeekBuffer());
 
 	try {
-		if (!this->polygonShader.Create(vert.Code(), vert.Count(), frag.Code(), frag.Count())) {
+		if (!this->billboardShader.Create(vert.Code(), vert.Count(), frag.Code(), frag.Count())) {
 			vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
-				"Unable to compile sphere shader: Unknown error\n");
+				"Unable to compile sprite shader: Unknown error\n");
 			return false;
 		}
 
 	}
 	catch (vislib::graphics::gl::AbstractOpenGLShader::CompileException ce) {
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
-			"Unable to compile sphere shader (@%s): %s\n",
+			"Unable to compile sprite shader (@%s): %s\n",
 			vislib::graphics::gl::AbstractOpenGLShader::CompileException::CompileActionName(
 			ce.FailedAction()), ce.GetMsgA());
 		return false;
 	}
 	catch (vislib::Exception e) {
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
-			"Unable to compile sphere shader: %s\n", e.GetMsgA());
+			"Unable to compile sprite shader: %s\n", e.GetMsgA());
 		return false;
 	}
 	catch (...) {
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
-			"Unable to compile sphere shader: Unknown exception\n");
+			"Unable to compile sprite shader: Unknown exception\n");
 		return false;
 	}
 
+	// Set Texture.
+	LoadPngTexture(&this->filePathBirthTextureSlot);
+
+	/*
+	// Set Texture.
 	glEnable(GL_TEXTURE_1D);
 	glGenTextures(1, &this->greyTF);
 	unsigned char tex[6] = {
@@ -107,7 +151,7 @@ bool mmvis_static::StaticRenderer::create(void) {
 	glBindTexture(GL_TEXTURE_1D, 0);
 
 	glDisable(GL_TEXTURE_1D);
-
+	*/
 	return true;
 }
 
@@ -128,8 +172,8 @@ bool mmvis_static::StaticRenderer::GetCapabilities(Call& call) {
 }
 
 /*
-* mmvis_static::StaticRenderer::GetExtents
-*/
+ * mmvis_static::StaticRenderer::GetExtents
+ */
 bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
 	view::CallRender3D *cr = dynamic_cast<view::CallRender3D*>(&call);
 	if (cr == NULL) return false;
@@ -162,7 +206,7 @@ bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
  * mmvis_static::StaticRenderer::release
  */
 void mmvis_static::StaticRenderer::release(void) {
-	this->polygonShader.Release();
+	this->billboardShader.Release();
 	::glDeleteTextures(1, &this->greyTF);
 }
 
@@ -221,129 +265,184 @@ void mmvis_static::StaticRenderer::getClipData(float *clipDat, float *clipCol) {
 	}
 }
 
-/*
+
+/**
  * mmvis_static::StaticRenderer::Render
  */
 bool mmvis_static::StaticRenderer::Render(Call& call) {
 	view::CallRender3D *cr = dynamic_cast<view::CallRender3D*>(&call);
 	if (cr == NULL) return false;
 
-	float scaling = 1.0f;
-	moldyn::MultiParticleDataCall *c2 = this->getData(static_cast<unsigned int>(cr->Time()), scaling);
-	if (c2 == NULL) return false;
+	this->billboardShader.Enable();
 
-	float clipDat[4];
-	float clipCol[4];
-	this->getClipData(clipDat, clipCol);
+	/**
+	 * Bind position.
+	 */
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// Set the ID for the shader variable (attribute).
+	glEnableVertexAttribArray(0);
+	// Select the VBO again (bind) - required when there are several vbos available.
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	// Telling the pipeline how to interpret the data inside the buffer. Put the VBO in the attributes list at index 0.
+	glVertexAttribPointer(  // Position.
+		0,                  // attribute 0. Position in shader layout.
+		3,                  // number of components in the attribute (here: x,y,z)
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		sizeof(float) * 5,	// stride, 3*position + 2*texture
+		(void*)0            // array buffer offset (e.g. in a VBO with position+normal+color the offset for normal and color could be set)
+	);
 
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+	/**
+	 * Bind texture.
+	 TODO: Make texture class attribute.
+	 */
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(  // Texturecoords.
+		1,                  // attribute 1. Texture in shader layout.
+		2,                  // number of components in the attribute (here: u,v)
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		sizeof(float)*5,	// stride, 3*position + 2*texture
+		(const GLvoid*)12   // array buffer offset: texture after x,y,z
+		);
+	//texture->Bind(); // predefined function in Texture object.
 
-	float viewportStuff[4];
-	::glGetFloatv(GL_VIEWPORT, viewportStuff);
-	glPointSize(vislib::math::Max(viewportStuff[2], viewportStuff[3]));
-	if (viewportStuff[2] < 1.0f) viewportStuff[2] = 1.0f;
-	if (viewportStuff[3] < 1.0f) viewportStuff[3] = 1.0f;
-	viewportStuff[2] = 2.0f / viewportStuff[2];
-	viewportStuff[3] = 2.0f / viewportStuff[3];
+	/**
+	 * MVP
+	 */
+	// Rotate to always look into the camera.
+	// 1. Richtungsvektor aus Eventposition-Camera position bestimmen.
+	// 2. Normale soll diesen Richtungsvektor bekommen: Selbe Rotation auf Vertices übertragen? Klar!
+	// vislib::math::Point<vislib::graphics::SceneSpaceType, 3U> camPosition = cr->GetCameraParameters()->Position();
 
-	this->polygonShader.Enable();
-	glUniform4fv(this->polygonShader.ParameterLocation("viewAttr"), 1, viewportStuff);
-	glUniform3fv(this->polygonShader.ParameterLocation("camIn"), 1, cr->GetCameraParameters()->Front().PeekComponents());
-	glUniform3fv(this->polygonShader.ParameterLocation("camRight"), 1, cr->GetCameraParameters()->Right().PeekComponents());
-	glUniform3fv(this->polygonShader.ParameterLocation("camUp"), 1, cr->GetCameraParameters()->Up().PeekComponents());
+	// Skalierung abhängig von Kameraabstand machen, so dass:
+	// - aus großer Entfernung zu sehen
+	// - bei minimaler Entfernung nicht bildschirmfüllend
 
-	glUniform4fv(this->polygonShader.ParameterLocation("clipDat"), 1, clipDat);
-	glUniform4fv(this->polygonShader.ParameterLocation("clipCol"), 1, clipCol);
+	// Translate using data from StructureEventCall.
 
-	glScalef(scaling, scaling, scaling);
+	// Resultierende Transformationsmatrix (aktuell nur temporäre Skalierung).
+	Matrix4f worldMatrix;
 
-	unsigned int cial = glGetAttribLocationARB(this->polygonShader, "colIdx");
+	// Testing trans.
+	static float scale = 0.0f;
+	scale += 0.001f;
 
-	for (unsigned int i = 0; i < c2->GetParticleListCount(); i++) {
-		moldyn::MultiParticleDataCall::Particles &parts = c2->AccessParticles(i);
-		float minC = 0.0f, maxC = 0.0f;
-		unsigned int colTabSize = 0;
+	worldMatrix.m[0][0] = 1.0f; worldMatrix.m[0][1] = 0.0f; worldMatrix.m[0][2] = 0.0f; worldMatrix.m[0][3] = sinf(scale);
+	worldMatrix.m[1][0] = 0.0f; worldMatrix.m[1][1] = 1.0f; worldMatrix.m[1][2] = 0.0f; worldMatrix.m[1][3] = 0.0f;
+	worldMatrix.m[2][0] = 0.0f; worldMatrix.m[2][1] = 0.0f; worldMatrix.m[2][2] = 1.0f; worldMatrix.m[2][3] = 0.0f;
+	worldMatrix.m[3][0] = 0.0f; worldMatrix.m[3][1] = 0.0f; worldMatrix.m[3][2] = 0.0f; worldMatrix.m[3][3] = 1.0f;
 
-		// colour
-		switch (parts.GetColourDataType()) {
-		case moldyn::MultiParticleDataCall::Particles::COLDATA_NONE:
-			glColor3ubv(parts.GetGlobalColour());
-			break;
-		case moldyn::MultiParticleDataCall::Particles::COLDATA_UINT8_RGB:
-			glEnableClientState(GL_COLOR_ARRAY);
-			glColorPointer(3, GL_UNSIGNED_BYTE, parts.GetColourDataStride(), parts.GetColourData());
-			break;
-		case moldyn::MultiParticleDataCall::Particles::COLDATA_UINT8_RGBA:
-			glEnableClientState(GL_COLOR_ARRAY);
-			glColorPointer(4, GL_UNSIGNED_BYTE, parts.GetColourDataStride(), parts.GetColourData());
-			break;
-		case moldyn::MultiParticleDataCall::Particles::COLDATA_FLOAT_RGB:
-			glEnableClientState(GL_COLOR_ARRAY);
-			glColorPointer(3, GL_FLOAT, parts.GetColourDataStride(), parts.GetColourData());
-			break;
-		case moldyn::MultiParticleDataCall::Particles::COLDATA_FLOAT_RGBA:
-			glEnableClientState(GL_COLOR_ARRAY);
-			glColorPointer(4, GL_FLOAT, parts.GetColourDataStride(), parts.GetColourData());
-			break;
-		case moldyn::MultiParticleDataCall::Particles::COLDATA_FLOAT_I: {
-			glEnableVertexAttribArrayARB(cial);
-			glVertexAttribPointerARB(cial, 1, GL_FLOAT, GL_FALSE, parts.GetColourDataStride(), parts.GetColourData());
+	glUniformMatrix4fv(this->billboardShader.ParameterLocation("worldMatrix"), 1, GL_TRUE, &worldMatrix.m[0][0]);
+	
+	// Camera Matrices.
+	// Viewmatrix: camPosition, lookAt, upside.
+	/*
+	vislib::math::Point<vislib::graphics::SceneSpaceType, 3U> camPosition = cr->GetCameraParameters()->Position();
+	vislib::math::Point<vislib::graphics::SceneSpaceType, 3U> camLook = cr->GetCameraParameters()->LookAt();
+	vislib::math::Vector<vislib::graphics::SceneSpaceType, 3U> camUp = cr->GetCameraParameters()->Up();
 
-			glEnable(GL_TEXTURE_1D);
+	Matrix4f viewMatrix;
 
-			view::CallGetTransferFunction *cgtf = this->getTFSlot.CallAs<view::CallGetTransferFunction>();
-			if ((cgtf != NULL) && ((*cgtf)())) {
-				glBindTexture(GL_TEXTURE_1D, cgtf->OpenGLTexture());
-				colTabSize = cgtf->TextureSize();
-			}
-			else {
-				glBindTexture(GL_TEXTURE_1D, this->greyTF);
-				colTabSize = 2;
-			}
+	GL_MODELVIEW_MATRIX
 
-			glUniform1i(this->polygonShader.ParameterLocation("colTab"), 0);
-			minC = parts.GetMinColourIndexValue();
-			maxC = parts.GetMaxColourIndexValue();
-			glColor3ub(127, 127, 127);
-		} break;
-		default:
-			glColor3ub(127, 127, 127);
-			break;
-		}
+	glUniformMatrix4fv(this->billboardShader.ParameterLocation("viewMatrix"), 1, GL_TRUE, &viewMatrix.m[0][0]);
 
-		// radius and position
-		switch (parts.GetVertexDataType()) {
-		case moldyn::MultiParticleDataCall::Particles::VERTDATA_NONE:
-			continue;
-		case moldyn::MultiParticleDataCall::Particles::VERTDATA_FLOAT_XYZ:
-			glEnableClientState(GL_VERTEX_ARRAY);
-			glUniform4f(this->polygonShader.ParameterLocation("inConsts1"), parts.GetGlobalRadius(), minC, maxC, float(colTabSize));
-			glVertexPointer(3, GL_FLOAT, parts.GetVertexDataStride(), parts.GetVertexData());
-			break;
-		case moldyn::MultiParticleDataCall::Particles::VERTDATA_FLOAT_XYZR:
-			glEnableClientState(GL_VERTEX_ARRAY);
-			glUniform4f(this->polygonShader.ParameterLocation("inConsts1"), -1.0f, minC, maxC, float(colTabSize));
-			glVertexPointer(4, GL_FLOAT, parts.GetVertexDataStride(), parts.GetVertexData());
-			break;
-		default:
-			continue;
-		}
+	// Projection matrix: fov, aspect, nearDist, farDist.
+	//cr->GetCameraParameters()->ApertureAngle();
+	*/
 
-		glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(parts.GetCount()));
 
-		glDisableClientState(GL_COLOR_ARRAY);
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glDisableVertexAttribArrayARB(cial);
-		glDisable(GL_TEXTURE_1D);
-	}
+	// Finally draw the vertices.
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // Starting from vertex 0; 4 vertices total -> 1 quad
+	
+	// Disable each vertex attribute when it is not immediately used!
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
 
-	c2->Unlock();
+	this->billboardShader.Disable();
 
-	this->polygonShader.Disable();
-
-	glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
+	// Deselect (bind to 0) the VBO
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	return true;
+}
+
+
+/**
+ * mmvis_static::StaticRenderer::LoadPngTexture
+ */
+void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot) {
+	const vislib::TString& filename = filenameSlot->Param<param::FilePathParam>()->Value();
+	static vislib::graphics::BitmapImage img;
+	static sg::graphics::PngBitmapCodec codec;
+
+	// Has to happen before codec.Load()!
+	codec.Image() = &img;
+	try {
+		if (codec.Load(filename)) {
+			img.Convert(vislib::graphics::BitmapImage::TemplateByteRGBA);
+			vislib::graphics::gl::OpenGLTexture2D tex;
+			tex.Create(img.Width(), img.Height(), img.PeekData(), GL_RGBA, GL_UNSIGNED_BYTE); //?
+			//tex.Bind(); // in Render
+
+			// Alternative manuelles Laden .
+			GLenum textureTarget = GL_TEXTURE_2D;
+			GLuint textureObj; // ID for the object.
+
+			glGenTextures(1, &textureObj); // Create 1 texture object, set array pointer.
+			glBindTexture(textureTarget, textureObj); // Operate on this object.
+			glTexImage2D(textureTarget, 0, GL_RGBA, img.Width(), img.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, &img);
+			glTexParameterf(textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameterf(textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glBindTexture(textureTarget, 0); // Unbind.
+		}
+		else {
+			printf("Failed: Load\n");
+		}
+	}
+	catch (vislib::Exception ex) {
+		printf("Failed: %s (%s;%d)\n", ex.GetMsgA(), ex.GetFile(), ex.GetLine());
+	}
+	catch (...) {
+		printf("Failed\n");
+	}
+}
+
+
+/**
+ * mmvis_static::StaticRenderer::ComputeFOVProjection
+ */
+void mmvis_static::StaticRenderer::ComputeFOVProjection(Matrix4f &matrix, float fov, float aspect, float nearDist, float farDist, bool leftHanded /* = true */) {
+	//
+	// General form of the Projection Matrix
+	//
+	// uh = Cot( fov/2 ) == 1/Tan(fov/2)
+	// uw / uh = 1/aspect
+	// 
+	//   uw         0       0       0
+	//    0        uh       0       0
+	//    0         0      f/(f-n)  1
+	//    0         0    -fn/(f-n)  0
+	//
+	// Make result to be identity first
+
+	// check for bad parameters to avoid divide by zero:
+	// if found, assert and return an identity matrix.
+	if (fov <= 0 || aspect == 0)
+	{
+		ASSERT(fov > 0 && aspect != 0);
+		return;
+	}
+
+	float frustumDepth = farDist - nearDist;
+	float oneOverDepth = 1 / frustumDepth;
+
+	matrix.m[1][1] = 1 / tan(0.5f * fov);
+	matrix.m[0][0] = (leftHanded ? 1 : -1) * matrix.m[1][1] / aspect;
+	matrix.m[2][2] = farDist * oneOverDepth;
+	matrix.m[3][2] = (-farDist * nearDist) * oneOverDepth;
+	matrix.m[2][3] = 1;
+	matrix.m[3][3] = 0;
 }
