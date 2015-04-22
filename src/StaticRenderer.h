@@ -15,8 +15,10 @@
 #include "mmcore/Call.h"
 #include "mmcore/CallerSlot.h"
 #include "mmcore/param/ParamSlot.h"
-#include "mmcore/moldyn/MultiParticleDataCall.h"
+#include "StructureEventsDataCall.h"
 #include "vislib/graphics/gl/GLSLShader.h"
+#include "vislib/graphics/gl/OpenGLTexture2D.h"
+#include "glm/glm/glm.hpp"
 
 namespace megamol {
 	namespace mmvis_static {
@@ -112,7 +114,7 @@ namespace megamol {
 			 * TODO: Write own eventDataCall to submit event data for
 			 * custom shapes, colors etc for the element.
 			 */
-			core::moldyn::MultiParticleDataCall *getData(unsigned int t, float& outScaling);
+			StructureEventsDataCall *getData(unsigned int t, float& outScaling);
 
 			/**
 			 * TODO: Document
@@ -122,25 +124,18 @@ namespace megamol {
 			 */
 			void getClipData(float *clipDat, float *clipCol);
 
-			/** The call for Transfer function */
-			core::CallerSlot getTFSlot;
-
-			/** A simple black-to-white transfer function texture as fallback */
-			unsigned int greyTF;
-
 		private:
 			/** The call for data */
 			core::CallerSlot getDataSlot;
-			/** The call for data */
-			core::CallerSlot getDataSlot2;
 
 			/** The call for clipping plane */
 			core::CallerSlot getClipPlaneSlot;
 
 			/**
-			 * Loads a png texture from file system and assigns it to a texture.
+			 * Loads a png texture from file system and assigns it to a texture
+			 * using OGL2.
 			 */
-			void LoadPngTexture(core::param::ParamSlot *filenameSlot);
+			void LoadPngTexture(core::param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture);
 			
 			/** The filepath for the birth texture. */
 			core::param::ParamSlot filePathBirthTextureSlot;
@@ -154,23 +149,35 @@ namespace megamol {
 			/** The filepath for the merge texture. */
 			core::param::ParamSlot filePathSplitTextureSlot;
 
-			// 4x4 Matrix.
-			struct Matrix4f {
-				float m[4][4];
-			};
+			/** The eventtype textures. Maybe replace with IDs. */
+			/** The texture IDs. */
+			unsigned int birthTextureID;
 
-			/**
-			 * Compute a projection matrix.
-			 * @see http://stackoverflow.com/questions/18404890/how-to-build-perspective-projection-matrix-no-api
-			 * @see http://www.songho.ca/opengl/gl_projectionmatrix.html
-			 */
-			void ComputeFOVProjection(Matrix4f &matrix, float fov, float aspect, float nearDist, float farDist, bool leftHanded /* = true */);
+			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
+			vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
+			vislib::graphics::gl::OpenGLTexture2D mergeOGL2Texture;
+			vislib::graphics::gl::OpenGLTexture2D splitOGL2Texture;*/
 
 			/** The shader for the 3DSprite/Billboard */
 			vislib::graphics::gl::GLSLShader billboardShader;
 
-			// Vertex Buffer Object.
+			/** Containing all data for the vertex shader. */
+			struct Vertex {
+				// The position of the event.
+				glm::vec3 position;
+				// Generate quads in shader by translating the vertex by this vector.
+				glm::vec2 spanQuad;
+				glm::vec3 normals;
+				glm::vec2 textureCords;
+			};
+
+			GLint positionIndex;
+			GLint spanQuadIndex;
+
+			/** Vertex Buffer Object for the vertex shader.
+			A VBO is a collection of Vectors which in this case resemble the location of each vertex. */
 			GLuint vbo;
+
 		};
 
 	} /* namespace mmvis_static */

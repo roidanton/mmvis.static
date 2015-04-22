@@ -2,6 +2,7 @@
  * StructureEventsWriter.h
  *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  */
 
@@ -21,6 +22,7 @@ namespace megamol {
 		 * TODO: This class is a stub!
 		 core::utility::xml::XMLReader
 		 #include "mmcore/utility/xml/XmlReader.h"
+		 Alternativ: https://github.com/miloyip/rapidjson
 		 */
 		class StructureEventsWriter : public core::AbstractDataWriter {
 		public:

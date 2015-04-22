@@ -2,6 +2,7 @@
  * StructureEventsWriter.cpp
  *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  */
 
@@ -17,7 +18,7 @@ using namespace megamol::core;
  * mmvis_static::StructureEventsWriter::StructureEventsWriter
  */
 mmvis_static::StructureEventsWriter::StructureEventsWriter() : AbstractDataWriter(),
-	filenameSlot("filename", "The path to the MMSED file to be written"),
+	filenameSlot("filename", "The path to the MMSE file to be written"),
 	dataSlot("data", "The slot requesting the data to be written") {
 
 	this->filenameSlot << new param::FilePathParam("");
