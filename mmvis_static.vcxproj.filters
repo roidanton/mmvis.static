@@ -78,6 +78,9 @@
     <ClInclude Include="src\StructureEventsWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\lodepng\lodepng.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\mmvis_static.cpp">
@@ -102,6 +105,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\StructureEventsWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="include\lodepng\lodepng.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

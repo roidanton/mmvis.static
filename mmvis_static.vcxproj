@@ -240,6 +240,7 @@ if exist "$(ProjectDir)\PostBuild.bat" cmd /Q /C "$(ProjectDir)\PostBuild.bat"
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\lodepng\lodepng.h" />
     <ClInclude Include="include\mmvis_static\mmvis_static.h" />
     <ClInclude Include="src\StructureEventsCalculator.h" />
     <ClInclude Include="src\StaticRenderer.h" />
@@ -250,6 +251,7 @@ if exist "$(ProjectDir)\PostBuild.bat" cmd /Q /C "$(ProjectDir)\PostBuild.bat"
     <ClInclude Include="src\targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="include\lodepng\lodepng.cpp" />
     <ClCompile Include="src\StructureEventsCalculator.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\mmvis_static.cpp" />

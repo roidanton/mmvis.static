@@ -132,11 +132,19 @@ namespace megamol {
 			core::CallerSlot getClipPlaneSlot;
 
 			/**
-			 * Loads a png texture from file system and assigns it to a texture
-			 * using OGL2.
+			 * Loads a png texture from file system and creates OGL2 texture in memory.
+			 *
+			 * Currently unused since we have CreateOGLTexture. However this function
+			 * uses a filenameSlot which should be the way to go. Unfortunately the
+			 * MM stuff (png loader) doesnt work for me.
 			 */
 			void LoadPngTexture(core::param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture);
 			
+			/**
+			 * Loads a png texture from file system using lodePNG and creates OGL texture in memory.
+			 */
+			void CreateOGLTextureFromFile(char* filename, GLuint &textureID);
+
 			/** The filepath for the birth texture. */
 			core::param::ParamSlot filePathBirthTextureSlot;
 
@@ -150,13 +158,14 @@ namespace megamol {
 			core::param::ParamSlot filePathSplitTextureSlot;
 
 			/** The eventtype textures. Maybe replace with IDs. */
-			/** The texture IDs. */
-			unsigned int birthTextureID;
-
-			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
-			vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
+			vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
+			/*vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D mergeOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D splitOGL2Texture;*/
+
+			/** The texture IDs. */
+			GLuint textureIDs[4];
+			GLuint birthTextureID, deathTextureID, mergeTextureID;
 
 			/** The shader for the 3DSprite/Billboard */
 			vislib::graphics::gl::GLSLShader billboardShader;
@@ -167,12 +176,11 @@ namespace megamol {
 				glm::vec3 position;
 				// Generate quads in shader by translating the vertex by this vector.
 				glm::vec2 spanQuad;
-				glm::vec3 normals;
-				glm::vec2 textureCords;
+				glm::vec2 texUV;
+				GLfloat eventType;
 			};
 
-			GLint positionIndex;
-			GLint spanQuadIndex;
+			GLint shaderAttributeIndex_position, shaderAttributeIndex_spanQuad, shaderAttributeIndex_texUV, shaderAttributeIndex_eventType;
 
 			/** Vertex Buffer Object for the vertex shader.
 			A VBO is a collection of Vectors which in this case resemble the location of each vertex. */

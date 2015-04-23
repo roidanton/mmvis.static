@@ -1,0 +1,1 @@
+Copy Assetfiles to executable folder (hardcoded path) as long as renderer has no working filename slot.

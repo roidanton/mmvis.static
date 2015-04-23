@@ -1,59 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Billboard shader
+ 
+  Copyright (C) 2009-2015 by MegaMol Team
+  Copyright (C) 2015 by Richard Hähne, TU Dresden
+  Alle Rechte vorbehalten.
+-->
 <btf type="MegaMolGLSLShader" version="1.0" namespace="billboard">
-    <!--<include file="common" />-->
+  <!--
+    Converted from version 330 to 120.
+    @see http://stackoverflow.com/questions/20161057/opengl-3-glsl-compatibility-mess
+  -->
+  <!--<include file="common" />-->
 
     <shader name="vertex">
-        <snippet type="version">330</snippet>
+        <snippet type="version">120</snippet>
         <!--<snippet name="common::defines" />-->
         <snippet name="shaderVar" type="string">
             <![CDATA[
-layout (location = 0) in vec3 vertexPosition_modelspace; // in = input data, 0 = attribute in glVertexAttribPointer
-layout (location = 1) in vec2 texCoord;
-out vec2 texCoord0;
+attribute vec3 eventPosition;
+attribute vec2 spanQuad;
+attribute vec2 texUV;
+varying vec2 f_texUV;
+attribute float eventType; // varying may not be int
+varying float f_eventType;
             ]]>
         </snippet>
         <snippet name="uniformVar" type="string">
             <![CDATA[
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 worldMatrix; // Translation.
+uniform float quadSizeModificator;
             ]]>
         </snippet>
-        <snippet name="generic" type="string">
+        <snippet name="main" type="string">
             <![CDATA[
 void main(void) {
-    gl_Position.xyzw = worldMatrix * vec4(vertexPosition_modelspace, 1.0f);
-    //gl_Position.xyzw = projectionMatrix * viewMatrix * worldMatrix * vec4(vertexPosition_modelspace, 1.0f);
-    texCoord0 = texCoord;
+
+    // Pass texture coordinates to fragment shader.
+    f_texUV = texUV;
     
-    /**
-     * Explanations.
-    gl_Position.w = 1.0; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
+    // Pass event type to fragment shader.
+    f_eventType = eventType;
+
+    // Set position.
+    // gl_Position.w = 1.0f; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
+    vec4 projectedEventPosition = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4(eventPosition, 1.0f);
     
-        out gl_PerVertex {
-        vec4 gl_Position;
-        float gl_PointSize;
-        float gl_ClipDistance[];
-    };
-    */
+    // Reposition the vertice to create a quad.
+    gl_Position = vec4(spanQuad, 0.0f, 1.0f) * quadSizeModificator + projectedEventPosition;
 }
             ]]>
         </snippet>
     </shader>
 
     <shader name="fragment">
-        <snippet type="version">330</snippet>
+        <snippet type="version">120</snippet>
         <!--<snippet name="common::defines" />-->
         <!--<snippet name="common::lighting::simple" />--><!-- lighting -->
         <snippet name="generic" type="string">
             <![CDATA[
-in vec2 TexCoord0;
-uniform sampler2D gSampler;
-out vec3 fragColor;
- 
-void main(){
-    fragColor = vec3(1,0,0);
-    //fragColor = texture2D(gSampler, TexCoord0.st);
+uniform sampler2D tex2DBirth;
+uniform sampler2D tex2DDeath;
+uniform sampler2D tex2DMerge;
+uniform sampler2D tex2DMergeAB;
+varying vec2 f_texUV;
+varying float f_eventType;
+
+void main() {
+    vec4 tex2D;
+    // Set texture. Eventtype wird irgendwie nicht erkannt.
+    if (f_eventType < 0.9f) {
+      tex2D = texture2D(tex2DBirth, f_texUV).rgba * vec4(0,.8,0,1);
+    }
+    else if (f_eventType < 1.9f) {
+      tex2D = texture2D(tex2DDeath, f_texUV).rgba * vec4(.8,0,0,1);
+    }
+    else if (f_eventType < 2.9f) {
+      tex2D = texture2D(tex2DMerge, f_texUV).rgba * vec4(0,0,.8,1);
+    }
+    
+    gl_FragColor = tex2D;
 }
             ]]>
         </snippet>
