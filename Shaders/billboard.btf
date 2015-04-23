@@ -78,6 +78,13 @@ void main() {
       tex2D = texture2D(tex2DMerge, f_texUV).rgba * vec4(0,0,.8,1);
     }
     
+    // Don't draw if the pixel is transparent. This is kinda a hack
+    // since it doesn't allow Alpha transparency but much less work
+    // than reodering vertices (draw from back to front) or Alphatest.
+    if (tex2D.a < .1) {
+      discard;
+    }
+    
     gl_FragColor = tex2D;
 }
             ]]>
