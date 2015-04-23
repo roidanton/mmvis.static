@@ -5,9 +5,12 @@
  * Alle Rechte vorbehalten.
  *
  * TODO:
- * - Texture handling.
+ * - Fix billboard ratio (always quadratic and not dependent on window ratio as it is currently)
+ * - Add parameter agglomeration.
  * - Embed own StructureEventDataCall.
- * - Make size of billboards dependend on camera.
+ * - Make color, opacity, size (maybe bad since perspective projection), ... chooseable.
+ * - Enable orthographic mode?
+ * - Make size of billboards also dependent on camera
  */
 
 #include "stdafx.h"
@@ -36,9 +39,6 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	filePathDeathTextureSlot("filePathDeathTextureSlot", "The image file for death events"),
 	filePathMergeTextureSlot("filePathMergeTextureSlot", "The image file for merge events"),
 	filePathSplitTextureSlot("filePathSplitTextureSlot", "The image file for split events"),
-	birthTextureID(0),
-	deathTextureID(1),
-	mergeTextureID(2),
 	/*birthOGL2Texture(vislib::graphics::gl::OpenGLTexture2D()),
 	deathOGL2Texture(),
 	mergeOGL2Texture(),
@@ -73,8 +73,7 @@ bool mmvis_static::StaticRenderer::create(void) {
 	float scaling = 1.0f;
 	StructureEventsDataCall *dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und den Frameblödsinn rauswerfen. Die Zeit ist ja im Event gespeichert.
 
-
-	// Creating test events as long as dataCall doesnt work. 
+	// Creating three test events as long as dataCall doesnt work. 
 	vislib::Array<glm::vec3> eventPositions;
 	eventPositions.Add({ 0.0f, 0.0f, 0.0f });
 	eventPositions.Add({ -1.0f, 0.0f, 0.0f });
@@ -84,6 +83,11 @@ bool mmvis_static::StaticRenderer::create(void) {
 	eventType.Add(0.0f);
 	eventType.Add(1.0f);
 	eventType.Add(2.0f);
+	GLfloat eventMaxTime = 120;
+	vislib::Array<GLfloat> eventTime;
+	eventTime.Add(1);
+	eventTime.Add(40);
+	eventTime.Add(100);
 
 	Vertex vertexList[12];
 
@@ -94,6 +98,7 @@ bool mmvis_static::StaticRenderer::create(void) {
 			unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
 			vertexList[vertexListCounter].position = eventPositions[eventCounter];
 			vertexList[vertexListCounter].eventType = eventType[eventCounter];
+			vertexList[vertexListCounter].colorHSV = { eventTime[eventCounter] / eventMaxTime, 1.0f, 1.0f };
 			switch (quadCounter) {
 			case 0:
 				quadSpanModifier = { -1.0f, -1.0f };
@@ -194,6 +199,11 @@ bool mmvis_static::StaticRenderer::create(void) {
 		fprintf(stderr, "Could not bind attribute %s\n", "eventType");
 		return 0;
 	}
+	shaderAttributeIndex_colorHSV = glGetAttribLocation(this->billboardShader, "colorHSV");
+	if (shaderAttributeIndex_eventType == -1) {
+		fprintf(stderr, "Could not bind attribute %s\n", "colorHSV");
+		return 0;
+	}
 
 	glGenTextures(4, this->textureIDs); // Creates 4 texture object, set array pointer.
 	char filenameChar[] = "GlyphenEventTypesAsterisk.png"; // Copy file to bin folder.
@@ -202,7 +212,9 @@ bool mmvis_static::StaticRenderer::create(void) {
 	CreateOGLTextureFromFile(filenameChar2, this->textureIDs[1]);
 	char filenameChar3[] = "GlyphenEventTypesMerge.png"; // Copy file to bin folder.
 	CreateOGLTextureFromFile(filenameChar3, this->textureIDs[2]);
-	
+	//char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
+	//CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
+
 	// Set Texture.
 	//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
 
@@ -244,6 +256,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glEnableVertexAttribArray(shaderAttributeIndex_spanQuad);
 	glEnableVertexAttribArray(shaderAttributeIndex_texUV);
 	glEnableVertexAttribArray(shaderAttributeIndex_eventType);
+	glEnableVertexAttribArray(shaderAttributeIndex_colorHSV);
 
 	// Select the VBO again (bind) - required when there are several vbos available.
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -284,6 +297,15 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		(GLvoid*)(offsetof(Vertex, eventType))   // array buffer offset
 		);
 
+	glVertexAttribPointer(
+		shaderAttributeIndex_colorHSV,      // attribute index.
+		3,                  // number of components in the attribute (here: h,s,v)
+		GL_FLOAT,           // the type of each element
+		GL_FALSE,           // should the values be normalized?
+		sizeof(Vertex),		// stride
+		(GLvoid*)(offsetof(Vertex, colorHSV))   // array buffer offset
+		);
+
 	/* Push each element in buffer_vertices to the vertex shader, i.e. DRAW :-) */
 	glDrawArrays(GL_QUADS, 0, 12); // Starting from vertex 0; 12 vertices total. Will depend on size of dataCall.
 	
@@ -292,6 +314,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glDisableVertexAttribArray(shaderAttributeIndex_spanQuad);
 	glDisableVertexAttribArray(shaderAttributeIndex_texUV);
 	glDisableVertexAttribArray(shaderAttributeIndex_eventType);
+	glDisableVertexAttribArray(shaderAttributeIndex_colorHSV);
 	// Deselect (bind to 0) the VBO.
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -429,7 +452,7 @@ bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
  */
 void mmvis_static::StaticRenderer::release(void) {
 	this->billboardShader.Release();
-	glDeleteTextures(1, &this->birthTextureID);
+	glDeleteTextures(4, this->textureIDs);
 	birthOGL2Texture.Release();
 	/*deathOGL2Texture.Release();
 	mergeOGL2Texture.Release();

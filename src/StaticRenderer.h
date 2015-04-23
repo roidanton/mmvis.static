@@ -165,7 +165,6 @@ namespace megamol {
 
 			/** The texture IDs. */
 			GLuint textureIDs[4];
-			GLuint birthTextureID, deathTextureID, mergeTextureID;
 
 			/** The shader for the 3DSprite/Billboard */
 			vislib::graphics::gl::GLSLShader billboardShader;
@@ -177,10 +176,17 @@ namespace megamol {
 				// Generate quads in shader by translating the vertex by this vector.
 				glm::vec2 spanQuad;
 				glm::vec2 texUV;
+				// Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, 3 = split
 				GLfloat eventType;
+				// Color in HSV: Hue, Saturation, Value = [0,1]. Has to be converted in shader.
+				glm::vec3 colorHSV;
 			};
 
-			GLint shaderAttributeIndex_position, shaderAttributeIndex_spanQuad, shaderAttributeIndex_texUV, shaderAttributeIndex_eventType;
+			GLint shaderAttributeIndex_position,
+				shaderAttributeIndex_spanQuad,
+				shaderAttributeIndex_texUV,
+				shaderAttributeIndex_eventType,
+				shaderAttributeIndex_colorHSV;
 
 			/** Vertex Buffer Object for the vertex shader.
 			A VBO is a collection of Vectors which in this case resemble the location of each vertex. */
