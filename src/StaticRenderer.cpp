@@ -29,7 +29,7 @@
 using namespace megamol;
 using namespace megamol::core;
 
-/*
+/**
  * mmvis_static::StaticRenderer::StaticRenderer
  */
 mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
@@ -56,14 +56,14 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 
 }
 
-/*
+/**
  * mmvis_static::StaticRenderer::~StaticRenderer
  */
 mmvis_static::StaticRenderer::~StaticRenderer(void) {
 	this->Release();
 }
 
-/*
+/**
  * mmvis_static::StaticRenderer::create
  */
 bool mmvis_static::StaticRenderer::create(void) {
@@ -74,31 +74,38 @@ bool mmvis_static::StaticRenderer::create(void) {
 	StructureEventsDataCall *dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und den Frameblödsinn rauswerfen. Die Zeit ist ja im Event gespeichert.
 
 	// Creating three test events as long as dataCall doesnt work. 
+	// Per Event parameters: Position, Time, Type, Agglomeration.
 	vislib::Array<glm::vec3> eventPositions;
 	eventPositions.Add({ 0.0f, 0.0f, 0.0f });
 	eventPositions.Add({ -1.0f, 0.0f, 0.0f });
 	eventPositions.Add({ -1.0f, -1.0f, -1.0f });
-	// Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, (todo: 3 = split)
-	vislib::Array<GLfloat> eventType;
+	vislib::Array<GLfloat> eventType; // ToDo: Make enum.
 	eventType.Add(0.0f);
 	eventType.Add(1.0f);
 	eventType.Add(2.0f);
-	GLfloat eventMaxTime = 120;
 	vislib::Array<GLfloat> eventTime;
 	eventTime.Add(1);
 	eventTime.Add(40);
 	eventTime.Add(100);
+	// Number of additional events in certain defined ranges (good for zoom levels) or better dynamically loaded? Needs testing!
+	vislib::Array<glm::mat4> eventAgglomeration;
+	// Global parameters: MaxTime, number of events.
+	GLfloat eventMaxTime = 120;
 
-	Vertex vertexList[12];
+	// Container for all vertices. ToDo: Make own function/class for improved readability.
+	std::vector<Vertex> vertexList;
 
 	for (unsigned int eventCounter = 0; eventCounter < eventPositions.Count(); eventCounter++) {
 		// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
 		for (unsigned int quadCounter = 0; quadCounter < 4; quadCounter++) {
+			Vertex vertex;
 			glm::vec2 quadSpanModifier, texUV;
-			unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
-			vertexList[vertexListCounter].position = eventPositions[eventCounter];
-			vertexList[vertexListCounter].eventType = eventType[eventCounter];
-			vertexList[vertexListCounter].colorHSV = { eventTime[eventCounter] / eventMaxTime, 1.0f, 1.0f };
+			//unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
+			vertex.position = eventPositions[eventCounter];
+			vertex.eventType = eventType[eventCounter]; // ToDo: Convert enum -> float.
+			vertex.colorHSV = { eventTime[eventCounter] / eventMaxTime, 1.0f, 1.0f };
+
+			// Specific properties for the quad corners.
 			switch (quadCounter) {
 			case 0:
 				quadSpanModifier = { -1.0f, -1.0f };
@@ -117,25 +124,23 @@ bool mmvis_static::StaticRenderer::create(void) {
 				texUV = { 0.0f, 1.0f };
 				break;
 			}
-			vertexList[vertexListCounter].spanQuad = quadSpanModifier;
-			vertexList[vertexListCounter].texUV = texUV;
-			//vertexList[vertexListCounter].position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
+			vertex.spanQuad = quadSpanModifier;
+			//vertex.position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
+			vertex.texUV = texUV;
+
+			vertexList.push_back(vertex);
 		}
 	}
-	
-	printf("Vertex Event Type: %f, %f, %f\n\n", vertexList[0].eventType, vertexList[4].eventType, vertexList[8].eventType);
 
 	// Create a VBO.
 	// Generate 1 (generic) buffer, put the resulting identifier in the vertex buffer object
 	glGenBuffers(1, &vbo);
 	// Bind the buffer to GL_ARRAY_BUFFER (array of vertices)
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	// Give our vertices to OpenGL (fill the buffer with data). Heed total size (can cost hours! :-( )
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexList), vertexList, GL_STATIC_DRAW);
+	// Give our vertices to OpenGL (fill the buffer with data). Heed total size parameter! (I needed hours to track this down)
+	glBufferData(GL_ARRAY_BUFFER, vertexList.size() * sizeof(Vertex), &vertexList.front(), GL_STATIC_DRAW);
 	
-	/**
-	 * Load shader
-	 */
+	// Load, build, link shader.
 	vislib::graphics::gl::ShaderSource vert, frag;
 
 	if (!instance()->ShaderSourceFactory().MakeShaderSource("billboard::vertex", vert)) {
@@ -144,10 +149,6 @@ bool mmvis_static::StaticRenderer::create(void) {
 	if (!instance()->ShaderSourceFactory().MakeShaderSource("billboard::fragment", frag)) {
 		return false;
 	}
-
-	//printf("\nVertex Shader:\n%s\n\nFragment Shader:\n%s\n",
-	//    vert.WholeCode().PeekBuffer(),
-	//    frag.WholeCode().PeekBuffer());
 
 	try {
 		if (!this->billboardShader.Create(vert.Code(), vert.Count(), frag.Code(), frag.Count())) {
@@ -205,6 +206,7 @@ bool mmvis_static::StaticRenderer::create(void) {
 		return 0;
 	}
 
+	// Generate textures.
 	glGenTextures(4, this->textureIDs); // Creates 4 texture object, set array pointer.
 	char filenameChar[] = "GlyphenEventTypesAsterisk.png"; // Copy file to bin folder.
 	CreateOGLTextureFromFile(filenameChar, this->textureIDs[0]);
@@ -216,7 +218,7 @@ bool mmvis_static::StaticRenderer::create(void) {
 	//CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
 
 	// Set Texture.
-	//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
+	LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
 
 	return true;
 }
@@ -306,7 +308,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		(GLvoid*)(offsetof(Vertex, colorHSV))   // array buffer offset
 		);
 
-	/* Push each element in buffer_vertices to the vertex shader, i.e. DRAW :-) */
+	// Push each element in buffer_vertices to the vertex shader. Thx to OGL 2 we can use quads. :-)
 	glDrawArrays(GL_QUADS, 0, 12); // Starting from vertex 0; 12 vertices total. Will depend on size of dataCall.
 	
 	// Disable each vertex attribute when it is not immediately used!
@@ -356,39 +358,41 @@ void mmvis_static::StaticRenderer::CreateOGLTextureFromFile(char* filename, GLui
 
 
 /**
-* mmvis_static::StaticRenderer::LoadPngTexture
-*/
+ * mmvis_static::StaticRenderer::LoadPngTexture
+ */
 void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture) {
-	const vislib::TString& filename = filenameSlot->Param<param::FilePathParam>()->Value();
+	// Slot hat Wert: C:\Users\Roi\Bachelor\megamol\plugins\mmvis_static\Assets\GlyphenEventTypesAsterisk.png
+	const vislib::TString filename = filenameSlot->Param<param::FilePathParam>()->Value();
 	static vislib::graphics::BitmapImage img;
 	static sg::graphics::PngBitmapCodec codec;
 
-	printf("Filenameslot: %s\n", filenameSlot->Param<param::FilePathParam>()->Value());
-
-	//char filenameChar[] = "C:/Users/Roi/Bachelor/megamol/plugins/mmvis_static/Assets/GlyphenEventTypesAsterisk8bit.png";
-	char filenameChar[] = "GlyphenEventTypesAsterisk.png"; // Copy file to bin folder.
-
-	// Convert TString to vector.
+	// Convert TString to vector for usage with lodePNG (not in this function anymore).
 	std::vector<unsigned char> filenameConverted;
 	for (unsigned int i = 0; i < filename.Length(); i++) {
-		filenameConverted[i] = filename[i];
+		filenameConverted[i] = filename[i]; // Does this assignment even work? There shouldn't be an element i for the vector available?
 	}
 
-	printf("Filename: %s\n", *filename);
-	printf("Filename Converted: %s\n", filenameConverted);
-	printf("Filename Char: %s\n", filenameChar);
+	// Debug.
+	printf("Filenameslot value: %s\n", filenameSlot->Param<param::FilePathParam>()->Value()); // Leer, vermutlich müsste TString -> string.
+	printf("Filename Value: %s\n", *filename); // (null)
+	printf("Filename stored adress: %s\n", filename); // leer
+	printf("Filename adress: %s\n", &filename); // // Three arbitrary, unidentifiable characters.
+	printf("Filename Vector pointer: %s\n", filenameConverted); // Three arbitrary, unidentifiable characters, different from before.
+	printf("Filename Vector adress: %s\n", &filenameConverted); // Three arbitrary, unidentifiable characters, same as before (points to same adress).
 
 	// Has to happen before codec.Load() to be able to load png in img.
 	codec.Image() = &img;
 
-	try { // wirft Fehler mit char ("Not a PNG file") bzw. Failed mit TString (da TString leer/fehlerhaft)
-		if (codec.Load(filename)) {
+	char filenameChar[] = "GlyphenEventTypesAsterisk.png"; // Copy file to bin folder.
+
+	try { // wirft Fehler mit char - "Not a PNG file"
+		if (codec.Load(filenameChar)) { // Mit TString Fehler ("Failed texture loading"), deswegen hardcoded char verwendet.
 			img.Convert(vislib::graphics::BitmapImage::TemplateByteRGBA);
 			ogl2Texture.Create(img.Width(), img.Height(), img.PeekData(), GL_RGBA, GL_UNSIGNED_BYTE);
 			//ogl2Texture.Bind(); // in Render
 		}
 		else {
-			printf("Failed: Loading texture: %s\n", *filename);
+			printf("Failed texture loading.\n");
 		}
 	}
 	catch (vislib::Exception ex) {

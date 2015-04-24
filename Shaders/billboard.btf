@@ -116,18 +116,22 @@ vec3 HSV2RGB( vec3 hsv ) {
         <![CDATA[
 void main() {
     vec4 tex2D;
+    
+    // Revert to "normal" UV handling (known from Blender etc).
+    vec2 f_texUV_inverse = vec2(f_texUV.s, 1.0f - f_texUV.t);
+    
     // Set texture.
     if (f_eventType < 0.9f) {
-      tex2D = texture2D(tex2DBirth, f_texUV).rgba;
+      tex2D = texture2D(tex2DBirth, f_texUV_inverse).rgba;
     }
     else if (f_eventType < 1.9f) {
-      tex2D = texture2D(tex2DDeath, f_texUV).rgba;
+      tex2D = texture2D(tex2DDeath, f_texUV_inverse).rgba;
     }
     else if (f_eventType < 2.9f) {
-      tex2D = texture2D(tex2DMerge, f_texUV).rgba;
+      tex2D = texture2D(tex2DMerge, f_texUV_inverse).rgba;
     }
     else if (f_eventType < 3.9f) {
-      tex2D = texture2D(tex2DSplit, f_texUV).rgba;
+      tex2D = texture2D(tex2DSplit, f_texUV_inverse).rgba;
     }
     
     // Don't draw if the pixel is transparent. This is kinda a hack

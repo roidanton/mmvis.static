@@ -136,7 +136,7 @@ namespace megamol {
 			 *
 			 * Currently unused since we have CreateOGLTexture. However this function
 			 * uses a filenameSlot which should be the way to go. Unfortunately the
-			 * MM stuff (png loader) doesnt work for me.
+			 * MM stuff (png loader, slot contents) doesnt work for me.
 			 */
 			void LoadPngTexture(core::param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture);
 			
@@ -145,6 +145,7 @@ namespace megamol {
 			 */
 			void CreateOGLTextureFromFile(char* filename, GLuint &textureID);
 
+			// The following variables are currently obsolete.
 			/** The filepath for the birth texture. */
 			core::param::ParamSlot filePathBirthTextureSlot;
 
@@ -157,7 +158,7 @@ namespace megamol {
 			/** The filepath for the merge texture. */
 			core::param::ParamSlot filePathSplitTextureSlot;
 
-			/** The eventtype textures. Maybe replace with IDs. */
+			/** The eventtype textures. Obsolete, replaced by IDs. */
 			vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
 			/*vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D mergeOGL2Texture;
@@ -175,6 +176,7 @@ namespace megamol {
 				glm::vec3 position;
 				// Generate quads in shader by translating the vertex by this vector.
 				glm::vec2 spanQuad;
+				// Standard assignment of UV.
 				glm::vec2 texUV;
 				// Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, 3 = split
 				GLfloat eventType;
