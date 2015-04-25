@@ -15,6 +15,7 @@
 #include "mmcore/Call.h"
 #include "mmcore/CallerSlot.h"
 #include "mmcore/param/ParamSlot.h"
+#include "mmcore/param/EnumParam.h"
 #include "StructureEventsDataCall.h"
 #include "vislib/graphics/gl/GLSLShader.h"
 #include "vislib/graphics/gl/OpenGLTexture2D.h"
@@ -22,7 +23,57 @@
 
 namespace megamol {
 	namespace mmvis_static {
-		
+
+		/**
+		 * Cares about visual attributes.
+		 */
+		class VisualAttributes {
+		public:
+			static enum class AttributeType : int {
+				Brightness,
+				Hue,
+				Opacity,
+				Position,
+				// Contains no separate position x,y,z since the goal is an overlay
+				// with the actual data so the event position has to be
+				// attached to the visual position attribute.
+				Size,
+				Texture
+			};
+			static enum class ParameterType : int {
+				Agglomeration,
+				Location,
+				Type,
+				Time
+			};
+
+			/** Ctor. */
+			VisualAttributes(void);
+
+			/** Dtor. */
+			virtual ~VisualAttributes(void);
+
+			/**
+			 * Fill an EnumParam with valid visual attributes depending on parameter.
+			 * @param attributes The EnumParam to fill.
+			 * @param parameterType A parameter type.
+			 */
+			static void getValidAttributes(core::param::EnumParam *attributes, ParameterType parameterType);
+
+			/**
+			 * Converts a char sequence into AttributeType enum.
+			 *
+			 * @param attribute A char pointer with the char sequence of an visual attribute.
+			 * @return The Attribute type.
+			 */
+			static AttributeType getAttributeTypeFromString(char* attribute);
+
+			static void getAttributeValue(AttributeType attr, ParameterType param);
+		};
+
+		/**
+		 * The Renderer.
+		 */
 		class StaticRenderer : public core::view::Renderer3DModule {
 		public:
 			/**
@@ -125,12 +176,6 @@ namespace megamol {
 			void getClipData(float *clipDat, float *clipCol);
 
 		private:
-			/** The call for data */
-			core::CallerSlot getDataSlot;
-
-			/** The call for clipping plane */
-			core::CallerSlot getClipPlaneSlot;
-
 			/**
 			 * Loads a png texture from file system and creates OGL2 texture in memory.
 			 *
@@ -145,7 +190,7 @@ namespace megamol {
 			 */
 			void CreateOGLTextureFromFile(char* filename, GLuint &textureID);
 
-			// The following variables are currently obsolete.
+			// The following variables are currently not used.
 			/** The filepath for the birth texture. */
 			core::param::ParamSlot filePathBirthTextureSlot;
 
@@ -158,9 +203,15 @@ namespace megamol {
 			/** The filepath for the merge texture. */
 			core::param::ParamSlot filePathSplitTextureSlot;
 
-			/** The eventtype textures. Obsolete, replaced by IDs. */
-			vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
-			/*vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
+			/** The visual attributes for events. */
+			core::param::ParamSlot eventAgglomerationVisAttrSlot;
+			core::param::ParamSlot eventLocationVisAttrSlot;
+			core::param::ParamSlot eventTypeVisAttrSlot;
+			core::param::ParamSlot eventTimeVisAttrSlot;
+
+			/** The eventtype textures. Obsolete, replaced by IDs. MegaMol shader doesn't like them anyways. */
+			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
+			vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D mergeOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D splitOGL2Texture;*/
 
@@ -183,17 +234,22 @@ namespace megamol {
 				// Color in HSV: Hue, Saturation, Value = [0,1]. Has to be converted in shader.
 				glm::vec3 colorHSV;
 			};
-
+			
 			GLint shaderAttributeIndex_position,
 				shaderAttributeIndex_spanQuad,
 				shaderAttributeIndex_texUV,
 				shaderAttributeIndex_eventType,
 				shaderAttributeIndex_colorHSV;
-
+				
 			/** Vertex Buffer Object for the vertex shader.
 			A VBO is a collection of Vectors which in this case resemble the location of each vertex. */
 			GLuint vbo;
 
+			/** The call for data */
+			core::CallerSlot getDataSlot;
+
+			/** The call for clipping plane */
+			core::CallerSlot getClipPlaneSlot;
 		};
 
 	} /* namespace mmvis_static */

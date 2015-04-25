@@ -20,7 +20,6 @@
 #include "mmcore/view/CallClipPlane.h"
 #include "mmcore/view/CallGetTransferFunction.h"
 #include "mmcore/view/CallRender3D.h"
-#include "mmcore/param/IntParam.h"
 #include "mmcore/param/FilePathParam.h"
 #include "mmcore/misc/PngBitmapCodec.h"
 #include "vislib/assert.h"
@@ -28,6 +27,51 @@
 
 using namespace megamol;
 using namespace megamol::core;
+
+void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *attributes, ParameterType parameterType) {
+	switch (parameterType) {
+	case mmvis_static::VisualAttributes::ParameterType::Agglomeration:
+		attributes->SetTypePair(0, "Size");
+		break;
+	case mmvis_static::VisualAttributes::ParameterType::Location:
+		attributes->SetTypePair(0, "Position");
+		break;
+	case mmvis_static::VisualAttributes::ParameterType::Time:
+		attributes->SetTypePair(0, "Brightness");
+		attributes->SetTypePair(1, "Hue");
+		attributes->SetTypePair(2, "Opacity");
+		break;
+	case mmvis_static::VisualAttributes::ParameterType::Type:
+		attributes->SetTypePair(0, "Texture");
+		break;
+	}
+}
+
+mmvis_static::VisualAttributes::AttributeType getAttributeTypeFromString(char* attribute) {
+	try {
+		if (attribute == "Brightness" || attribute == "brightness") {
+			return mmvis_static::VisualAttributes::AttributeType::Brightness;
+		}
+		if (attribute == "Hue" || attribute == "hue") {
+			return mmvis_static::VisualAttributes::AttributeType::Hue;
+		}
+		if (attribute == "Opacity" || attribute == "opacity") {
+			return mmvis_static::VisualAttributes::AttributeType::Opacity;
+		}
+		if (attribute == "Size" || attribute == "size") {
+			return mmvis_static::VisualAttributes::AttributeType::Size;
+		}
+		if (attribute == "Texture" || attribute == "texture") {
+			return mmvis_static::VisualAttributes::AttributeType::Texture;
+		}
+		throw "Invalid attribute";
+	}
+	catch (char* error){
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
+			"mmvis_static::VisualAttributes %s: %s\n", error, attribute);
+	}
+	// The missing return is intentionally as the cpp compiler doesn't check.
+}
 
 /**
  * mmvis_static::StaticRenderer::StaticRenderer
@@ -39,11 +83,18 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	filePathDeathTextureSlot("filePathDeathTextureSlot", "The image file for death events"),
 	filePathMergeTextureSlot("filePathMergeTextureSlot", "The image file for merge events"),
 	filePathSplitTextureSlot("filePathSplitTextureSlot", "The image file for split events"),
-	/*birthOGL2Texture(vislib::graphics::gl::OpenGLTexture2D()),
+	eventAgglomerationVisAttrSlot("eventAgglomerationVisAttrSlot", "The visual attribute for the event agglomeration."),
+	eventLocationVisAttrSlot("eventLocationVisAttrSlot", "The visual attribute for the event location."),
+	eventTypeVisAttrSlot("eventTypeVisAttrSlot", "The visual attribute for the event type."),
+	eventTimeVisAttrSlot("eventTimeVisAttrSlot", "The visual attribute for the event time."),
+	/* MegaMol configurator doesn't like those (mmvis_static::StaticRenderer is invalid then).
+	birthOGL2Texture(vislib::graphics::gl::OpenGLTexture2D()),
 	deathOGL2Texture(),
 	mergeOGL2Texture(),
-	splitOGL2Texture(),*/
-	billboardShader() {
+	splitOGL2Texture(),
+	*/
+	billboardShader()
+	{
 
 	this->getDataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
 	this->MakeSlotAvailable(&this->getDataSlot);
@@ -53,7 +104,26 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 
 	this->filePathBirthTextureSlot << new param::FilePathParam("");
 	this->MakeSlotAvailable(&this->filePathBirthTextureSlot);
+	
+	core::param::EnumParam *visAttrAgglomeration = new core::param::EnumParam(0);
+	mmvis_static::VisualAttributes::getValidAttributes(visAttrAgglomeration, mmvis_static::VisualAttributes::ParameterType::Agglomeration);
+	this->eventAgglomerationVisAttrSlot << visAttrAgglomeration;
+	this->MakeSlotAvailable(&this->eventAgglomerationVisAttrSlot);
 
+	core::param::EnumParam *visAttrLocation = new core::param::EnumParam(0);
+	mmvis_static::VisualAttributes::getValidAttributes(visAttrLocation, mmvis_static::VisualAttributes::ParameterType::Location);
+	this->eventLocationVisAttrSlot << visAttrLocation;
+	this->MakeSlotAvailable(&this->eventLocationVisAttrSlot);
+
+	core::param::EnumParam *visAttrTime = new core::param::EnumParam(0);
+	mmvis_static::VisualAttributes::getValidAttributes(visAttrTime, mmvis_static::VisualAttributes::ParameterType::Time);
+	this->eventTimeVisAttrSlot << visAttrTime;
+	this->MakeSlotAvailable(&this->eventTimeVisAttrSlot);
+
+	core::param::EnumParam *visAttrType = new core::param::EnumParam(0);
+	mmvis_static::VisualAttributes::getValidAttributes(visAttrType, mmvis_static::VisualAttributes::ParameterType::Type);
+	this->eventTypeVisAttrSlot << visAttrType;
+	this->MakeSlotAvailable(&this->eventTypeVisAttrSlot);
 }
 
 /**
@@ -68,7 +138,7 @@ mmvis_static::StaticRenderer::~StaticRenderer(void) {
  */
 bool mmvis_static::StaticRenderer::create(void) {
 	ASSERT(IsAvailable());
-
+	
 	// Data is time independent, so it only needs to be loaded once.
 	float scaling = 1.0f;
 	StructureEventsDataCall *dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und den Frameblödsinn rauswerfen. Die Zeit ist ja im Event gespeichert.
@@ -183,27 +253,27 @@ bool mmvis_static::StaticRenderer::create(void) {
 	shaderAttributeIndex_position = glGetAttribLocation(this->billboardShader, "eventPosition");
 	if (shaderAttributeIndex_position == -1) {
 		fprintf(stderr, "Could not bind attribute %s\n", "eventPosition");
-		return 0;
+		return false;
 	}
 	shaderAttributeIndex_spanQuad = glGetAttribLocation(this->billboardShader, "spanQuad");
 	if (shaderAttributeIndex_spanQuad == -1) {
 		fprintf(stderr, "Could not bind attribute %s\n", "spanQuad");
-		return 0;
+		return false;
 	}
 	shaderAttributeIndex_texUV = glGetAttribLocation(this->billboardShader, "texUV");
 	if (shaderAttributeIndex_texUV == -1) {
 		fprintf(stderr, "Could not bind attribute %s\n", "texUV");
-		return 0;
+		return false;
 	}
 	shaderAttributeIndex_eventType = glGetAttribLocation(this->billboardShader, "eventType");
 	if (shaderAttributeIndex_eventType == -1) {
 		fprintf(stderr, "Could not bind attribute %s\n", "eventType");
-		return 0;
+		return false;
 	}
 	shaderAttributeIndex_colorHSV = glGetAttribLocation(this->billboardShader, "colorHSV");
 	if (shaderAttributeIndex_eventType == -1) {
 		fprintf(stderr, "Could not bind attribute %s\n", "colorHSV");
-		return 0;
+		return false;
 	}
 
 	// Generate textures.
@@ -217,9 +287,9 @@ bool mmvis_static::StaticRenderer::create(void) {
 	//char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
 	//CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
 
-	// Set Texture.
-	LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
-
+	// Set Texture. This method does not work (see comments in method).
+	//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
+	
 	return true;
 }
 
@@ -230,7 +300,7 @@ bool mmvis_static::StaticRenderer::create(void) {
 bool mmvis_static::StaticRenderer::Render(Call& call) {
 	view::CallRender3D *callRender = dynamic_cast<view::CallRender3D*>(&call);
 	if (callRender == NULL) return false;
-
+	
 	glEnable(GL_DEPTH_TEST);
 
 	this->billboardShader.Enable();
@@ -321,7 +391,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	this->billboardShader.Disable();
-
+	
 	return true;
 }
 
@@ -457,8 +527,8 @@ bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
 void mmvis_static::StaticRenderer::release(void) {
 	this->billboardShader.Release();
 	glDeleteTextures(4, this->textureIDs);
-	birthOGL2Texture.Release();
-	/*deathOGL2Texture.Release();
+	/*birthOGL2Texture.Release();
+	deathOGL2Texture.Release();
 	mergeOGL2Texture.Release();
 	splitOGL2Texture.Release();*/
 }
