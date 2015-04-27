@@ -29,7 +29,7 @@ namespace megamol {
 		 */
 		class VisualAttributes {
 		public:
-			static enum class AttributeType : int {
+			enum class AttributeType : int {
 				Brightness,
 				Hue,
 				Opacity,
@@ -40,7 +40,7 @@ namespace megamol {
 				Size,
 				Texture
 			};
-			static enum class ParameterType : int {
+			enum class ParameterType : int {
 				Agglomeration,
 				Location,
 				Type,
@@ -61,12 +61,21 @@ namespace megamol {
 			static void getValidAttributes(core::param::EnumParam *attributes, ParameterType parameterType);
 
 			/**
-			 * Converts a char sequence into AttributeType enum.
+			 * Gets the AttributeType enum from a wchar_t string.
+			 * @see http://www.codeproject.com/Articles/76252/What-are-TCHAR-WCHAR-LPSTR-LPWSTR-LPCTSTR-etc
 			 *
-			 * @param attribute A char pointer with the char sequence of an visual attribute.
+			 * @param attribute A wchar_t pointer with the char sequence of an visual attribute.
 			 * @return The Attribute type.
 			 */
-			static AttributeType getAttributeTypeFromString(char* attribute);
+			static AttributeType getAttributeType(wchar_t* attribute);
+
+			/**
+			 * Gets the AttributeType enum from a EnumParam.
+			 *
+			 * @param parameterSlot Expects an EnumParam!
+			 * @return The Attribute type.
+			 */
+			static AttributeType getAttributeType(core::param::ParamSlot *attributeSlot);
 
 			static void getAttributeValue(AttributeType attr, ParameterType param);
 		};
@@ -209,7 +218,7 @@ namespace megamol {
 			core::param::ParamSlot eventTypeVisAttrSlot;
 			core::param::ParamSlot eventTimeVisAttrSlot;
 
-			/** The eventtype textures. Obsolete, replaced by IDs. MegaMol shader doesn't like them anyways. */
+			/** The eventtype textures. Obsolete, replaced by IDs. MegaMol configurator doesn't like them anyways. */
 			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D mergeOGL2Texture;
@@ -233,13 +242,16 @@ namespace megamol {
 				GLfloat eventType;
 				// Color in HSV: Hue, Saturation, Value = [0,1]. Has to be converted in shader.
 				glm::vec3 colorHSV;
+				// Opacity.
+				GLfloat opacity;
 			};
-			
+
 			GLint shaderAttributeIndex_position,
 				shaderAttributeIndex_spanQuad,
 				shaderAttributeIndex_texUV,
 				shaderAttributeIndex_eventType,
-				shaderAttributeIndex_colorHSV;
+				shaderAttributeIndex_colorHSV,
+				shaderAttributeIndex_opacity;
 				
 			/** Vertex Buffer Object for the vertex shader.
 			A VBO is a collection of Vectors which in this case resemble the location of each vertex. */
@@ -250,6 +262,9 @@ namespace megamol {
 
 			/** The call for clipping plane */
 			core::CallerSlot getClipPlaneSlot;
+
+			/** Needed since vertex buffer has to be created in Renderer. */
+			bool initialVertexBufferCreation;
 		};
 
 	} /* namespace mmvis_static */

@@ -26,6 +26,8 @@ attribute float eventType; // varying may not be int
 varying float f_eventType;
 attribute vec3 colorHSV;
 varying vec3 f_colorHSV;
+attribute float opacity;
+varying float f_opacity;
             ]]>
         </snippet>
         <snippet name="uniformVar" type="string">
@@ -43,6 +45,8 @@ void main(void) {
     f_eventType = eventType;
     // Pass color to fragment shader.
     f_colorHSV = colorHSV;
+  // Pass opacity to fragment shader.
+    f_opacity = opacity;
 
     // Set position.
     // gl_Position.w = 1.0f; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
@@ -69,6 +73,7 @@ uniform sampler2D tex2DSplit;
 varying vec2 f_texUV;
 varying float f_eventType;
 varying vec3 f_colorHSV;
+varying float f_opacity;
             ]]>
       </snippet>
       <snippet name="colorConversion" type="string">
@@ -77,6 +82,7 @@ varying vec3 f_colorHSV;
  * Convert HSV values to RGB values.
  * Range: Hue, Saturation, Value = [0,1]
  * @see http://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+ * @see http://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
  */
 vec3 HSV2RGB( vec3 hsv ) {
       // The idea here to avoid conditions is to notice that the conversion code can be rewritten:
@@ -132,6 +138,10 @@ void main() {
     else if (f_eventType < 3.9f) {
       tex2D = texture2D(tex2DSplit, f_texUV_inverse).rgba;
     }
+    
+    // Set opacity.
+    if (f_opacity > 0.0f)
+      tex2D = vec4(tex2D.rgb, tex2D.a * f_opacity);
     
     // Don't draw if the pixel is transparent. This is kinda a hack
     // since it doesn't allow Alpha transparency but much less work

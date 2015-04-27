@@ -14,23 +14,69 @@
 
 #include "mmcore/AbstractGetData3DCall.h"
 #include "mmcore/factories/CallAutoDescription.h"
+#include "glm/glm/glm.hpp"
 
 namespace megamol {
 	namespace mmvis_static {
+
+		/**
+		 * One event contains a type, a position and a time as well as an agglomeration matrix.
+		 */
+		class StructureEvent {
+		public:
+			/** Possible values for the event type */
+			enum EventType {
+				BIRTH,
+				DEATH,
+				MERGE,
+				SPLIT
+			};
+
+			/**
+			* Answer the event type
+			*
+			* @return The event type
+			*/
+			inline EventType getEventType(void) const {
+				return this->type;
+			};
+
+			/**
+			* Answer the position pointer
+			*
+			* @return The position pointer
+			*/
+			inline glm::vec3 getPosition(void) const {
+				return this->position;
+			};
+
+			/**
+			* Sets the event type
+			*/
+			inline void setEventType(EventType eventType) {
+				this->type = eventType;
+			};
+
+		private:
+
+			/** The agglomeration. */
+			glm::mat4 agglomeration;
+
+			/** The event type. */
+			EventType type;
+
+			/** The position pointer. */
+			glm::vec3 position;
+
+			/** The time step. */
+			unsigned int timeStep;
+		};
 
 		/**
 		 * Container for all structure events. One event contains a type, a position and a time.
 		 */
 		class StructureEvents {
 		public:
-			/** Possible values for the event type */
-			enum EventType {
-				EVENT_BIRTH,
-				EVENT_DEATH,
-				EVENT_MERGE,
-				EVENT_SPLIT
-			};
-
 			/** Ctor */
 			StructureEvents(void);
 
@@ -43,40 +89,9 @@ namespace megamol {
 			/** Dtor */
 			~StructureEvents(void);
 			
-			/**
-			 * Answer the event type
-			 *
-			 * @return The event type
-			 */
-			inline EventType GetEventType(void) const {
-				return this->eventType;
-			}
-
-			/**
-			* Answer the position pointer
-			*
-			* @return The position pointer
-			*/
-			inline const void * GetPosition(void) const {
-				return this->positionPtr;
-			}
-
-			/**
-			 * Sets the event type
-			 */
-			inline void setEventType(EventType eventType) {
-				this->eventType = eventType;
-			}
-
 		private:
-			/** The event type */
-			EventType eventType;
-
-			/** The position pointer */
-			const void *positionPtr;
-
-			/** The time step */
-			unsigned int timeStep;
+			unsigned int numberOfEvents;
+			float maxTime;
 		};
 
 		/**

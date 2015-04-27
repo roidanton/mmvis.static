@@ -28,7 +28,7 @@
 using namespace megamol;
 using namespace megamol::core;
 
-void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *attributes, ParameterType parameterType) {
+void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *attributes, mmvis_static::VisualAttributes::ParameterType parameterType) {
 	switch (parameterType) {
 	case mmvis_static::VisualAttributes::ParameterType::Agglomeration:
 		attributes->SetTypePair(0, "Size");
@@ -47,31 +47,72 @@ void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *
 	}
 }
 
-mmvis_static::VisualAttributes::AttributeType getAttributeTypeFromString(char* attribute) {
+mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::getAttributeType(wchar_t* attribute) {
 	try {
-		if (attribute == "Brightness" || attribute == "brightness") {
+		if (attribute == _T("Brightness") || attribute == _T("brightness")) {
 			return mmvis_static::VisualAttributes::AttributeType::Brightness;
 		}
-		if (attribute == "Hue" || attribute == "hue") {
+		if (attribute == _T("Hue") || attribute == _T("hue")) {
 			return mmvis_static::VisualAttributes::AttributeType::Hue;
 		}
-		if (attribute == "Opacity" || attribute == "opacity") {
+		if (attribute == _T("Opacity") || attribute == _T("opacity")) {
 			return mmvis_static::VisualAttributes::AttributeType::Opacity;
 		}
-		if (attribute == "Size" || attribute == "size") {
+		if (attribute == _T("Position") || attribute == _T("Position")) {
+			return mmvis_static::VisualAttributes::AttributeType::Position;
+		}
+		if (attribute == _T("Size") || attribute == _T("size")) {
 			return mmvis_static::VisualAttributes::AttributeType::Size;
 		}
-		if (attribute == "Texture" || attribute == "texture") {
+		if (attribute == _T("Texture") || attribute == _T("texture")) {
 			return mmvis_static::VisualAttributes::AttributeType::Texture;
 		}
 		throw "Invalid attribute";
 	}
 	catch (char* error){
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
-			"mmvis_static::VisualAttributes %s: %s\n", error, attribute);
+			"mmvis_static::VisualAttributes %s: %ls\n", error, attribute);
 	}
+	//attributeType = mmvis_static::VisualAttributes::AttributeType::Brightness;
 	// The missing return is intentionally as the cpp compiler doesn't check.
 }
+
+mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::getAttributeType(core::param::ParamSlot *attributeSlot) {
+	vislib::TString activeValue;
+	try {
+		activeValue = attributeSlot->Param<core::param::EnumParam>()->ValueString();
+	}
+	catch (...) {
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
+			"Invalid EnumParam.\n");
+	}
+	try {
+		if (activeValue.Equals(_T("Brightness"), false)) {
+			return mmvis_static::VisualAttributes::AttributeType::Brightness;
+		}
+		if (activeValue.Equals(_T("Hue"), false)) {
+			return mmvis_static::VisualAttributes::AttributeType::Hue;
+		}
+		if (activeValue.Equals(_T("Opacity"), false)) {
+			return mmvis_static::VisualAttributes::AttributeType::Opacity;
+		}
+		if (activeValue.Equals(_T("Position"), false)) {
+			return mmvis_static::VisualAttributes::AttributeType::Position;
+		}
+		if (activeValue.Equals(_T("Size"), false)) {
+			return mmvis_static::VisualAttributes::AttributeType::Size;
+		}
+		if (activeValue.Equals(_T("Texture"), false)) {
+			return mmvis_static::VisualAttributes::AttributeType::Texture;
+		}
+		throw "Invalid attribute";
+	}
+	catch (char* error){
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
+			"mmvis_static::VisualAttributes %s: %ls\n", error, activeValue);
+	}
+}
+
 
 /**
  * mmvis_static::StaticRenderer::StaticRenderer
@@ -93,7 +134,8 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	mergeOGL2Texture(),
 	splitOGL2Texture(),
 	*/
-	billboardShader()
+	billboardShader(),
+	initialVertexBufferCreation(true)
 	{
 
 	this->getDataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
@@ -115,7 +157,7 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	this->eventLocationVisAttrSlot << visAttrLocation;
 	this->MakeSlotAvailable(&this->eventLocationVisAttrSlot);
 
-	core::param::EnumParam *visAttrTime = new core::param::EnumParam(0);
+	core::param::EnumParam *visAttrTime = new core::param::EnumParam(1);
 	mmvis_static::VisualAttributes::getValidAttributes(visAttrTime, mmvis_static::VisualAttributes::ParameterType::Time);
 	this->eventTimeVisAttrSlot << visAttrTime;
 	this->MakeSlotAvailable(&this->eventTimeVisAttrSlot);
@@ -138,77 +180,6 @@ mmvis_static::StaticRenderer::~StaticRenderer(void) {
  */
 bool mmvis_static::StaticRenderer::create(void) {
 	ASSERT(IsAvailable());
-	
-	// Data is time independent, so it only needs to be loaded once.
-	float scaling = 1.0f;
-	StructureEventsDataCall *dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und den Frameblödsinn rauswerfen. Die Zeit ist ja im Event gespeichert.
-
-	// Creating three test events as long as dataCall doesnt work. 
-	// Per Event parameters: Position, Time, Type, Agglomeration.
-	vislib::Array<glm::vec3> eventPositions;
-	eventPositions.Add({ 0.0f, 0.0f, 0.0f });
-	eventPositions.Add({ -1.0f, 0.0f, 0.0f });
-	eventPositions.Add({ -1.0f, -1.0f, -1.0f });
-	vislib::Array<GLfloat> eventType; // ToDo: Make enum.
-	eventType.Add(0.0f);
-	eventType.Add(1.0f);
-	eventType.Add(2.0f);
-	vislib::Array<GLfloat> eventTime;
-	eventTime.Add(1);
-	eventTime.Add(40);
-	eventTime.Add(100);
-	// Number of additional events in certain defined ranges (good for zoom levels) or better dynamically loaded? Needs testing!
-	vislib::Array<glm::mat4> eventAgglomeration;
-	// Global parameters: MaxTime, number of events.
-	GLfloat eventMaxTime = 120;
-
-	// Container for all vertices. ToDo: Make own function/class for improved readability.
-	std::vector<Vertex> vertexList;
-
-	for (unsigned int eventCounter = 0; eventCounter < eventPositions.Count(); eventCounter++) {
-		// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
-		for (unsigned int quadCounter = 0; quadCounter < 4; quadCounter++) {
-			Vertex vertex;
-			glm::vec2 quadSpanModifier, texUV;
-			//unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
-			vertex.position = eventPositions[eventCounter];
-			vertex.eventType = eventType[eventCounter]; // ToDo: Convert enum -> float.
-			vertex.colorHSV = { eventTime[eventCounter] / eventMaxTime, 1.0f, 1.0f };
-
-			// Specific properties for the quad corners.
-			switch (quadCounter) {
-			case 0:
-				quadSpanModifier = { -1.0f, -1.0f };
-				texUV = { 0.0f, 0.0f };
-				break;
-			case 1:
-				quadSpanModifier = { 1.0f, -1.0f };
-				texUV = { 1.0f, 0.0f };
-				break;
-			case 2:
-				quadSpanModifier = { 1.0f, 1.0f };
-				texUV = { 1.0f, 1.0f };
-				break;
-			case 3:
-				quadSpanModifier = { -1.0f, 1.0f };
-				texUV = { 0.0f, 1.0f };
-				break;
-			}
-			vertex.spanQuad = quadSpanModifier;
-			//vertex.position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
-			vertex.texUV = texUV;
-
-			vertexList.push_back(vertex);
-		}
-	}
-
-	// Create a VBO.
-	// Generate 1 (generic) buffer, put the resulting identifier in the vertex buffer object
-	glGenBuffers(1, &vbo);
-	// Bind the buffer to GL_ARRAY_BUFFER (array of vertices)
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	// Give our vertices to OpenGL (fill the buffer with data). Heed total size parameter! (I needed hours to track this down)
-	glBufferData(GL_ARRAY_BUFFER, vertexList.size() * sizeof(Vertex), &vertexList.front(), GL_STATIC_DRAW);
 	
 	// Load, build, link shader.
 	vislib::graphics::gl::ShaderSource vert, frag;
@@ -271,8 +242,13 @@ bool mmvis_static::StaticRenderer::create(void) {
 		return false;
 	}
 	shaderAttributeIndex_colorHSV = glGetAttribLocation(this->billboardShader, "colorHSV");
-	if (shaderAttributeIndex_eventType == -1) {
+	if (shaderAttributeIndex_colorHSV == -1) {
 		fprintf(stderr, "Could not bind attribute %s\n", "colorHSV");
+		return false;
+	}
+	shaderAttributeIndex_opacity = glGetAttribLocation(this->billboardShader, "opacity");
+	if (shaderAttributeIndex_opacity == -1) {
+		fprintf(stderr, "Could not bind attribute %s\n", "opacity");
 		return false;
 	}
 
@@ -300,7 +276,123 @@ bool mmvis_static::StaticRenderer::create(void) {
 bool mmvis_static::StaticRenderer::Render(Call& call) {
 	view::CallRender3D *callRender = dynamic_cast<view::CallRender3D*>(&call);
 	if (callRender == NULL) return false;
-	
+
+	// This should be in create**********************************************
+	// Data is time independent, so it only needs to be loaded once.
+	float scaling = 1.0f;
+	StructureEventsDataCall *dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und den Frameblödsinn rauswerfen. Die Zeit ist ja im Event gespeichert.
+
+	// Creating three test events as long as dataCall doesnt work. 
+	// Per Event parameters: Position, Time, Type, Agglomeration.
+	vislib::Array<glm::vec3> eventPositions;
+	eventPositions.Add({ 0.0f, 0.0f, 0.0f });
+	eventPositions.Add({ -1.0f, 0.0f, 0.0f });
+	eventPositions.Add({ -1.0f, -1.0f, -1.0f });
+	vislib::Array<GLfloat> eventType; // ToDo: Make enum.
+	eventType.Add(0.0f);
+	eventType.Add(1.0f);
+	eventType.Add(2.0f);
+	vislib::Array<GLfloat> eventTime;
+	eventTime.Add(1);
+	eventTime.Add(40);
+	eventTime.Add(100);
+	// Number of additional events in certain defined ranges (good for zoom levels) or better dynamically loaded? Needs testing!
+	vislib::Array<glm::mat4> eventAgglomeration;
+	// Global parameters: MaxTime, number of events.
+	GLfloat eventMaxTime = 120;
+	// /This should be in create**********************************************
+
+	// The following is here since
+	// - The slots are not available in ::create().
+	// - The UI updates wouldn't be heeded.
+	// Downside: Performance impact due to recreation of VBO (copy to device memory).
+
+	bool recreateVertexBuffer = false;
+
+	if (initialVertexBufferCreation) {
+		recreateVertexBuffer = true;
+		initialVertexBufferCreation = false;
+	}
+
+	// Reset dirty flag of slots if dirty.
+
+	if (this->eventAgglomerationVisAttrSlot.IsDirty()) {
+		this->eventAgglomerationVisAttrSlot.ResetDirty();
+		recreateVertexBuffer = true;
+	}
+	if (this->eventLocationVisAttrSlot.IsDirty()) {
+		this->eventLocationVisAttrSlot.ResetDirty();
+		recreateVertexBuffer = true;
+	}
+	if (this->eventTimeVisAttrSlot.IsDirty()) {
+		this->eventTimeVisAttrSlot.ResetDirty();
+		recreateVertexBuffer = true;
+	}
+	if (this->eventTypeVisAttrSlot.IsDirty()) {
+		this->eventTypeVisAttrSlot.ResetDirty();
+		recreateVertexBuffer = true;
+	}
+	if (recreateVertexBuffer) {
+		// Container for all vertices. ToDo: Make own function for improved readability. Own class isn't meaningful (too many parameters)!
+		std::vector<Vertex> vertexList;
+
+		for (unsigned int eventCounter = 0; eventCounter < eventPositions.Count(); eventCounter++) {
+			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
+			for (unsigned int quadCounter = 0; quadCounter < 4; quadCounter++) {
+				Vertex vertex;
+				glm::vec2 quadSpanModifier, texUV;
+				vertex.opacity = 1.0f;
+				vertex.colorHSV = { 0.0f, 1.0f, 1.0f };
+				float minValue = .4f; // Minimal value for brightness and opacity.
+				//unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
+				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position)
+					vertex.position = eventPositions[eventCounter];
+				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue)
+					vertex.colorHSV = { eventTime[eventCounter] / eventMaxTime, 1.0f, 1.0f }; // Brightness 100%.
+				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
+					vertex.colorHSV = { 0.0f, 1.0f, eventTime[eventCounter] / eventMaxTime * (1.f - minValue) + minValue };  // Color red, brightness from minValue-100%.
+				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity) {
+					vertex.opacity = eventTime[eventCounter] / eventMaxTime * (1.f - minValue) + minValue;  // From minValue-100%.
+				}
+				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
+					vertex.eventType = eventType[eventCounter]; // ToDo: Convert enum -> float.
+				//}
+				// Specific properties for the quad corners.
+				switch (quadCounter) {
+				case 0:
+					quadSpanModifier = { -1.0f, -1.0f };
+					texUV = { 0.0f, 0.0f };
+					break;
+				case 1:
+					quadSpanModifier = { 1.0f, -1.0f };
+					texUV = { 1.0f, 0.0f };
+					break;
+				case 2:
+					quadSpanModifier = { 1.0f, 1.0f };
+					texUV = { 1.0f, 1.0f };
+					break;
+				case 3:
+					quadSpanModifier = { -1.0f, 1.0f };
+					texUV = { 0.0f, 1.0f };
+					break;
+				}
+				vertex.spanQuad = quadSpanModifier;
+				//vertex.position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
+				vertex.texUV = texUV;
+
+				vertexList.push_back(vertex);
+			}
+		}
+
+		// Create a VBO.
+		// Generate 1 (generic) buffer, put the resulting identifier in the vertex buffer object
+		glGenBuffers(1, &vbo);
+		// Bind the buffer to GL_ARRAY_BUFFER (array of vertices)
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		// Give our vertices to OpenGL (fill the buffer with data). Heed total size parameter! (I needed hours to track this down)
+		glBufferData(GL_ARRAY_BUFFER, vertexList.size() * sizeof(Vertex), &vertexList.front(), GL_STATIC_DRAW);
+	}
+
 	glEnable(GL_DEPTH_TEST);
 
 	this->billboardShader.Enable();
@@ -329,6 +421,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glEnableVertexAttribArray(shaderAttributeIndex_texUV);
 	glEnableVertexAttribArray(shaderAttributeIndex_eventType);
 	glEnableVertexAttribArray(shaderAttributeIndex_colorHSV);
+	glEnableVertexAttribArray(shaderAttributeIndex_opacity);
 
 	// Select the VBO again (bind) - required when there are several vbos available.
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -378,6 +471,15 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		(GLvoid*)(offsetof(Vertex, colorHSV))   // array buffer offset
 		);
 
+	glVertexAttribPointer(
+		shaderAttributeIndex_opacity,      // attribute index.
+		1,                  // number of components in the attribute (here: h,s,v)
+		GL_FLOAT,           // the type of each element
+		GL_FALSE,           // should the values be normalized?
+		sizeof(Vertex),		// stride
+		(GLvoid*)(offsetof(Vertex, opacity))   // array buffer offset
+		);
+
 	// Push each element in buffer_vertices to the vertex shader. Thx to OGL 2 we can use quads. :-)
 	glDrawArrays(GL_QUADS, 0, 12); // Starting from vertex 0; 12 vertices total. Will depend on size of dataCall.
 	
@@ -387,6 +489,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glDisableVertexAttribArray(shaderAttributeIndex_texUV);
 	glDisableVertexAttribArray(shaderAttributeIndex_eventType);
 	glDisableVertexAttribArray(shaderAttributeIndex_colorHSV);
+	glDisableVertexAttribArray(shaderAttributeIndex_opacity);
 	// Deselect (bind to 0) the VBO.
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -445,10 +548,10 @@ void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot
 	// Debug.
 	printf("Filenameslot value: %s\n", filenameSlot->Param<param::FilePathParam>()->Value()); // Leer, vermutlich müsste TString -> string.
 	printf("Filename Value: %s\n", *filename); // (null)
-	printf("Filename stored adress: %s\n", filename); // leer
-	printf("Filename adress: %s\n", &filename); // // Three arbitrary, unidentifiable characters.
-	printf("Filename Vector pointer: %s\n", filenameConverted); // Three arbitrary, unidentifiable characters, different from before.
-	printf("Filename Vector adress: %s\n", &filenameConverted); // Three arbitrary, unidentifiable characters, same as before (points to same adress).
+	printf("Filename stored adress: %p\n", filename); // leer
+	printf("Filename adress: %p\n", &filename); // Three arbitrary, unidentifiable characters.
+	printf("Filename Vector pointer: %p\n", filenameConverted); // Three arbitrary, unidentifiable characters, different from before.
+	printf("Filename Vector adress: %p\n", &filenameConverted); // Three arbitrary, unidentifiable characters, same as before (points to same adress).
 
 	// Has to happen before codec.Load() to be able to load png in img.
 	codec.Image() = &img;
