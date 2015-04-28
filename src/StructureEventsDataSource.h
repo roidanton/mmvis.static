@@ -13,7 +13,11 @@
 
 #include "mmcore/CalleeSlot.h"
 #include "mmcore/param/ParamSlot.h"
-#include "mmcore/Module.h"
+//#include "mmcore/Module.h"
+#include "mmcore/view/AnimDataModule.h"
+#include "vislib/math/Cuboid.h"
+#include "vislib/sys/File.h"
+#include "vislib/RawStorage.h"
 
 namespace megamol {
 	namespace mmvis_static {
@@ -21,6 +25,7 @@ namespace megamol {
 		 * TODO: This class is a stub!
 		 */
 		class StructureEventsDataSource : public core::Module {
+		//class StructureEventsDataSource : public core::view::AnimDataModule {
 		public:
 			/**
 			 * Answer the name of this module.
@@ -99,8 +104,17 @@ namespace megamol {
 			/** The file name */
 			core::param::ParamSlot filename;
 
+			/** The opened data file */
+			vislib::sys::File *file;
+
 			/** The call for data */
 			core::CalleeSlot getDataSlot;
+
+			/** The data set bounding box */
+			vislib::math::Cuboid<float> bbox;
+
+			/** The data set clipping box */
+			vislib::math::Cuboid<float> clipbox;
 		};
 
 	} /* namespace mmvis_static */

@@ -15,6 +15,8 @@
 #include "mmcore/AbstractDataWriter.h"
 #include "mmcore/CallerSlot.h"
 #include "mmcore/param/ParamSlot.h"
+#include "vislib/sys/File.h"
+#include "StructureEventsDataCall.h"
 
 namespace megamol {
 	namespace mmvis_static {
@@ -99,6 +101,16 @@ namespace megamol {
 			virtual bool getCapabilities(core::DataWriterCtrlCall& call);
 
 		private:
+
+			/**
+			 * Writes the data of to the file
+			 *
+			 * @param file The output data file
+			 * @param data The data of the current frame
+			 *
+			 * @return True on success
+			 */
+			bool writeData(vislib::sys::File& file, StructureEventsDataCall& data);
 
 			/** The file name */
 			core::param::ParamSlot filenameSlot;

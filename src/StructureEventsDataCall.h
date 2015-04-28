@@ -4,6 +4,14 @@
  * Copyright (C) 2009-2015 by MegaMol Team
  * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
+ *
+ * Uses pointer for data instead of copying into own
+ * structure. Either use:
+ * - one pointer for all datatypes and all events
+ * - one pointer for all datatypes and each event
+ * - one pointer for each datatype and all events
+ * - one pointer for each datatype and each event
+ * Not yet decided: Depends on Calculation output.
  */
 
 #ifndef MMVISSTATIC_StructureEventsDataCall_H_INCLUDED
@@ -15,6 +23,7 @@
 #include "mmcore/AbstractGetData3DCall.h"
 #include "mmcore/factories/CallAutoDescription.h"
 #include "glm/glm/glm.hpp"
+#include <vector>
 
 namespace megamol {
 	namespace mmvis_static {
@@ -57,7 +66,41 @@ namespace megamol {
 				this->type = eventType;
 			};
 
+			inline const void * getLocationData(void) const {
+				return this->locationPtr;
+			}
+
+			inline unsigned int getLocationStride(void) const {
+				return this->locationStride;
+			}
+
+			inline unsigned int getTimeStride(void) const {
+				return this->timeStride;
+			}
+
+			inline unsigned int getTypeStride(void) const {
+				return this->typeStride;
+			}
+
 		private:
+
+			/** The location pointer */
+			const void *locationPtr;
+
+			/** The location stride */
+			unsigned int locationStride;
+
+			/** The time pointer */
+			const void *timePtr;
+
+			/** The time stride */
+			unsigned int timeStride;
+
+			/** The type pointer */
+			const void *typePtr;
+
+			/** The type stride */
+			unsigned int typeStride;
 
 			/** The agglomeration. */
 			glm::mat4 agglomeration;
@@ -90,8 +133,6 @@ namespace megamol {
 			~StructureEvents(void);
 			
 		private:
-			unsigned int numberOfEvents;
-			float maxTime;
 		};
 
 		/**
@@ -99,6 +140,25 @@ namespace megamol {
 		 */
 		class StructureEventsDataCall : public core::AbstractGetData3DCall {
 		public:
+			/** Possible values for the event type */
+			/*enum EventType {// Likely obsolete.
+				BIRTH,
+				DEATH,
+				MERGE,
+				SPLIT
+			};*/
+
+			/*struct Event {// Likely obsolete.
+				// The agglomeration.
+				glm::mat4 agglomeration;
+				// The event type.
+				EventType type;
+				// The position pointer.
+				glm::vec3 position;
+				// The time step.
+				unsigned int timeStep;
+			};*/
+
 			/**
 			 * Answer the name of the objects of this description.
 			 *
@@ -138,7 +198,7 @@ namespace megamol {
 			}
 
 			/** typedef for legacy name */
-			typedef StructureEvents Events;
+			//typedef StructureEvent Event;
 
 			/** Ctor. */
 			StructureEventsDataCall(void);
@@ -157,8 +217,29 @@ namespace megamol {
 			*/
 			StructureEventsDataCall& operator=(const StructureEventsDataCall& rhs);
 
-		private:
+			typedef StructureEvent Event;
 
+			inline UINT32 getEventCount(void) const {
+				return this->eventCount;
+			};
+
+			inline Event getEvent(UINT32 eventIndex) const {
+				return eventList[eventIndex];
+			};
+
+			inline float getMaxTime() const {
+				return maxTime;
+			};
+
+			// Likely obsolete.
+			inline unsigned int getEventStride() const {
+				return sizeof(Event);
+			};
+
+		private:
+			UINT32 eventCount;
+			float maxTime;
+			std::vector<Event> eventList;
 		};
 
 		/** Description class typedef */

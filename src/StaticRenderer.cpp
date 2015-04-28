@@ -8,7 +8,6 @@
  * - Fix billboard ratio (always quadratic and not dependent on window ratio as it is currently)
  * - Add parameter agglomeration.
  * - Embed own StructureEventDataCall.
- * - Make color, opacity, size (maybe bad since perspective projection), ... chooseable.
  * - Enable orthographic mode?
  * - Make size of billboards also dependent on camera
  */
@@ -263,7 +262,7 @@ bool mmvis_static::StaticRenderer::create(void) {
 	//char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
 	//CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
 
-	// Set Texture. This method does not work (see comments in method).
+	// Set Texture. This method does not work (see comments in method). Obsolete!
 	//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
 	
 	return true;
