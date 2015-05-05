@@ -29,10 +29,17 @@ namespace megamol {
 	namespace mmvis_static {
 
 		/**
-		 * One event contains a type, a position and a time as well as an agglomeration matrix.
+		 * Container for all events.
+		 * The event attributes are the position, the time, the type
+		 * as well as an agglomeration matrix.
+		 *
+		 * @remark Future optimizations: Type doesn't need to be stored
+		 * per event but instead four lists of events could be used,
+		 * one for each event type.
 		 */
-		class StructureEvent {
+		class StructureEvents {
 		public:
+
 			/** Possible values for the event type */
 			enum EventType {
 				BIRTH,
@@ -41,98 +48,127 @@ namespace megamol {
 				SPLIT
 			};
 
-			/**
-			* Answer the event type
-			*
-			* @return The event type
-			*/
-			inline EventType getEventType(void) const {
-				return this->type;
-			};
+			/// Ctor.
+			StructureEvents(void);
+
+			/// Dtor.
+			virtual ~StructureEvents(void);
+
+			/// Ctor.
+			StructureEvents(const StructureEvents& src);
 
 			/**
-			* Answer the position pointer
-			*
-			* @return The position pointer
-			*/
-			inline glm::vec3 getPosition(void) const {
-				return this->position;
-			};
-
-			/**
-			* Sets the event type
-			*/
-			inline void setEventType(EventType eventType) {
-				this->type = eventType;
-			};
-
-			inline const void * getLocationData(void) const {
+			 * @return The location pointer
+			 */
+			inline const float * getLocation(void) const {
 				return this->locationPtr;
 			}
 
-			inline unsigned int getLocationStride(void) const {
-				return this->locationStride;
+			/**
+			 * @return The time pointer
+			 */
+			inline const float * getTime(void) const {
+				return this->timePtr;
 			}
-
-			inline unsigned int getTimeStride(void) const {
-				return this->timeStride;
-			}
-
-			inline unsigned int getTypeStride(void) const {
-				return this->typeStride;
-			}
-
-		private:
-
-			/** The location pointer */
-			const void *locationPtr;
-
-			/** The location stride */
-			unsigned int locationStride;
-
-			/** The time pointer */
-			const void *timePtr;
-
-			/** The time stride */
-			unsigned int timeStride;
-
-			/** The type pointer */
-			const void *typePtr;
-
-			/** The type stride */
-			unsigned int typeStride;
-
-			/** The agglomeration. */
-			glm::mat4 agglomeration;
-
-			/** The event type. */
-			EventType type;
-
-			/** The position pointer. */
-			glm::vec3 position;
-
-			/** The time step. */
-			unsigned int timeStep;
-		};
-
-		/**
-		 * Container for all structure events. One event contains a type, a position and a time.
-		 */
-		class StructureEvents {
-		public:
-			/** Ctor */
-			StructureEvents(void);
 
 			/**
-			 * Copy ctor
-			 * @param src The object to clone from
+			 * @return The type pointer
 			 */
-			StructureEvents(const StructureEvents& src);
+			inline const uint8_t * getType(void) const {
+				return this->typePtr;
+			}
 
-			/** Dtor */
-			~StructureEvents(void);
-			
+			/**
+			 * @return The stride
+			 */
+			inline unsigned int getStride(void) const {
+				return this->stride;
+			}
+
+			/**
+			 * @return The calculated stride.
+			 */
+			inline unsigned int getCalculatedStride(void) const {
+				return 4 * sizeof(float) + sizeof(uint8_t);
+			}
+
+			inline void setStride(unsigned int stride) {
+				printf("Data call set stride %d.\n\n", stride); // Debug.
+				this->stride = stride;
+			}
+
+			inline void setEvents(
+				const float *location,
+				const float *time,
+				const uint8_t *type,
+				unsigned int stride,
+				uint64_t count) {
+				this->locationPtr = location;
+				this->timePtr = time;
+				this->typePtr = type;
+				this->stride = stride;
+				this->count = count;
+			}
+
+			/**
+			 * Answer the event type.
+			 *
+			 * @return The event type as EventType.
+			 */
+			inline EventType getEventType(uint8_t typeCode) const {
+				switch (typeCode){
+				case 0:
+					return this->BIRTH;
+				case 1:
+					return this->DEATH;
+				case 2:
+					return this->MERGE;
+				case 3:
+					return this->SPLIT;
+				}
+			};
+
+			inline uint64_t getCount(void) const {
+				return this->count;
+			};
+
+			inline float getMaxTime() const {
+				return maxTime;
+			};
+
+			/**
+			 * Assignment operator.
+			 * Makes a deep copy of all members. While for data these are only
+			 * pointers, the pointer to the unlocker object is also copied.
+			 *
+			 * @param rhs The right hand side operand
+			 *
+			 * @return A reference to this
+			 */
+			StructureEvents& operator=(const StructureEvents& rhs);
+
 		private:
+
+			// The location pointer, 4 byte
+			const float *locationPtr;
+
+			// The time pointer, 4 byte
+			const float *timePtr;
+
+			// The type pointer, 1 byte. 0 := Birth, 1 := Death, 2 := Merge, 3 := Split as in shader.
+			const uint8_t *typePtr;
+
+			// The stride.
+			unsigned int stride;
+
+			// The agglomeration.
+			glm::mat4 agglomeration;
+
+			// The number of objects stored.
+			uint64_t count;
+
+			float maxTime;
+
 		};
 
 		/**
@@ -140,24 +176,6 @@ namespace megamol {
 		 */
 		class StructureEventsDataCall : public core::AbstractGetData3DCall {
 		public:
-			/** Possible values for the event type */
-			/*enum EventType {// Likely obsolete.
-				BIRTH,
-				DEATH,
-				MERGE,
-				SPLIT
-			};*/
-
-			/*struct Event {// Likely obsolete.
-				// The agglomeration.
-				glm::mat4 agglomeration;
-				// The event type.
-				EventType type;
-				// The position pointer.
-				glm::vec3 position;
-				// The time step.
-				unsigned int timeStep;
-			};*/
 
 			/**
 			 * Answer the name of the objects of this description.
@@ -178,27 +196,24 @@ namespace megamol {
 			}
 
 			/**
-			* Answer the number of functions used for this call.
-			*
-			* @return The number of functions used for this call.
-			*/
+			 * Answer the number of functions used for this call.
+			 *
+			 * @return The number of functions used for this call.
+			 */
 			static unsigned int FunctionCount(void) {
 				return AbstractGetData3DCall::FunctionCount();
 			}
 
 			/**
-			* Answer the name of the function used for this call.
-			*
-			* @param idx The index of the function to return it's name.
-			*
-			* @return The name of the requested function.
-			*/
+			 * Answer the name of the function used for this call.
+			 *
+			 * @param idx The index of the function to return it's name.
+			 *
+			 * @return The name of the requested function.
+			 */
 			static const char * FunctionName(unsigned int idx) {
 				return AbstractGetData3DCall::FunctionName(idx);
 			}
-
-			/** typedef for legacy name */
-			//typedef StructureEvent Event;
 
 			/** Ctor. */
 			StructureEventsDataCall(void);
@@ -207,19 +222,17 @@ namespace megamol {
 			virtual ~StructureEventsDataCall(void);
 
 			/**
-			* Assignment operator.
-			* Makes a deep copy of all members. While for data these are only
-			* pointers, the pointer to the unlocker object is also copied.
-			*
-			* @param rhs The right hand side operand
-			*
-			* @return A reference to this
-			*/
+			 * Assignment operator.
+			 * Makes a deep copy of all members. While for data these are only
+			 * pointers, the pointer to the unlocker object is also copied.
+			 *
+			 * @param rhs The right hand side operand
+			 *
+			 * @return A reference to this
+			 */
 			StructureEventsDataCall& operator=(const StructureEventsDataCall& rhs);
 
-			typedef StructureEvent Event;
-
-			inline UINT32 getEventCount(void) const {
+			/*inline UINT32 getEventCount(void) const {
 				return this->eventCount;
 			};
 
@@ -234,12 +247,20 @@ namespace megamol {
 			// Likely obsolete.
 			inline unsigned int getEventStride() const {
 				return sizeof(Event);
+			};*/
+
+			StructureEvents& getEvents() {
+				return this->events;
 			};
 
 		private:
+			StructureEvents events;
+
+			/*
 			UINT32 eventCount;
 			float maxTime;
 			std::vector<Event> eventList;
+			*/
 		};
 
 		/** Description class typedef */

@@ -16,7 +16,7 @@
 using namespace megamol;
 using namespace megamol::core;
 
-/*
+/**
  * mmvis_static::StructureEventsDataSource::StructureEventsDataSource
  */
 mmvis_static::StructureEventsDataSource::StructureEventsDataSource() : core::Module(),
@@ -35,14 +35,14 @@ mmvis_static::StructureEventsDataSource::StructureEventsDataSource() : core::Mod
 	this->MakeSlotAvailable(&this->getDataSlot);
 }
 
-/*
+/**
  * mmvis_static::StructureEventsDataSource::~StructureEventsDataSource
  */
 mmvis_static::StructureEventsDataSource::~StructureEventsDataSource(void) {
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsDataSource::create
  */
 bool mmvis_static::StructureEventsDataSource::create(void) {
@@ -51,14 +51,14 @@ bool mmvis_static::StructureEventsDataSource::create(void) {
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsDataSource::release
  */
 void mmvis_static::StructureEventsDataSource::release(void) {
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsDataSource::filenameChanged
  */
 bool mmvis_static::StructureEventsDataSource::filenameChanged(param::ParamSlot& slot) {
@@ -111,7 +111,7 @@ bool mmvis_static::StructureEventsDataSource::filenameChanged(param::ParamSlot& 
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsDataSource::getDataCallback
  */
 bool mmvis_static::StructureEventsDataSource::getDataCallback(Call& caller) {
@@ -134,7 +134,7 @@ bool mmvis_static::StructureEventsDataSource::getDataCallback(Call& caller) {
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsDataSource::getExtentCallback
  */
 bool mmvis_static::StructureEventsDataSource::getExtentCallback(Call& caller) {

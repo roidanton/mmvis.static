@@ -15,8 +15,21 @@
 #include "mmcore/CalleeSlot.h"
 #include "mmcore/param/ParamSlot.h"
 #include "mmcore/Module.h"
-
 #include "mmcore/moldyn/MultiParticleDataCall.h"
+#include "StructureEventsDataCall.h"
+#include "glm/glm/glm.hpp"
+#include <map>
+
+
+namespace megamol {
+	namespace core {
+		namespace moldyn {
+			class MultiParticleDataCallExtension : public core::moldyn::MultiParticleDataCall {
+				// Klasse evtl für MaxStride sowie Koordinatenstrides für Vertex und Colour, evtl hasRadius, hasFloat
+			};
+		}
+	}
+}
 
 namespace megamol {
 	namespace mmvis_static {
@@ -25,6 +38,15 @@ namespace megamol {
 		 */
 		class StructureEventsCalculator : public core::Module {
 		public:
+
+			// ID is stored in the map particleList currently.
+			struct Particle {
+				glm::vec3 position;
+				float radius; // Maybe needed for calculation.
+				glm::vec3 signedDistance; // Float or vec3, lets see.
+				float opacity; // Not required likely.
+			};
+
 			/**
 			 * Answer the name of this module.
 			 *
@@ -52,10 +74,10 @@ namespace megamol {
 				return true;
 			}
 
-			/** Ctor. */
+			/// Ctor.
 			StructureEventsCalculator(void);
 
-			/** Dtor. */
+			/// Dtor.
 			virtual ~StructureEventsCalculator(void);
 
 		private:
@@ -73,19 +95,65 @@ namespace megamol {
 			virtual void release(void);
 
 			/**
-			* Gets the data from the source.
-			*
-			* @param caller The calling call.
-			*
-			* @return 'true' on success, 'false' on failure.
-			*/
-			bool getDataCallback(core::Call& caller);
+			 * Called when the data is requested by this module.
+			 *
+			 * @param callee The incoming call.
+			 *
+			 * @return 'true' on success, 'false' on failure.
+			 */
+			bool getDataCallback(core::Call& callee);
 
-			/** The call for data */
-			core::CallerSlot getDataSlot;
+			/**
+			 * Called when the extend information is requested by this module.
+			 *
+			 * @param callee The incoming call.
+			 *
+			 * @return 'true' on success, 'false' on failure.
+			 */
+			bool getExtentCallback(core::Call& callee);
 
-			/** The call for data */
-			core::CalleeSlot sendDataSlot;
+			/**
+			 * Manipulates the particle data. Currently just one frame!
+			 *
+			 * @param outData The call receiving the manipulated data
+			 * @param inData The call holding the original data
+			 *
+			 * @return True on success
+			 */
+			bool manipulateData(
+				mmvis_static::StructureEventsDataCall& outData,
+				megamol::core::moldyn::MultiParticleDataCall& inData);
+
+			/**
+			 * Manipulates the particle data extend information
+			 *
+			 * @param outData The call receiving the manipulated information
+			 * @param inData The call holding the original data
+			 *
+			 * @return True on success
+			 */
+			bool manipulateExtent(
+				mmvis_static::StructureEventsDataCall& outData,
+				megamol::core::moldyn::MultiParticleDataCall& inData);
+
+
+			/**
+			 * Writes the data from MultiParticleDataCall into particleList.			 
+			 */
+			void getMPDCData(megamol::core::moldyn::MultiParticleDataCall& inData);
+
+
+			/// The call for incoming data.
+			core::CallerSlot inDataSlot;
+
+			/// The call for outgoing data.
+			core::CalleeSlot outDataSlot;
+
+			/// The threshold.
+			core::param::ParamSlot thresholdSlot;
+
+			/// List with all particles of one frame. Key = position of the particle in the MMPLD particle list.
+			std::map<uint64_t, Particle> particleList;
 		};
 
 	} /* namespace mmvis_static */

@@ -54,10 +54,10 @@ namespace megamol {
 				return true;
 			}
 
-			/** Ctor. */
+			/// Ctor.
 			StructureEventsDataSource(void);
 
-			/** Dtor. */
+			/// Dtor.
 			virtual ~StructureEventsDataSource(void);
 
 		private:
@@ -75,45 +75,45 @@ namespace megamol {
 			virtual void release(void);
 
 			/**
-			* Callback receiving the update of the file name parameter.
-			*
-			* @param slot The updated ParamSlot.
-			*
-			* @return Always 'true' to reset the dirty flag.
-			*/
+			 * Callback receiving the update of the file name parameter.
+			 *
+			 * @param slot The updated ParamSlot.
+			 *
+			 * @return Always 'true' to reset the dirty flag.
+			 */
 			bool filenameChanged(core::param::ParamSlot& slot);
 
 			/**
-			* Gets the data from the source.
-			*
-			* @param caller The calling call.
-			*
-			* @return 'true' on success, 'false' on failure.
-			*/
+			 * Gets the data from the source.
+			 *
+			 * @param caller The calling call.
+			 *
+			 * @return 'true' on success, 'false' on failure.
+			 */
 			bool getDataCallback(core::Call& caller);
 
 			/**
-			* Gets the data from the source.
-			*
-			* @param caller The calling call.
-			*
-			* @return 'true' on success, 'false' on failure.
-			*/
+			 * Gets the data from the source.
+			 *
+			 * @param caller The calling call.
+			 *
+			 * @return 'true' on success, 'false' on failure.
+			 */
 			bool getExtentCallback(core::Call& caller);
 
-			/** The file name */
+			/// The file name.
 			core::param::ParamSlot filename;
 
-			/** The opened data file */
+			/// The opened data file.
 			vislib::sys::File *file;
 
-			/** The call for data */
+			/// The call for data.
 			core::CalleeSlot getDataSlot;
 
-			/** The data set bounding box */
+			/// The data set bounding box.
 			vislib::math::Cuboid<float> bbox;
 
-			/** The data set clipping box */
+			/// The data set clipping box.
 			vislib::math::Cuboid<float> clipbox;
 		};
 

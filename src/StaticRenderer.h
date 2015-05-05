@@ -47,10 +47,10 @@ namespace megamol {
 				Time
 			};
 
-			/** Ctor. */
+			/// Ctor.
 			VisualAttributes(void);
 
-			/** Dtor. */
+			/// Dtor.
 			virtual ~VisualAttributes(void);
 
 			/**
@@ -120,10 +120,10 @@ namespace megamol {
 				return vislib::graphics::gl::GLSLShader::AreExtensionsAvailable();
 			}
 
-			/** Ctor. */
+			/// Ctor.
 			StaticRenderer(void);
 
-			/** Dtor. */
+			/// Dtor.
 			virtual ~StaticRenderer(void);
 
 		protected:
@@ -188,9 +188,8 @@ namespace megamol {
 			/**
 			 * Loads a png texture from file system and creates OGL2 texture in memory.
 			 *
-			 * Currently unused since we have CreateOGLTexture. However this function
-			 * uses a filenameSlot which should be the way to go. Unfortunately the
-			 * MM stuff (png loader, slot contents) doesnt work for me.
+			 * Currently unused since png loader doesnt work and we have CreateOGLTexture.
+			 * However this function uses a filenameSlot which should be the way to go.
 			 */
 			void LoadPngTexture(core::param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture);
 			
@@ -199,53 +198,38 @@ namespace megamol {
 			 */
 			void CreateOGLTextureFromFile(char* filename, GLuint &textureID);
 
-			// The following variables are currently not used.
-			/** The filepath for the birth texture. */
+			/// The filepathes for the textures. Currently unused!
 			core::param::ParamSlot filePathBirthTextureSlot;
-
-			/** The filepath for the death texture. */
 			core::param::ParamSlot filePathDeathTextureSlot;
-
-			/** The filepath for the merge texture. */
 			core::param::ParamSlot filePathMergeTextureSlot;
-
-			/** The filepath for the merge texture. */
 			core::param::ParamSlot filePathSplitTextureSlot;
 
-			/** The visual attributes for events. */
+			/// The visual attributes for events.
 			core::param::ParamSlot eventAgglomerationVisAttrSlot;
 			core::param::ParamSlot eventLocationVisAttrSlot;
 			core::param::ParamSlot eventTypeVisAttrSlot;
 			core::param::ParamSlot eventTimeVisAttrSlot;
 
-			/** The eventtype textures. Obsolete, replaced by IDs. MegaMol configurator doesn't like them anyways. */
+			/// The eventtype textures. Obsolete, replaced by IDs. MegaMol configurator doesn't like them anyways.
 			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D mergeOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D splitOGL2Texture;*/
 
-			/** The texture IDs. */
-			GLuint textureIDs[4];
-
-			/** The shader for the 3DSprite/Billboard */
+			/// The shader for the 3DSprite/Billboard
 			vislib::graphics::gl::GLSLShader billboardShader;
 
-			/** Containing all data for the vertex shader. */
+			/// Containing all data for the vertex shader.
 			struct Vertex {
-				// The position of the event.
-				glm::vec3 position;
-				// Generate quads in shader by translating the vertex by this vector.
-				glm::vec2 spanQuad;
-				// Standard assignment of UV.
-				glm::vec2 texUV;
-				// Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, 3 = split
-				GLfloat eventType;
-				// Color in HSV: Hue, Saturation, Value = [0,1]. Has to be converted in shader.
-				glm::vec3 colorHSV;
-				// Opacity.
-				GLfloat opacity;
+				glm::vec3 position; ///< The position of the event.
+				glm::vec2 spanQuad; ///< Generate quads in shader by translating the vertex by this vector.
+				glm::vec2 texUV; ///< Standard assignment of UV.
+				GLfloat eventType; ///< Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, 3 = split
+				glm::vec3 colorHSV; ///< Color in HSV: Hue, Saturation, Value = [0,1]. Converted to rgb in shader.
+				GLfloat opacity; ///< Opacity.
 			};
 
+			/// Shader attributes.
 			GLint shaderAttributeIndex_position,
 				shaderAttributeIndex_spanQuad,
 				shaderAttributeIndex_texUV,
@@ -253,18 +237,26 @@ namespace megamol {
 				shaderAttributeIndex_colorHSV,
 				shaderAttributeIndex_opacity;
 				
-			/** Vertex Buffer Object for the vertex shader.
-			A VBO is a collection of Vectors which in this case resemble the location of each vertex. */
+			/// Vertex Buffer Object index for the vertex shader.
 			GLuint vbo;
 
-			/** The call for data */
+			/// The call for data
 			core::CallerSlot getDataSlot;
 
-			/** The call for clipping plane */
+			/// The call for clipping plane
 			core::CallerSlot getClipPlaneSlot;
 
-			/** Needed since vertex buffer has to be created in Renderer. */
-			bool initialVertexBufferCreation;
+			/// Detection of the first pass of the renderer.
+			/// Required for initial vertex buffer creation and data retrieving.
+			/// Both has to happen in Renderer since the slots are only available
+			/// there.
+			bool firstPass;
+
+			/// The texture IDs. Global since only loaded once in renderer.
+			GLuint textureIDs[4];
+
+			/// Container for the data call. Global since only created once in renderer.
+			StructureEventsDataCall *dataCall;
 		};
 
 	} /* namespace mmvis_static */

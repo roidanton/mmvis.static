@@ -56,48 +56,48 @@ namespace megamol {
 			}
 
 			/**
-			* Disallow usage in quickstarts
-			*
-			* @return false
-			*/
+			 * Disallow usage in quickstarts
+			 *
+			 * @return false
+			 */
 			static bool SupportQuickstart(void) {
 				return false;
 			}
 
-			/** Ctor. */
+			/// Ctor.
 			StructureEventsWriter(void);
 
-			/** Dtor. */
+			/// Dtor.
 			virtual ~StructureEventsWriter(void);
 
 		protected:
 
 			/**
-			* Implementation of 'Create'.
-			*
-			* @return 'true' on success, 'false' otherwise.
-			*/
+			 * Implementation of 'Create'.
+			 *
+			 * @return 'true' on success, 'false' otherwise.
+			 */
 			virtual bool create(void);
 
 			/**
-			* Implementation of 'Release'.
-			*/
+			 * Implementation of 'Release'.
+			 */
 			virtual void release(void);
 
 			/**
-			* The main function
-			*
-			* @return True on success
-			*/
+			 * The main function
+			 *
+			 * @return True on success
+			 */
 			virtual bool run(void);
 
 			/**
-			* Function querying the writers capabilities
-			*
-			* @param call The call to receive the capabilities
-			*
-			* @return True on success
-			*/
+			 * Function querying the writers capabilities
+			 *
+			 * @param call The call to receive the capabilities
+			 *
+			 * @return True on success
+			 */
 			virtual bool getCapabilities(core::DataWriterCtrlCall& call);
 
 		private:
@@ -112,10 +112,10 @@ namespace megamol {
 			 */
 			bool writeData(vislib::sys::File& file, StructureEventsDataCall& data);
 
-			/** The file name */
+			/// The file name.
 			core::param::ParamSlot filenameSlot;
 
-			/** The slot asking for data */
+			/// The slot asking for data.
 			core::CallerSlot dataSlot;
 		};
 

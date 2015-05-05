@@ -17,7 +17,7 @@
 using namespace megamol;
 using namespace megamol::core;
 
-/*
+/**
  * mmvis_static::StructureEventsWriter::StructureEventsWriter
  */
 mmvis_static::StructureEventsWriter::StructureEventsWriter() : AbstractDataWriter(),
@@ -32,7 +32,7 @@ mmvis_static::StructureEventsWriter::StructureEventsWriter() : AbstractDataWrite
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsWriter::~StructureEventsWriter
  */
 mmvis_static::StructureEventsWriter::~StructureEventsWriter(void) {
@@ -40,7 +40,7 @@ mmvis_static::StructureEventsWriter::~StructureEventsWriter(void) {
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsWriter::create
  */
 bool mmvis_static::StructureEventsWriter::create(void) {
@@ -49,14 +49,14 @@ bool mmvis_static::StructureEventsWriter::create(void) {
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsWriter::release
  */
 void mmvis_static::StructureEventsWriter::release(void) {
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsWriter::run
  */
 bool mmvis_static::StructureEventsWriter::run(void) {
@@ -190,30 +190,39 @@ bool mmvis_static::StructureEventsWriter::writeData(vislib::sys::File& file, Str
         file.Close(); \
         return false; \
     }
+
 	using vislib::sys::Log;
-	UINT32 eventCnt = data.getEventCount();
-	ASSERT_WRITEOUT(&eventCnt, 4);
-	float maxTime = data.getMaxTime();
+
+	StructureEvents events = data.getEvents();
+
+	// Header.
+	uint64_t eventCnt = events.getCount();
+	ASSERT_WRITEOUT(&eventCnt, 8);
+	float maxTime = events.getMaxTime();
 	ASSERT_WRITEOUT(&maxTime, 4);
 
-	unsigned int eventStride = data.getEventStride();
+	// Daten.
+	unsigned int eventStride = events.getStride();
+	const float *pointer = events.getLocation(); // Start of the eventdata.
 
-	for (UINT32 eventIndex = 0; eventIndex < eventCnt; eventIndex++) {
-		StructureEventsDataCall::Event &event = data.getEvent(eventIndex);
-
-		const unsigned char *location = static_cast<const unsigned char *>(event.getLocationData());
-		unsigned int locationStride = event.getLocationStride();
-
-		ASSERT_WRITEOUT(location, locationStride);
-		// etc for the other properties. Maybe make just one property for one event including location, time, type and agglo.
+	// Write each event and not all at once since file.Write() needs to know the buffer size.
+	// Alternative?
+	//const void *pointer = events.getLocation(); // Start of the eventdata.
+	//ASSERT_WRITEOUT(pointer, eventStride * eventCnt);
+	for (uint64_t eventIndex = 0; eventIndex < eventCnt; eventIndex++) {
+		// Alle Properties (stride). Ist es ein Problem, dass der Positionpointer float ist, obwohl im Stride auch type (int) drin ist? Wahrscheinlich nicht, da file.Write -> void*
+		ASSERT_WRITEOUT(pointer, eventStride);
+		pointer += eventStride; // Increment the position of the Pointer.
 	}
+
+
 
 #undef ASSERT_WRITEOUT
 	return true;
 }
 
 
-/*
+/**
  * mmvis_static::StructureEventsWriter::getCapabilities
  */
 bool mmvis_static::StructureEventsWriter::getCapabilities(DataWriterCtrlCall& call) {

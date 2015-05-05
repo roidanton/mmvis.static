@@ -134,7 +134,7 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	splitOGL2Texture(),
 	*/
 	billboardShader(),
-	initialVertexBufferCreation(true)
+	firstPass(true)
 	{
 
 	this->getDataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
@@ -180,7 +180,9 @@ mmvis_static::StaticRenderer::~StaticRenderer(void) {
 bool mmvis_static::StaticRenderer::create(void) {
 	ASSERT(IsAvailable());
 	
-	// Load, build, link shader.
+	///
+	/// Load, build, link shader.
+	///
 	vislib::graphics::gl::ShaderSource vert, frag;
 
 	if (!instance()->ShaderSourceFactory().MakeShaderSource("billboard::vertex", vert)) {
@@ -217,9 +219,11 @@ bool mmvis_static::StaticRenderer::create(void) {
 	}
 
 
-	// Get attributes indices.
-	// Error occurs, when the attribute is not actively used by the shader since
-	// the optimization routines remove unused attributes.
+	///
+	/// Get attributes indices.
+	/// Error occurs, when the attribute is not actively used by the shader since
+	/// the optimization routines remove unused attributes. 
+	///
 	shaderAttributeIndex_position = glGetAttribLocation(this->billboardShader, "eventPosition");
 	if (shaderAttributeIndex_position == -1) {
 		fprintf(stderr, "Could not bind attribute %s\n", "eventPosition");
@@ -251,20 +255,6 @@ bool mmvis_static::StaticRenderer::create(void) {
 		return false;
 	}
 
-	// Generate textures.
-	glGenTextures(4, this->textureIDs); // Creates 4 texture object, set array pointer.
-	char filenameChar[] = "GlyphenEventTypesAsterisk.png"; // Copy file to bin folder.
-	CreateOGLTextureFromFile(filenameChar, this->textureIDs[0]);
-	char filenameChar2[] = "GlyphenEventTypesCross.png"; // Copy file to bin folder.
-	CreateOGLTextureFromFile(filenameChar2, this->textureIDs[1]);
-	char filenameChar3[] = "GlyphenEventTypesMerge.png"; // Copy file to bin folder.
-	CreateOGLTextureFromFile(filenameChar3, this->textureIDs[2]);
-	//char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
-	//CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
-
-	// Set Texture. This method does not work (see comments in method). Obsolete!
-	//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
-	
 	return true;
 }
 
@@ -276,10 +266,43 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	view::CallRender3D *callRender = dynamic_cast<view::CallRender3D*>(&call);
 	if (callRender == NULL) return false;
 
-	// This should be in create**********************************************
-	// Data is time independent, so it only needs to be loaded once.
-	float scaling = 1.0f;
-	StructureEventsDataCall *dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und den Frameblödsinn rauswerfen. Die Zeit ist ja im Event gespeichert.
+	/////////////////////////////////////////////////
+	/// The data and texture loading should be in
+	/// ::create(), however no access to data slots
+	/// is available there. Therefore firstPass
+	/// ensures that the following is only loaded once.
+	/////////////////////////////////////////////////
+
+	if (firstPass) { // FirstPass is reset below.
+
+		///
+		/// Data is time independent, so it only needs to be loaded once.
+		///
+		float scaling = 1.0f;
+		dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und Frames rauswerfen. Die Zeit ist ja im Event gespeichert.
+
+		if (dataCall == NULL) {
+			return false; // Cancel if no data is available. Avoids crash in subsequence code.
+		}
+
+		///
+		/// Generate textures.
+		///
+		glGenTextures(4, this->textureIDs); // Creates 4 texture object, set array pointer.
+		char filenameChar[] = "GlyphenEventTypesAsterisk.png"; // Copy file to bin folder.
+		CreateOGLTextureFromFile(filenameChar, this->textureIDs[0]);
+		char filenameChar2[] = "GlyphenEventTypesCross.png"; // Copy file to bin folder.
+		CreateOGLTextureFromFile(filenameChar2, this->textureIDs[1]);
+		char filenameChar3[] = "GlyphenEventTypesMerge.png"; // Copy file to bin folder.
+		CreateOGLTextureFromFile(filenameChar3, this->textureIDs[2]);
+		//char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
+		//CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
+
+		// Set Texture. This method is likely obsolete!
+		//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
+	}
+
+	StructureEvents events = dataCall->getEvents();
 
 	// Creating three test events as long as dataCall doesnt work. 
 	// Per Event parameters: Position, Time, Type, Agglomeration.
@@ -299,18 +322,22 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	vislib::Array<glm::mat4> eventAgglomeration;
 	// Global parameters: MaxTime, number of events.
 	GLfloat eventMaxTime = 120;
-	// /This should be in create**********************************************
 
-	// The following is here since
-	// - The slots are not available in ::create().
-	// - The UI updates wouldn't be heeded.
-	// Downside: Performance impact due to recreation of VBO (copy to device memory).
+
+	/////////////////////////////////////////////////
+	/// Set flags for vertex recreation.
+	/// Vertex recreation has to be done here since:
+	/// - The slots are not available in ::create().
+	/// - The UI updates should be heeded.
+	/// Downside: Performance impact due to
+	/// recreation of VBO (copy to device memory).
+	/////////////////////////////////////////////////
 
 	bool recreateVertexBuffer = false;
 
-	if (initialVertexBufferCreation) {
+	if (firstPass) {
 		recreateVertexBuffer = true;
-		initialVertexBufferCreation = false;
+		firstPass = false; // Reset firstPass.
 	}
 
 	// Reset dirty flag of slots if dirty.
@@ -642,6 +669,8 @@ void mmvis_static::StaticRenderer::release(void) {
 mmvis_static::StructureEventsDataCall *mmvis_static::StaticRenderer::getData(unsigned int t, float& outScaling) {
 	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
 	outScaling = 1.0f;
+
+	// TODO: Remove frames.
 	if (dataCall != NULL) {
 		dataCall->SetFrameID(t);
 		if (!(*dataCall)(1)) return NULL;
@@ -661,6 +690,7 @@ mmvis_static::StructureEventsDataCall *mmvis_static::StaticRenderer::getData(uns
 		return dataCall;
 	}
 	else {
+		printf("Datacall not available!\n");
 		return NULL;
 	}
 }
