@@ -43,7 +43,8 @@ namespace megamol {
 			struct Particle {
 				glm::vec3 position;
 				float radius; // Maybe needed for calculation.
-				glm::vec3 signedDistance; // Float or vec3, lets see.
+				float signedDistance;
+				//glm::vec3 signedDistance; // Float or vec3, lets see.
 				float opacity; // Not required likely.
 			};
 
@@ -138,9 +139,9 @@ namespace megamol {
 
 
 			/**
-			 * Writes the data from MultiParticleDataCall into particleList.			 
+			 * Writes the data from a single MultiParticleDataCall frame into particleList.			 
 			 */
-			void getMPDCData(megamol::core::moldyn::MultiParticleDataCall& inData);
+			void getMPDCFrame(megamol::core::moldyn::MultiParticleDataCall& inData, uint32_t frameID);
 
 
 			/// The call for incoming data.

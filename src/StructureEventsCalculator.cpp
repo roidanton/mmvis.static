@@ -136,9 +136,13 @@ bool mmvis_static::StructureEventsCalculator::manipulateData (
 
 	int threshold = this->thresholdSlot.Param<core::param::IntParam>()->Value();
 
-	getMPDCData(inData);
+	getMPDCFrame(inData, 10);
 
 	// ContourTree TODO
+	// ToDo: Get data for each frame. Is the complete MMPLD in memory? Nope and never should (big data!)
+	//for (uint32_t frame = 0; frame < inData.FrameCount; frame++) {
+	//}
+
 	// MergeTree TODO
 	// getEvents with Threshold TODO
 
@@ -152,7 +156,7 @@ bool mmvis_static::StructureEventsCalculator::manipulateData (
 	events.setEvents(location, time, type, events.getCalculatedStride(), particleList.size());
 
 	// Debug.
-	printf("Calculator result: %f, %d, %lu\n", *location, particleList.size(), particleList.max_size());
+	printf("Calculator: Location: %f, Listsize: %d, Max Listsize: %lu\n", *location, particleList.size(), particleList.max_size());
 
 	inData.SetUnlocker(nullptr, false);
 	return true;
@@ -176,12 +180,29 @@ bool mmvis_static::StructureEventsCalculator::manipulateExtent(
 /**
  * mmvis_static::StructureEventsCalculator::getMPDCData
  */
-void mmvis_static::StructureEventsCalculator::getMPDCData(megamol::core::moldyn::MultiParticleDataCall& inData) {
+void mmvis_static::StructureEventsCalculator::getMPDCFrame(megamol::core::moldyn::MultiParticleDataCall& inData, uint32_t frameID) {
+	// ToDo: Add return value to reflect success?
 	using megamol::core::moldyn::MultiParticleDataCall;
 
+	inData.SetFrameID(frameID, false); // Don't force data.
+
+	// ParticleIndex.
+	uint64_t particleIndex = 0;
+
+	// This takes currently several seconds for 2Mio particles.
 	for (unsigned int particleListIndex = 0; particleListIndex < inData.GetParticleListCount(); particleListIndex++) {
 		MultiParticleDataCall::Particles& particles = inData.AccessParticles(particleListIndex);
 
+		if (particles.GetVertexDataType() == MultiParticleDataCall::Particles::VERTDATA_NONE
+				|| particles.GetCount() == 0) {
+			printf("Particlelist %d skipped, no vertex data.\n", particleListIndex); // Debug.
+			continue; // Skip this particle list.
+		}
+
+		if (particles.GetColourDataType() != MultiParticleDataCall::Particles::COLDATA_FLOAT_I) {
+			printf("Particlelist %d skipped, COLDATA_FLOAT_I expected.\n", particleListIndex); // Debug.
+			continue; // Skip this particle list.
+		}
 		// Get pointer at vertex data.
 		const uint8_t *vertexPtr = static_cast<const uint8_t*>(particles.GetVertexData()); // ParticleRelaxationModule.
 		//const void *vertexPtr = particles.GetVertexData(); // Particle Thinner.
@@ -194,9 +215,7 @@ void mmvis_static::StructureEventsCalculator::getMPDCData(megamol::core::moldyn:
 		unsigned int vertexStride = particles.GetVertexDataStride(); // Distance from one Vertex to the next.
 		bool vertexIsFloat = true;
 		bool hasRadius = false;
-		switch (particles.GetVertexDataType()) {
-		case MultiParticleDataCall::Particles::VERTDATA_NONE:
-			continue; // Skip this particle list.
+		switch (particles.GetVertexDataType()) { // VERTDATA_NONE tested above.
 		case MultiParticleDataCall::Particles::VERTDATA_FLOAT_XYZR:
 			hasRadius = true;
 			vertexStride = std::max<unsigned int>(vertexStride, 16);
@@ -213,30 +232,7 @@ void mmvis_static::StructureEventsCalculator::getMPDCData(megamol::core::moldyn:
 
 		// Color.
 		unsigned int colourStride = particles.GetColourDataStride(); // Distance from one Color to the next == VertexStride.
-		bool colourIsFloat = true;
-		bool hasAlpha = false;
-		switch (particles.GetColourDataType()) {
-		case MultiParticleDataCall::Particles::COLDATA_NONE:
-			continue; // Skip this particle list.
-		case MultiParticleDataCall::Particles::COLDATA_UINT8_RGB:
-			colourIsFloat = false;
-			colourStride = std::max<unsigned int>(colourStride, 3);
-			break;
-		case MultiParticleDataCall::Particles::COLDATA_UINT8_RGBA: // Fall through.
-			colourIsFloat = false;
-			hasAlpha = true;
-		case MultiParticleDataCall::Particles::COLDATA_FLOAT_I: // Maybe continue;, since no transfer function is supported.
-			colourStride = std::max<unsigned int>(colourStride, 4);
-			break;
-		case MultiParticleDataCall::Particles::COLDATA_FLOAT_RGB:
-			colourStride = std::max<unsigned int>(colourStride, 12);
-			break;
-		case MultiParticleDataCall::Particles::COLDATA_FLOAT_RGBA:
-			hasAlpha = true;
-			colourStride = std::max<unsigned int>(colourStride, 16);
-			break;
-		default: throw std::exception();
-		}
+		colourStride = std::max<unsigned int>(colourStride, 4); // MultiParticleDataCall::Particles::COLDATA_FLOAT_I.
 
 		float globalRadius = particles.GetGlobalRadius();
 
@@ -266,26 +262,12 @@ void mmvis_static::StructureEventsCalculator::getMPDCData(megamol::core::moldyn:
 			}
 
 			// Colour/Signed Distance.
-			if (colourIsFloat) { // Performance is lower with if-else in loop, however readability is higher.
-				const float *colourPtrf = reinterpret_cast<const float*>(colourPtr);
-				particle.signedDistance = {
-					colourPtrf[0],
-					colourPtrf[1],
-					colourPtrf[2] };
-				particle.opacity = hasAlpha ? static_cast<float>(colourPtrf[3]) / 255.0f : 1.0f;
-			}
-			else {
-				const uint8_t *colourPtr8 = reinterpret_cast<const uint8_t*>(colourPtr);
-				particle.signedDistance = {
-					static_cast<float>(colourPtr8[0]) / 255.0f,
-					static_cast<float>(colourPtr8[1]) / 255.0f,
-					static_cast<float>(colourPtr8[2]) / 255.0f };
-				particle.opacity = hasAlpha ? static_cast<float>(colourPtr8[3]) / 255.0f : 1.0f;
-			}
+			const float *colourPtrf = reinterpret_cast<const float*>(colourPtr);
+			particle.signedDistance = *colourPtrf;
 
 			// Add particle to list with particleIndex as ID and key.
-			uint64_t particleID = (particleListIndex + 1) * particleIndex;
-			particleList[particleID] = particle;
+			particleIndex++;
+			particleList[particleIndex] = particle;
 
 			// Debug.
 			//printf("Particle %d color: (%f, %f, %f)\n",
