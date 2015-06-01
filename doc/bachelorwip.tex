@@ -13,7 +13,7 @@
 
 \subject{Arbeitsname Bachelorarbeit}
 %\subject{bachelor}
-\title{Visualisierung von Clusterereignissen bei der Expansion eines idealen Gases im Vakuum}
+\title{Visualisierung von Strukturveränderungen in Molekulardynamikdaten}
 \thesis{Bachelor WIP}
 %\thesis{bachelor}
 
@@ -41,11 +41,8 @@
 
 \TUDoption{abstract}{section,multiple}
 \begin{abstract}
-	Das vorliegende Dokument befindet sich im grundlegenden Aufbau. Fokus ist eine schnelle Erfassbarkeit bestimmter Inhalte, so dass eher Aufzählungen und Tabellen zu finden sind, die in der Veröffentlichungsfassung gegen Fließtext eingetauscht werden.
+	Das vorliegende Dokument befindet sich im grundlegenden Aufbau. Fokus ist eine schnelle Erfassbarkeit bestimmter Inhalte, so dass eher Aufzählungen und Tabellen zu finden sind, die in der Veröffentlichungsfassung gegen Fließtext eingetauscht werden. Teilweise sind auch unformatierte (nicht für Latex formatierte) Abschnitte zu finden.
 	
-	WIP gilt auch für Layout und Farben.
-	
-	Großgeschriebene Wortgruppen sind Erinnerungen an mich.
 \end{abstract}
 
 %\declaration \tableofcontents \listoffigures \listoftables
@@ -54,31 +51,86 @@
 
 %\mainmatter %Hauptteil: Normale Seitennummerierung
 
+\chapter{Einleitung}
+
+Die visuelle Analyse spielt für komplexe, partikelbasierte Daten, wie sie beispielsweise in der Molekulardynamik entstehen, eine immer wichtiger werdende Rolle. Da die Datensätze immer größer werden, gewinnen abstrahierte Visualisierungen zur Vermittlung eines Überblicks zunehmend an Bedeutung. Kritisch ist hierbei vor allem die Darstellung zeitlicher Entwicklungen. Üblicherweise werden diese als Animation oder in rein abstrakter Form dargestellt. Diese Visualisierungen bieten nur einen schlechten zeitlichen Überblick oder stellen kaum Bezug zum ursprünglich simulierten Ortsraum dar.
+
+Ziel dieser Arbeit ist es daher an einem konkreten Beispiel eine Visualisierung zu entwickeln, die im geometrischen Kontext der Originaldaten die zeitliche Entwicklung der Struktur des Datensatzes darstellt. [... Aufgabenstellung]
+
+\chapter{Andere Arbeiten}
+
+\section{Clustering und Oberflächenextraktion}
+
+Atome und Moleküle bestimmten Orten in festen, flüssigen, gasförmigen oder plasmatischen Phasen zuzuordnen, ist eine wesentliche Grundlage der Materialwissenschaft %QUELLEN DÜNNE SCHICHTEN ETC \cite{yang2008waterDroplet} \cite{alexander2011clusteringBioPymol}.
+%In der Molekulardynamik variiert die Art der Zuordnung je nach zugrundeliegenden Datentyps, Datengröße sowie Zielstellung der Berechnung oder Visualisierung .
+Durch Diffusion oder Konvektion kann sich die Zugehörigkeit dieser Teilchen zu bestimmten Agglomerationen über die Zeit ändern. Agglomerationen können Molekülcluster, -tröpfchen und –filamentstrukturen sein. 
+
+Für die Zuordnung von Teilchen zu Agglomerationen ist das Wissen über deren räumliche Begrenzung Voraussetzung. Dazu ist es notwendig, den Oberflächenverlauf oder Positionsinformationen über das Volumen zu kennen. Die Volumen- und Oberflächenbestimmung von großen Datensätzen ist zum Beispiel bei Skelettextraktionen und Laserscanverfahren untersucht.
+
+\subsection{Skelettextraktion}
+Skelettextraktionsverfahren nutzen Oberflächen oder Volumen dazu, eine (volumenlose) 1D Skelettkurve zu erstellen, die die Oberfläche oder das Volumen eines 3D Objektes durch ihren Bogenverlauf abbildet und zusätzliche Eigenschaften als Metadaten enthält wie z.B. die Volumendicke \cite{au2008skeletonExtractionbyMeshContraction}. Palágyi vergleicht die Kurve mit einem brennenden Gegenstand, der von allen Seiten gleichmäßig niederbrennt. Die Stellen, an denen sich das Feuer auslöscht, bilden das Skelett des Gegenstandes \cite{palagyi2008parallelSurfaceThinning}. Blum nennt sie Medialachsenskelette \cite{blum1967descriptorsOfShape}. Daneben gibt es, abhängig vom Skelettermittlungsverfahren weitere Skeletttypen wie z.B. Kurvenskelette \cite{dey2006CurveSkeletonsMedialGeodesicFunction} \cite{cornea2007curveSkeletonProperties} oder die durch down-sampling davon abgeleiteten Knochenskelette, die vor allem in der Charakteranimation \cite{wang2007envelopingRotiationalRegression} und Meshdeformation \cite{weber2007contextAwareSkeletalShapeDeformation} eingesetzt werden.
+Um Skelette aus Oberflächendaten zu berechnen, kommen zum Beispiel Voronoidiagramme zum Einsatz, mit denen der Raum in Regionen aufgeteilt wird und die mediale Oberflächen aus den inneren Kanten und Flächen des Diagramms extrahieren \cite{dey2006CurveSkeletonsMedialGeodesicFunction}. Eine Alternative ist die Nutzung des Reebgraphen, dessen Knoten die kritische Punkte einer auf die Oberfläche angewandten reellwertigen Funktion sind, welche Topologieänderungen der Oberfläche entsprechen \cite{pascucci2007computationReebGraph}. Der Graph liegt etwa der Laplaceglättung zugrunde, bei der mehrerer Vertices eines Meshes zu einem Vertex zusammengefasst werden und so das Objekt verkleinert wird \cite{au2008skeletonExtractionbyMeshContraction}. Weitere Methoden sind das Ausdünnen beim Vorliegen von binären Daten (Daten mit nur zwei Intensitätszuständen, wie z.B. schwarz-weiß Bilder) durch schrittweises Entfernen der äußeren Datenpunkte \cite{palagyi2008parallelSurfaceThinning}, die Berechnung mittels mittleren Krümmungsflusses, wo die Bewegungsgeschwindigkeit der Normalen eines Punktes auf der Oberfläche vom Krümmungsradius der Oberfläche an diesem Punkt abhängt \cite{tagliasacchi2012meanCurvatureSkeletons} oder Meshzerlegungen unter Beachtung der geodätischen Abstände sowie von konvexen Verläufen und Verlinken der Komponenten \cite{katz2003meshDecomposition}.
+Die Berechnung von Skeletten aus Volumendaten erfolgt ebenfalls durch Ausdünnung, etwa von Voxeln durch schrittweises Entfernen der äußeren Voxel \cite{ma2002TopologyPreservingReduction}, durch vorherige Verkleinerung der Volumenmodelle \cite{wang2008curveSkeletonExtraction} oder durch Distanzfeldmethoden, bei denen ein Distanzfeld für jeden inneren Punkt aufgebaut wird, das die Entfernung zum Rand des Objektes enthält und daraus bestimmte Voxel ausgewählt werden, die bei einer Verbindung untereinander eine mediale Oberfläche erzeugen \cite{hassouna2005robustCenterlineExtraction}. Andere Feldmethoden nutzen einen Potentialwert für innere Punkte durch Einbeziehung mehrerer Randvoxel und sind somit weniger anfällig für Rauschen, jedoch aufwändiger in der Berechnung \cite{cornea2005hierarchicalCurveSkeletons}. Diese Liste ist nur ein Auszug von üblichen Methoden. Für Kurvenskelette gibt \cite{cornea2007curveSkeletonProperties} eine umfassende Methodenübersicht.
+
+Den Methoden ist gemeinsam, dass sie die vorhandenen Oberflächen- oder Volumendaten diskretisieren müssen, sollten sie als kontinuierliche Funktionen vorliegen, und die Daten durch eine Bewegung von außen nach innen reduzieren, wodurch eine ursprünglich große Datenmenge durch wenige Knoten repräsentiert werden kann und somit ein Einsatz vor allem in Echtzeitanwendungen findet. Die Verfahren haben dabei mit Problemen wie fehlende Wiedergabe von Oberflächenbeschaffenheiten, insbesondere bei Ausdünnungsverfahren, mit Rauschen oder mit numerischen Instabilitäten bei schlechter Datendiskretisierung zu kämpfen und benötigen teilweise umfangreiche Pre- oder Postprocessingverfahren etwa zum Entfernen von Artefakten oder zum nachträglichen Zentrieren des Skeletts \cite{cornea2007curveSkeletonProperties}.
+
+Die Distanzfeldmethoden bieten Möglichkeiten, den Partikelabstand zum Rand des Clusters zu bestimmen.
+
+Absatz falsch --
+Für die Bestimmung der Zugehörigkeit von Partikeln zu Clustern können die in der Skelettextraktion verwendeten Methoden jedoch nicht übernommen werden, da sie Fokus auf die Bewahrung der Oberflächentopologie legen, die bei der Erkennung von Strukturereignissen eine geringere Rolle spielt (nicht wahr, da Löcher etc doch interessieren!) und zudem Daten aus der Oberfläche und dem Volumen entfernen und damit die für die Ereigniserkennung notwendige Wanderung von Partikeln nicht verfolgt werden kann.
+-- /Absatz falsch!
+
+\subsection{Agglomerationen}
+
+Zusammenhangskomponenten -> Laserscanzeug, Punktwolken
+
+Es existiert eine Implementation für MolCloud für die Zuordnung von Teilchen zu Agglomerationen und die Verfolgung der Wanderung zwischen den Agglomerationen. Die Berechnungen basieren auf zwei Varianten. Eine Variante berücksichtigt nur die geometrische Position der Partikel, eine andere ihre energetischen Eigenschaften (vgl Potentialfeld). Sie liefern jedoch unzureichende Ergebnisse, so werden beispielsweise zu viele oder zu große Cluster erkannt \cite{vis07grottel}. Auch besitzt der Benutzer keine Möglichkeit, Einfluss auf die Clustererkennung zu nehmen.
+
+Die vollständige Zuordnung von Partikeln zu Agglomerationen als auch eine benutzergesteuerte Eingabe für die Kontrolle eines Schwellwertes, ab wann Cluster als solche erkannt werden, bieten Konturbäume.
+
+\subsection{Konturbäume}
+
+Konturbäume sind für beliebige Dimensionen geeignet, setzen jedoch wie die Skelettextraktionsverfahren diskrete Wertefelder oder Meshes voraus.
+
+-> nur ganz grob Konturbaum erklären, kommt in den Grundlagen; eher auf die Nutzungsart eingehen!
+-> die Graphknoten werden wie beim Reebgraph auch aus kritischen Punkten heraus gebildet, vgl zur Skelettexktraktion aus Oberflächen mittels Reebgraphen erwähnen!
+-> hier keine Zeitabhängigkeit, deswegen Algo von 2001 iO
+-> \cite{chiang2005contourTreesUsingMonotonePaths} geben mit dem Monotonpfadalgorithmus einen Vorschlag für einen schnelleren und vor allem speichersparenderen Algorithmus an, indem für die Berechnung der Verbindungs- und Teilungsbäume nur die kritischen Punkte wie Minima, Maxima und Sattelpunkte genutzt werden. Allerdings ist für die Erkennung der Strukturereignisse jeder Partikel relevant, die in den Zusammenhangskomponenten des Monotonpfadalgorithmus jedoch nicht vollständig vorhanden sind.
+
+Wo verwendet:
+\blockcquote[1]{carr2009representingInterpolantTopology}{the contour tree, which has been used for isosurface extraction [31, 5], for abstract representation of the field [1, 24, 7], to index individual contours [3, 14, 5] and their geometric properties [7], to guide simplification of input meshes [10], and to compare scalar fields [33].
+Although recent algorithms for computing the contour tree are efficient, they were originally defined only for simplicial meshes [1, 6], then extended to trilinear meshes [24] and digital images [18].}
+
+Dateigröße von Datensätzen, Echtzeitdarstellung
+
+\section{Glyphdesign}
+
+TODO
 
 \chapter{Grundlagen}
+\section{Konturbaum}\label{sec:grundlagen:konturbaum}
+Eine Niveaumenge ist die Menge aller Punkte einer Funktion bzw. eines Skalarfeldes, denen ein gleicher Wert zugeordnet ist. Dieser Wert wird nach \cite[S.~1]{carr2010flexibleIsosurfaces} als \contour{Isowert} bezeichnet. Im Zweidimensionalen werden damit \contours{Isolinien}{Isolinie} erzeugt, im Dreidimensionalen sind es \contours{Isooberflächen}{Isooberfläche}. Sie finden zum Beispiel bei der Visualisierung von Höhendaten auf topografischen \cite{hurni2010landform} \cite{openstreetmapContours}, von Temperatur-, Wind- und Luftdruckdaten auf meteorologischen Landschaftskarten \cite{hopkins1996weather} oder von Gewebestrukturen auf Computertomographieaufnahmen \cite{tang2014ctImages} Verwendung.
 
-Reminder an mich: Inhaltsplanung begrenzen! Es wird schon viel zuviel für ne BA, wenn noch Molekularzeugs/Vergleich mit anderen Arbeiten mit reinkommen sollte.
+Eine \contour{Isooberfläche} kann aus mehreren Zusammenhangskomponenten bestehen, die entsprechend \cite[S.~2]{carr2001computingCountourTrees} als \contours{Konturen}{Kontur} bezeichnet werden.
 
-\begin{itemize}
-\item Präattentive Wirkung visueller Variablen (für Priorisierungsreihenfolge visueller Attribute in \autoref{sec:attribute} sowie die Nutzung für Agglomerate). Räumliche Verknüpfungen sind oftmals präattentiv, z.B. Bewegung und (Farbe | Form| 3D-Disparität). Die meisten Verknüpfungen sind nicht präattentiv. => Nutzung möglichst weniger Variablen fördert präattentive Informationsaufnahme =>  Mehrfachzuweisung (Farbe und Form für Zeit z.B.) vermeiden, auch wenn sie scheinbar zur Verstärkung beitragen.
-\item falls visuelle Relationen vorkommen: Beispiele von Netzwerken
-\item falls Zoom eine Rolle spielt: Ansichten, siehe KP InfVis
-\end{itemize}
+Das Skalarfeld wird dabei aus den Abstandswerten der Partikel zum Rand desjenigen Clusters gebildet, in dem sie sich befinden. Daher wird die Bezeichnung \contour{Tiefenwert} für die Werte des Skalarfeldes verwendet. Sämtliche Partikel des Datensatzes sind Teil des Skalarfeldes, auch diejenigen der Gasphase außerhalb von Clustern.
 
-Zwischenpräsi Mitte Mai.
-Treffen Mo 13-14.
+Die \contour{Isooberfläche} schließt ein Volumen ein. Die Partikel innerhalb des Volumens bilden eine Zusammenhangskomponente, eine \contour{Kontur}.
 
-\section{Contour Tree}
+\subsection{Kritische Punkte der Morsetheorie}
 
-\blockcquote[1]{ComputingContourTrees}{Isolines, often called contours, are the curves consisting of points at a given height that can be seen on any topographic map.}
+In der Morsetheorie \cite{chiang2005contourTreesUsingMonotonePaths}[28,35] ist ein Punkt dann ein kritischer Punkt, wenn kein Gradient vorhanden ist. Damit setzen die Theoreme voraus, dass sich an diesen Punkten die Topologie der Niveaumenge ändert. Bei einer abschnittsweisen linearen Funktion heißt das, wenn der \contour{Isowert} durch den Punkt verläuft und sich dabei die Topologie der Niveaumenge ändert, dann ist es ein kritischer Punkt. Alle anderen sind reguläre Punkte \cite{carr2010flexibleIsosurfaces} \cite{chiang2005contourTreesUsingMonotonePaths}.
 
-\blockcquote[2]{ComputingContourTrees}{We refer to the vertices and edges of the contour tree as supernodes and superarcs, respectively.}
 
-level set = Niveaumenge: Menge aller Punkte einer Funktion (eines Skalarfelds), denen der gleiche Wert zugeordnet ist.
 
-Contour/Isolinie -> Join and Split Tree -> Merge -> Contour Tree (2D oder 3D? glaub 3D) \cite[S.~1]{ContourTreeAlgorithm}
+Contour/Isolinie -> Join and Split Tree -> Merge -> Contour Tree \cite[S.~1]{carr2001computingCountourTrees}
 
-Join: von oben nach unten, Split: von unten nach oben \cite{ContourTreeJoinSplit}
+Join: von oben nach unten, Split: von unten nach oben \cite{carr2001computingCountourTrees_web}
+
+Bilder:
+\cite[S.~1]{chiang2005contourTreesUsingMonotonePaths} Fig. 1
+\cite[S.~44]{carr2010flexibleIsosurfaces} Fig. 2
+
 
 \section{Ereigniserkennung}
 Partikel hat ID (durch Arrayindex). Partikel in Zeitschritt 1 \& 2 einem Cluster zuordnen und schauen, ob es sich
@@ -89,10 +141,16 @@ Partikel hat ID (durch Arrayindex). Partikel in Zeitschritt 1 \& 2 einem Cluster
 \end{itemize}
 Cluster befindet. Es können auch auf denselben Clustern mehrere Ereignisse passieren.
 
-\section{Visualisierung}
+\section{Präattentive Wirkung visueller Variablen}
 
+\begin{itemize}
+	\item Präattentive Wirkung visueller Variablen (für Priorisierungsreihenfolge visueller Attribute in \autoref{sec:attribute} sowie die Nutzung für Agglomerate). Räumliche Verknüpfungen sind oftmals präattentiv, z.B. Bewegung und (Farbe | Form| 3D-Disparität). Die meisten Verknüpfungen sind nicht präattentiv. => Nutzung möglichst weniger Variablen fördert präattentive Informationsaufnahme =>  Mehrfachzuweisung (Farbe und Form für Zeit z.B.) vermeiden, auch wenn sie scheinbar zur Verstärkung beitragen.
+	\item falls visuelle Relationen vorkommen: Beispiele von Netzwerken
+	\item falls Zoom eine Rolle spielt: Ansichten, siehe KP InfVis
+\end{itemize}
 
 \section{Gestaltgesetze}\label{sec:gestaltgesetze}
+
 QUELLEN HINZUFÜGEN,  siehe V InfVis, V Gestaltung.
 
 DER EINFACHHEIT HALBER COPYPASTE WIKI, DA NOCH NICHT KLAR, WAS TATSÄCHLICH GEBRAUCHT:
@@ -178,15 +236,18 @@ Ebenfalls geeignet ist der Vorschlag, eine Sternform durch sogenanntes \textquot
 
 Somit gibt es mit der auf nichtprismatischen Polyedern basierenden Formgebung eine hohe Anzahl verschiedener Formen, die alle die Anforderung an eine einheitliche Größe, an einen aus allen Blickwinkeln ähnlichen Durchmesser und an die Wiedererkennbarkeit gewährleisten. Lediglich die Unterscheidung innerhalb der konvexen Polyeder kann schwerfallen. Am Deutlichsten unterscheiden sich die \propernames{platonischen Körper}{platonischer Körper} untereinander sowie die konvexen von den konkaven, sternförmigen Polyedern.
 
-\chapter{MegaMol}
+\chapter{Megamolmodul mmvis-static}
 
-\section{Daten}
-Beim Laden beider mmpld (default und signed distance) kommt der Fehler R6010: abort() has been called, trotz unbegrenzter Speichereinstellung bei MMPLDDataSource. Es wurden maximal 20 Zeitschritte jeweils geladen (SplitView) bzw. maximal 40 (SingleView) - wegen 32bit (max 1,7GiB RAM Zuweisung wurden angezeigt)! Ein Wechsel auf 64bit hat geholfen (8GiB Arbeitsspeicher noch zu wenig).
+Die Prämisse beim Entwerfen und Programmieren des Moduls lautete, nah bei den Kernmodulen von MegaMol zu bleiben. Zum Einen erhöht dies die Lesbarkeit für die mit MegaMol Vertrauten und zum Anderen sind die Kernmodule auf Performance.
 
-\section{Modules}
+Dies beinhaltete insbesondere die Verwendung von OpenGL 2.1 im Renderer und Shader, von Zeigern im Callmodul, von der Beschränkung auf Felder im Writer- und Sourcemodul sowie die Verwendung von Bytecode beim Dateiformat selbst.
+
+Der Nachteil der damit verbundenen schlechteren Lesbarkeit des Codes für Neueinsteiger wurde durch das Einfügen zahlreicher Kommentare sowie der Nutzung der glm Bibliothek ausgeglichen, da dadurch die Datentypen in C++ und in GLSL konsistent angelegt werden konnten.
+
+\section{MegaMol Modulsystem}
 \begin{itemize}
-\item Callee: Eingänge, angesprochen über ihre Descriptions
-\item Caller: Ausgänge
+	\item Callee: Eingänge, angesprochen über ihre Descriptions
+	\item Caller: Ausgänge
 \end{itemize}
 
 Die verfügbaren Module sind je nach Callee/Callertyp unterschiedlich. Beispiele für Typen sind CallGetTransferFunction, MultiParticleDataCall, CallRenderView oder CallRender3D, einstellbar bei der Definition der Callbackfunktion für den Callee/Caller. Diese werden über die Descriptions der Typen angesprochen:
@@ -203,6 +264,82 @@ cgtf->SetTexture(this->texID, this->texSize, this->texFormat);
 \end{lstlisting}
 
 Zugriff auf die einzelnen Partikel einer MMPLD: megamol::core::moldyn::MultiParticleDataCall
+
+
+\section{MegaMol Partikeldaten}
+Beim Laden beider mmpld (default und signed distance) kommt der Fehler R6010: abort() has been called, trotz unbegrenzter Speichereinstellung bei MMPLDDataSource. Es wurden maximal 20 Zeitschritte jeweils geladen (SplitView) bzw. maximal 40 (SingleView) - wegen 32bit (max 1,7GiB RAM Zuweisung wurden angezeigt)! Ein Wechsel auf 64bit hat geholfen (8GiB Arbeitsspeicher noch zu wenig).
+
+
+\section{Renderer}
+Shader:
+common.btf für Standardlicht
+billboard.btf für Billboards in OGL 2.1
+
+\section{Call}
+
+Wie werden die Variablen im Call gefüllt bzw. die Funktionen zum Füllen aufgerufen? Gefüllt werden sie entweder durch den Calculator oder die Source.
+
+\section{Calculation}
+
+\subsection{Datengrundlage}
+
+Oft werden Konturbäume bei kontinuierlichen Flächen verwendet (QUELLEN) und es ist eine Diskretisierung dieser etwa mit simplizialen Meshes (QUELLE) notwendig. Darauf kann hier verzichtet werden, da die Eingangsdaten aus Partikeln mit definierten und disjunkten Positionen bestehen und daher bereits in diskreter Form vorliegen.
+
+Weiterhin liegt der \contour{Tiefenwert} für jeden Artikel bereits als vorzeichenbehaftete Gleitkommazahl vor. Dazu werden die Grenzen zwischen der flüssigen Phase und dem Vakuum, bzw. in späteren Zeitschritten der Gasphase bestimmt. Anschließend wird auf dieser Basis eine vorzeichenbehaftete Distanzfunktion aufgestellt, die für alle Partikel die Entfernung zum Rand bestimmt. Somit gibt der \contour{Tiefenwert} die Distanz zum nächsten Partikel an, welches auf dem Rand eines Clusters liegt.
+
+\subsection{Isowert}
+
+Der Isowert wird benutzerdefiniert eingestellt.
+
+\subsection{Zusammenhangskomponente}
+
+Der Abstand eines Partikels zum Rand seines Clusters wird mit einem vorzeichenbehafteten \contour{Tiefenwert} gekennzeichnet. Innerhalb von Clustern weisen Partikel eine positive \contour{Tiefe}{Tiefenwert} auf. Partikel auf dem Rand besitzen den Abstand null, Partikel in der Gasphase, d.h. außerhalb von Clustern, haben einen negativen \contour{Tiefenwert}.
+
+Partikel einer \contour{Kontur} werden über eine radialbasierte Nachbarschaftsbeziehung bestimmt, wobei vom Partikel mit der größten Tiefe, dem sogenannten \contour{Saatpartikel} begonnen wird.
+
+Um diesen Prozess zu beschleunigen, werden beim Auslesen der MMPLD Daten alle Partikel nach ihrem \contour{Tiefenwert} in einer Liste sortiert. Eine speichersplatzsparendere Methode, die auf das Kopieren aller Partikel im Speicher verzichtet, wäre das Nutzen von Zeigern auf den vorhandenen Datensatz, allerdings wäre zum Einen eine Änderung der Daten aufwändig (Lockingmechanismen) und der nächste \contour{Tiefenwert} müsste bei jeder Partikelbehandlung aus dem ursprünglichen MPDC erneut herausgesucht werden.
+
+Ausgehend vom \contour{Saatpartikel} werden die Partikel in der Liste abgelaufen und in eine neue Liste gespeichert. Sollte der nächste Partikel, der den gleichen oder einen etwas geringeren \contour{Tiefenwert} aufweist, in einem bestimmten Radius zum vorhergehenden Partikel liegen, so wird dieser in dieselbe Liste geschrieben, ansonsten in eine andere. Der Radius, mit dem geprüft wird, hängt von der Differenz des \contours{Tiefenwertes}{Tiefenwert} zwischen betrachteten Partikel und Minimalpartikel der aktuellen Liste ab. Sollte der Partikel außerhalb dieses Radius' liegen, wird eine neue Liste erstellt.
+
+Eine Ausnahme bilden Partikel mit negativem \contour{Tiefenwert}. Sie werden in eine separate Liste geschrieben und es erfolgt keine Positionsprüfung.
+
+Jede Liste enthält einen Offset. Dort befindet sich der Listenidentifikator. Alternativ eine zusätzliche Liste, die die anderen Listen enthält?
+
+\subsection{Algorithmus}
+\cite{carr2001computingCountourTrees} \cite[S.~176]{chiang2005contourTreesUsingMonotonePaths}
+(1) Sort all n vertices of the mesh by their function values.
+(2) Perform a sweep of the n vertices from the smallest function value to the largest function value, and build the join tree.
+(3) Perform another sweep of the n vertices, now from the largest function value to the smallest function value, and build the split tree.
+(4) Merge the join tree and split tree together and remove all degree-two nodes in the resulting tree to obtain the contour tree.
+
+\subsection{Datenbehandlung}
+Umwandlung von framebehafteten MMPLD in frameloses MMSE.
+
+Problem: Größe der Daten ist zu umfangreich für den Arbeitsspeicher: Skaliert mit Partikelanzahl und Frames: Bei 3Mio Partikeln 40MB pro Frame.
+Lösung: Nur die Daten im Speicher halten, die aktuell benötigt werden (bestimmte Anzahl an benachbarten Frames).
+
+
+
+MMPLD: Bytecode:
+
+File Header
+Seek Table
+Frame [Anzahl im Header]: Anzahl der Partikelliste, Particle List: Header, Partikeldaten
+
+Vertexdaten und Farbdaten für jeden Partikel sind im Speicher sequentiell, direkt hintereinander angeordnet. Weiterhin kann der Radius global oder für jeden Vertex gespeichert sein.\cite[S.~3]{FileFormatSpecificationMMPLD} Der Elementabstand wird durch den Stride bzw. Typ bestimmt (jeweils für den Vertex und die Farben). MMPLD Version 100 ist hier genutzt.
+
+ID = Position des Partikels in der Partikelliste
+
+\section{Dateiformat}
+Das \gls{mmse} enthält die berechneten Ereignisse in einem Bytecode fest. Der Vorteil im Vergleich zu JSON/XML oder anderen textbasierten Speicherverfahren ist die höhere Performance beim Lesen und Schreiben sowie die kleinere Dateigröße. Die Ereignisdaten sind dabei sequentiell abgelegt
+
+\begin{figure} %todo
+	\begin{tikzpicture}[]
+	Header: Anzahl Events, Maximale Zeit, evtl max x,y,z Pos
+	Daten: Position, Zeit, Typ (Agglo?)
+	\end{tikzpicture}
+	\caption{Datentypen}\label{fig:mmse:format}
+\end{figure}
 
 \chapter{Visualisierungsentwurf}
 
@@ -524,6 +661,310 @@ In den Abbildungen \autoref{fig:entwurf:frei} sind Beispiele dafür zu sehen, we
 	\caption{Mockups mit freier Positionszuweisung.}\label{fig:entwurf:frei}
 \end{figure}
 
+\section{Glyphen}
+- Polygone nicht so gut geeignet, da Unterscheidung auf Entfernung schwer möglich und auch hier noch Abhängigkeit vom Blickwinkel
+- daher zweidimensionale, vordefinierte Bilder an Eventtypen gekoppelt, immer zur Kamera ausgerichtet vgl. Sprites
+
+\chapter{Notizen Grottel}
+
+\section{vis07grottel}
+\cite{vis07grottel}:  Ideen für Clustering-Kriterien aus denen man vielleicht die Zusammenhangs- und Gas-Erkennung ableiten kann.
+
+Qualität der Clustererkennung: Monomer = point based sphere; Cluster = Ellipse; flow group = Pfeil, Linie (graph)
+flow groups: Fluss von Molekülen zwischen zwei Clustern.
+Quantitativ: Zusätzlicher schematischer GraphView (zur 3D-Partikelanzeige). Synchronisierter Filter/Selektion zwischen den Views. Dadurch bekommt der Nutzer Informationen über die erkannten Cluster, deren zeitliche Entwicklung und ihre Interaktion untereinander und mit den umgebenden Monomeren.
+
+Clustererkennung: Zwei Methoden.\cite[S.~6]{vis07grottel} Die Energetische ist genauer, die geometrische erkennt zu viele und zu große.
+\begin{itemize}
+	\item Geometrische, vier Nachbarpartikel.
+	\item Energetische: defines two	molecules as clustered if the sum of their potential energy and their relative kinetic energy is negative[12].  T. L. Hill. Molecular clusters in imperfect gases. The Journal of Chemical
+	Physics, 23:617–622, April 1955.
+\end{itemize}
+-> which they [] refer to as merge-split graph, visualizing important events in the features’ evolution like births, merges, splits and death: as we do:
+[] D. Laney, P.-T. Bremer, A. Mascarenhas, P. Miller, and V. Pascucci. Understanding the structure of the turbulent mixing layer in hydrodynamic instabilities. IEEE Trans. Vis. Comput. Graph., 12(5):1053–1060, 2006.
+
+Datenverwaltung (big data):
+\begin{itemize}
+	\item The molecule positions can be stored directly, or they can be placed in a positional hierarchy using relative quantized coordinates as presented in [14].
+	\item we implicitly encode cluster membership through the hierarchy, representing clusters by inner nodes: Eine Gruppe pro Cluster?\\
+	Molecular clusters are identified by a natural number. The value zero is used to represent molecules that are not part of a cluster.
+	\item Daten werden zwischen zwei Konfigurationen/Zeitschritten interpoliert, um eine flüssige Darstellung zu ermöglichen
+	\item Zyklische Randbedingung heißt, Partikel treten an der Simulationsgrenze oben aus und unten wieder ein?
+\end{itemize}
+
+\section{topoinvis09grottel}
+\cite{topoinvis09grottel}: Extraktion von Strukturen. Der Ansatz ist totaler Schwachsinn, aber vielleicht kannst Du aus den Klassifikations-Ideen etwas ableiten und die Struktur in lineare Segmente und Knotenpunkte zu zerlegen.
+
+We propose two different approaches to classify nodes in the graph to be junctions or not: based on the degree of the node or based on the positions of the direct neighboring nodes
+
+\chapter{Notizen Contour Tree}
+
+\section{bajaj1997contourSpectrum}
+Contour Spectrum als Benutzerinterface für die Echtzeitquantifizierung in der Visualisierung von Isokonturen. Ist eine Signatur über Skalardaten und Konturattributen. Nutzung von Oberflächen, Volumen und Gradienten, präsentiert als Signaturgraphen (Ausdrucke der Skalardaten). Zeitabhängig: Ausdrucke über Zeit mit 2D Interface. Nutzer kann Isowert und Zeitschritt einstellen.
+
+\section{carr2001computingCountourTrees}
+\cite{carr2001computingCountourTrees}
+
+Isolines = Contours.
+\blockcquote[1]{carr2001computingCountourTrees}{Isolines, often called contours, are the curves consisting of points at a given height that can be seen on any topographic map.}
+
+Niveaumenge besteht aus Punkten $p$, die bei Anwendung einer Funktion $f$ dieselbe Höhe $h$ aufweisen $f(p_i) = h_i$. In 2D sind es Isolinien, in 3D Isooberflächen \cite[S.~2]{carr2001computingCountourTrees}. Hier wird generell von Konturen gesprochen.
+
+Bei Betrachtung von $h$ als Zeit und der Beobachtung der Veränderung der Niveaumengen über die Zeit kann das Entstehen, das Teilen, die Geschlechtsänderung, das Verbinden und das Verschwinden beobachtet werden. Der Konturbaum ist ein Graph, der die Konturen der Niveaumengen im Verbinden und Erscheinen oder Trennen und Sterben verfolgt.
+
+\cite[S.~3]{carr2001computingCountourTrees}
+Octrees, span space, interval trees können keine Konturen unterscheiden, weil sie jede Überschneidung einer Zelle und einer Kontur als separates Object behandeln. Im Gegensatz dazu nutzen Extrema graph, segment tree und contour tree die Verbindung der einzelnen Konturen. Ausgehend von einer Saatzelle (Startzelle, die eine Kontur schneidet), kann man die danebenliegenden Zellen ablaufen, bis sich die Kontur schließt. Die Saatzellen können unter anderem mit Konturbäumen bestimmt werden.
+
+\subsection{Morsetheorie}
+Kritische Punkte, an denen sich die Niveaumenge ändert. Nicht alle Punkte wichtig. Z.B. Geschlechtsänderungen sind uninteressant. Folgende vier kritische Punkte interessieren:
+
+\subsection{Konturbaum}
+$\epsilon$-Nachbar schneidet mindestens zwei Konturen bei
+$f(x)+\delta$ = Join
+$f(x)-\delta$ = Split
+
+$\epsilon$-Nachbar schneidet keine Konturen bei
+$f(x)+\delta$ = lokales Maximum
+$f(x)-\delta$ = lokales Minimum
+
+Konturen sind äquivalent, d.h. sie gehören einer Konturklasse an, wenn sie:
+\begin{itemize}
+	\item nicht einen kritischen Punkt passieren und
+	\item sie zur selben zusammengehörigen Komponente gehören und
+	\item kein Join über der Minimalhöhe im Höhenbereich der Konturen liegt und
+	\item kein Split unter der Maximalhöhe im Höhenbereich der Konturen liegt
+\end{itemize} = offenes Intervall = unendliche Konturklasse.
+
+Konturen, die einen kritischen Punkt passieren, sind das einzige Mitglied ihrer Konturklasse = endliche Konturklasse.
+
+Konturbaum: Knoten = Superknoten, Kante = Superbogen
+\begin{description}
+	\item[Innerer Superknoten] kritischer Punkt, an dem Erzeugung \textbf{und} Zerstörung jeweils einer oder mehrerer unendlicher Konturklassen stattfindet
+	\item[Blattsuperknoten] lokales Maximum, an dem eine unendliche Konturklasse erzeugt oder lokales Minimum, an dem eine unendliche Konturklasse zerstört wird
+	\item[Superbogen] eine unendliche Konturklasse, die am Quellknoten erzeugt und am Zielknoten zerstört wird
+\end{description}
+
+Konturbaum wird um nicht kritische Punkte erweitert, indem diese in die zugehörige Konturklasse aufgenommen werden. Die Darstellung erfolgt am jeweiligen Bogen der Klasse als kleine Knoten = erweiterter Konturbaum.
+
+\subsection{Algorithmus}
+Zwei Schritte:
+\begin{enumerate}
+	\item Join und Split Tree zur Erkennung von Joins und Splits erstellen
+	\item Bäume zusammenfügen zum Konturbaum
+\end{enumerate}
+
+\subsubsection{Verbindungs- und Teilungsbäume}
+Verbindungsbaum beinhaltet alle Verbindungen im Konturbaum. Ist dual zum Teilungsbaum (enthält alle Teilungen) durch Negieren der Höhen.
+
+\subsubsection{Konturbaum}
+\begin{description}
+	\item[up-arc] Bogen nach oben
+	\item[down-arc] Bogen nach unten
+	\item[up-degree] Bogenanzahl nach oben
+	\item[down-degree] Bogenanzahl nach unten
+	\item[upper-leaves] up-degree = 0
+	\item[lower-leaves] down-degree = 0
+\end{description}
+
+Reduktion der Knoten in den Verbindungs- und Teilungsbäumen mit up- und down-degree = 1.
+
+Algorithmus für große Datensätze wird erwähnt, nicht gefunden: \url{http://www.comp.leeds.ac.uk/scshca/journal_papers.html}
+
+
+\section{carr2009representingInterpolantTopology}
+Framework zur Erfassung aller signifikanten topologischen Eigenschaften der Eingabedaten. Theoretische Grundlage für jedes zufällige Mesh, Kachelung (Tessellation) oder Verbindungsregel. Methoden vereinfacht für die Berechnung von Konturbäumen von Bezierinterpolierungen, Marching Cubes [16, 19], Marching Hypercubes [2] and digital image connectivity.
+
+Keine Interpolierende ist optimal für alle Eingabedaten oder Anwendungsfälle, die Interpolierende sollte wählbar sein.
+
+Endlicher Automat, der die Topologie bei einer gegebenen Interpolierenden verfolgt und so die Entwicklung der Isolinie in einer einzelnen Zelle verständlicher macht.
+
+
+\section{carr2010flexibleIsosurfaces}
+Nutzung des Konturbaums zur Visualisierung nutzerangepasster Konturen mit Isowerten.
+
+Isowert. Der Passende ist nicht immer bekannt. Isowert muss durch Algorithmus oder durch den Nutzer bestimmt werden. Nutzer muss die Daten erkunden, um einen passenden Isowert zu finden: Trial\& Error.
+
+\cite[S.~43]{carr2010flexibleIsosurfaces}
+Konturbaum ermöglicht Verfolgung der Konturen durch eine flexible Isooberfläche (viele Konturen). Benutzerschnittstellen:
+1) direkte Kontrolle der Konturen und Isowerte
+2) indirekt über den Konturbaum
+
+Ein passiver Konturbaum (nur Visualisierung) wird umgewandelt zu einer aktiven Manipulation einzelner Konturen.
+
+Annahme 1: Nicht alle Konturen sind wichtig.
+Rauschen und viele Konturen führen zu einem riesigen und unübersichtlichen Konturbaum. Reduktion nötig.
+
+\subsection{Morse}
+Kritische Punkte: Maxima, Sattlepunkte (Gradient der Funktion = 0), Rest ist regulärer Punkt. Sattelpunkte weisen auf Änderungen bei den Zusammenhangskomponenten oder beim Konturgeschlecht hin.
+Die Morsetheorie nimmt an, dass alle kritischen Punkte unterschiedliche Isowerte haben und es keine flachen Regionen haben (d.h. regions of measure greater than zero with 0 gradient -was heißt das?).
+
+Morsetheorie über den Reebgraphen interessant: Ein Graph über topologische Beziehungen zwischen Konturen, die über das Zusammenziehen jeder Kontur zu einem einzigen Punkt erzeugt werden, während der Zusammenhang zwischen den Konturen erhalten bleibt. D.h. jeder zusammenhängender Pfad wird zu einem zusammenhängenden Pfad im Reeb Graphen zusammengezogen. Dieser Graph wird Konturgraph genannt[2]: Kanten = Superbögen, Knoten = Superknoten.
+
+[2] R.L. Boyell, H. Ruston, Hybrid techniques for real-time radar simulation, in: Proceedings of the 1963 Fall Joint Computer Conference, IEEE, 1963,
+pp. 445–458.
+
+Alle Superknoten = kritische Punkte, aber nicht umgekehrt! An den kritischen Punkten, an denen sich die Zusammenhangskomponente nicht ändert, brauchen keine Superknoten zu sein. Daher:
+connectivity critical points = critical points at which connectivity changes
+connectivity regular points = all other critical and regular points
+
+Bild 2 auf \cite[S.~44]{carr2010flexibleIsosurfaces} ist super zur Visualisierung!
+
+Diese 1:1 Verbindung zwischen Konturbaum und den Konturen des zugrundeliegenden Skalarfeldes ist die Basis für die flexible Isooberfläche.
+
+Konvention 1: Eine Kontur $c$ ist eine einzelne Zusammenhangskomponente einer Niveaumenge bei Isowert $h$ und kann durch das Tupel $c = (s,h)$ symbolisiert werden, mit $s$ als Superbogen. Die Kontur gehört also zum Superbogen: $c \subset s$.
+
+Am Superknoten kann die Kontur durch mehrere Tupel angegeben sein, eines für jeden anliegenden Superbogen. Das ist allerdings redundant, da die Kontur ja nur am Superbogen beim gegebenen Isowert existiert und Konturen nie am Superknoten extrahiert werden. Diese Annahme ist eine Form einer symbolischen Störung und ist allen Isooberflächenextraktionsmethoden gemeinsam, wie etwa Marching Cubes, wo die Vertex über oder unter der Isooberfläche, aber nie genau auf dieser Isooberfläche klassifiziert werden. [22]
+
+[22] W.E. Lorenson, H.E. Cline, Marching cubes: A high resolution 3D surface construction algorithm, Computer Graphics 21 (4) (1987) 163–169.
+
+1:1 impliziert hilfreiche Eigenschaft:
+
+Eigenschaft 1: Ein monotoner Pfad im Skalarfeld passt auf einen monotonen Pfad im Konturbaum. Jeder monotone Pfad im Konturbaum ist das Abbild von mindestens einem monotonem Pfad im Skalarfeld.
+
+\subsection{Vorangegangene Arbeiten}
+\cite[S.~45]{carr2010flexibleIsosurfaces}
+
+Isooberflächenextraktion: Polyhedral mech:
+- Marching cubes [22]
+- continuation [44]: Saat, für jede Kontur: da einzelne Konturen interessant, wird diese Methode gewählt.
+[44] G. Wyvill, C. McPheeters, B. Wyvill, Data structure for soft objects, Visual Computer 2 (1986) 227–234.
+
+
+Konturbaum: Für
+- Konturindizierung [2,4,42]
+- Terrainbeschreibung [11,20,35,37]
+- Volumendaten [1,33]
+- Featuredetection [39,45]
+- Isosurfaceextraktion [4,42]
+- Datenvereinfachung [6,8]
+- Transferfunktionsdesign [39]
+- Extraktion von Kontureigenschaften [6,17].
+
+Algorithmen:
+Takahashi et al. [37, 39], van Kreveld et al. [42], Carr, Snoeyink and Axen [5], Pascucci [28] and Cole-McLaughlin [30] (Betti numbers, um das topologische Geschlecht der Konturen zu bestimmen), Chiang et al. [7].
+
+Weitere Themen, hier unrelevant: Lokale Oberflächenwahl, Isooberflächenauswahl, Transferfunktionsdesign.
+
+\subsection{Pfadquellen für Einzelkonturextraktion}
+- minimal seed sets [42]: Vier Nachteile
+- extrema graph [15]: zuviele Saatzellen
+
+Pfadverfolgung nur bedingt interessant, da nebeneinanderliegende Partikel ähnliche Tiefen aufweisen werden. Daher werden evtl wenig Senken/Minima, Sätteln oder Maxima auftauchen bzw. die Saat ist durch die minimale Tiefe schon vorgegeben und es erfolgt eine Verfolgung nach der Tiefe und nicht des Partikelortes.
+
+Join und Split nach Union Find [40]. Kanten werden zur union-find Struktur hinzugefügt = Join/Split. Bögen beider Bäume zusammenfügen, überlaufende Bögen werden rausgeschmissen.
+
+\subsection{Vereinfachung: Lokale geometrische Größen}
+Topologische Vereinfachung des Konturbaums/des Datensatzes.
+
+Lokale geometrische Größen der Konturen. Z.B. Kontur/Vertex ist ober- oder unterhalb eines Sattelpunktes.
+
+
+\cite[S.~53]{carr2010flexibleIsosurfaces} Evolving a contour: Hochlaufen und Runterlaufen entlang des Baumes an den kritischen Punkten.
+
+
+\subsection{Ergebnis}
+
+\blockcquote[S.~56]{carr2010flexibleIsosurfaces}{Further work is required on the best geometric measures for tree simplification, on the use of local geometric measures for automatic feature recognition, on improved methods for displaying the contour tree visually, and on methods for simultaneous simplification of the contour tree and the contours extracted.}
+
+
+\section{chiang2005contourTreesUsingMonotonePaths}
+\cite{chiang2005contourTreesUsingMonotonePaths}
+
+Visualisierung von Konturen: Nur einen Teil der Daten sortieren, die für die Ausgabe interessant sind.
+
+Räumliche Daten: electromagnetic waves in nuclear spin tomography, heat distribution
+in fuel cells, or molecular structures in X-ray crystallography
+
+\subsection{Carrs Sweep Algorithmus}
+Carr et al. [8]: Sweep Algorithm: Join und Split Tree werden symmetrisch erstellt, nur in gegenläufigen "sweeping" Richtungen.
+
+(1) Sort all n vertices of the mesh by their function values.
+(2) Perform a sweep of the n vertices from the smallest function value to the largest function value, and build the join tree.
+(3) Perform another sweep of the n vertices, now from the largest function value to the smallest function value, and build the split tree.
+(4) Merge the join tree and split tree together and remove all degree-two nodes in the resulting tree to obtain the contour tree.
+
+Chiang meint, die Zeitbehauptungen von Carr wären leicht unterschiedlich im Paper für (2) und (3). Jedenfalls bestätigt er das Theorem aus [8, Section 4.2]: Ein Konturbaum kann in linearer Zeit vom split und join Baum konstruiert werden.
+
+
+\subsection{Monotonpfadalgorithmus}
+Unterschied zum Sweep: Hier werden nicht alle Vertices n, sondern nur die kritischen Vertices t durchlaufen: Schneller wenn: $t \ll n$.
+
+(1) For constructing the contour tree, identify the component-critical vertices in the mesh. For constructing the contour topology tree, identify all critical vertices in the mesh.
+(2) Sort those vertices by their function values.
+(3) Build the join tree: Process those sorted vertices by increasing function values. For each current vertex vi perform the following:
+(a) Start a monotone descending path (defined later) from every component in N-(vi ) until a vertex which was already visited is found.
+(b) Connect vi to the appropriate tree component if vi is not already connected.
+(4) Build the split tree: This is symmetric to step (3). Now process the sorted vertices by decreasing function values.
+(5) Merge the join tree and the split tree together. If the contour topology tree is desired, the algorithm stops here.
+(6) To get the contour tree, remove the nodes of degree two from the tree.
+
+
+\subsection{Auswertung/Vorteile ggü Carr}
+
+Schneller wenn kritische Vertices wesentlich weniger als normale.
+Braucht weniger Speicherplatz, da nur die kritischen sortiert werden müssen.
+
+\subsection{Beweis für kritische Punkte}
+Enthält formale Beweisführung für das Theorem über kritische Punkte in einem simplizialem Mesh eines Manifolds (Theorem 1).
+
+
+\section{laney2006turbulentMixingLayer}
+\cite{laney2006turbulentMixingLayer}
+Definition Bubble, Zeitverfolgung
+
+\cite[S.~1055]{laney2006turbulentMixingLayer} Sohn and Bajaj [2] compute correspondences between contour trees at successive time-steps by using volume matching as in [25] rather than the topological analysis used in [12] and [27]. They use this correspondence to encode the evolution of the isosurface of a fixed isovalue over time in the Topology Change Graph. 
+
+\chapter{Notizen Skelettextraktion und Laser/Zusammenhangskomponenten}
+
+\section{au2008skeletonExtractionbyMeshContraction}
+\cite{au2008skeletonExtractionbyMeshContraction}
+Extraktion direkt auf dem Mesh ohne Volumenumwandlung:
+1) Mesh wird auf volumenlose Skelettform kontrahiert durch implizites Laplacian smoothing (Meshalgorithmus) zusammen mit globalen Positionseinschränkungen. Die Kontraktion erhält die Zusammenhangskomponenten und der Schlüsseleigenschaften des originalen Meshes.
+2) Konvertierung in ein 1D Kurvenskelett durch eine Verbindungsoperation. So werden alle zusammengefallen Flächen entfernt und gleichzeitig die Form und Topologie erhalten.
+3) Zentrierung des Skeletts wird durch Nutzung des induzierten skeleton-mesh mapping verfeinert.
+
+(2) enthält Informationen über Objektgeometrie, v.a. lokale Dicke.
+
+\subsection{Andere Arbeiten}
+
+- volumetrische Methoden
+- geometrische Methoden: Voronoi
+
+\section{klasing2008efficientSegmentation}
+
+- radialgebundener nächster Partner mit nur zwei Parametern (klingt ähnlich der eigenen Idee für die Zusammenhangskomponente: Tiefe Zentralpartikel und Abstand zu ihm!)
+
+Wenig Quellen über 3D Laserdaten. Hier Segmentation von 3D laser range Daten als preprocessing Schritt über aufwändigere Clusteringalgorithmen.
+
+\subsection{Clustering}
+- 3D Raum
+- Cluster sind disjunkt
+- Distanzmessung zwischen zwei Punkten existiert (euklidisch)
+- Graphausdruck: Knoten = Punkte, Kanten = (Punkt 1, Punkt 2, Abstand)
+
+Jeder Knoten ist mit allen Nachbarn verbunden, die in einem vordefiniertem Radius liegen. Liegen weniger als eine minimale Anzahl an Knoten in dem Bereich, wird der Cluster als rauschen definiert.
+
+Graph nur als mathematische Erklärung, in der Programmierung braucht kein Graph erstellt werden:
+for every point:
+  Aktueller Punkt bereits in einem Cluster? continue zum nächsten Point
+  Alle Nachbarn in einem bestimmten radius finden:
+	  Ist einer bereits in einem Cluster -> diesen Punkt zu dem Cluster hinzufügen
+	  Sind die anderen Punkte in einem anderen Cluster? Cluster mergen!
+
+Muss nicht für jeden Punkt einen nearest Neighbortest durchführen (Überspringen der bereits zugeordneten Punkte).
+
+\section{tagliasacchi2012meanCurvatureSkeletons}
+
+Andere Arbeiten:
+- Medialaxenskelette
+- Kurvenskelette
+- Mittlerer Krümmungsfluss
+
+\section{wang2008curveSkeletonExtraction}
+\cite[S.~2]{wang2008curveSkeletonExtraction}
+a skeleton is a 1D representation containing zero volume
+
+
 \chapter{Temporäre Notizen/Obsoletes}
 
 \section{Alte Parameterattributszuweisung}
@@ -604,14 +1045,8 @@ Weiterhin wird bei Nichtverwendung des Attributs \visattr{Größe} ein definiert
 
 Der Durchmesserbereich wurde aufgrund des den Darstellungen zugrundeliegenden Rasters mit einer Schrittweite von 50 \gls{px} gewählt.
 
-\section{Quellen}
-Molekularsimulationen ermöglichen die Darstellung vieler Partikel über die Zeit. Eine Animation beherbergt allerdings immer das Problem der mangelnden Vergleichbarkeit.
-
-\cite{topoinvis09grottel}: Extraktion von Strukturen. Der Ansatz ist totaler Schwachsinn, aber vielleicht kannst Du aus den Klassifikations-Ideen etwas ableiten und die Struktur in lineare Segmente und Knotenpunkte zu zerlegen. 
-
-\cite{vis07grottel}: Ideen für Clustering-Kriterien aus denen man vielleicht die Zusammenhangs- und Gas-Erkennung ableiten kann.
-
 \section{Zielstellung}
+Molekularsimulationen ermöglichen die Darstellung vieler Partikel über die Zeit. Eine Animation beherbergt allerdings immer das Problem der mangelnden Vergleichbarkeit.
 Mit OpenGL soll ein Standbild erstellt werden, welche die Clusterbildung, -teilung und das Clustersterben über einen Zeitraum visualisiert.
 
 
@@ -622,10 +1057,11 @@ Weitere Untersuchungsmöglichkeiten:
 	\item Wirkung der Farbzuordnung untersuchen
 	\item Elementattribute (Größe, Opazität) abhängig vom Zoom
 	\item \visattr{Form}: Polyeder on-the-fly berechnen für unendlich viele Varianten (bei konvexen: vertex [0f-2f] und edge truncation [0f-1f], siehe Blender/Regular Solids) und offene Formen erlauben (keine Flächen, nur dicke Kanten), vgl. \cite{WebGLUniformPolyhedra}.
+	\item Code: Call Eventeinteilung nach Typ, evtl auch Zeit (weniger Speicherplatz).
 	\item Nutzung von Animationen mit visuellen Bewegungsattributen (Bewegungsrichtung, Bewegungsbahn, Beschleunigung, Geschwindigkeit) sowie Veränderung der anderen Attribute; die Zuweisung der Bewegungsattribute wäre an die Parameter Zeit und Position denkbar, die Zuweisung der Veränderung der anderen Attribute kann an alle drei Parameter erfolgen
 \end{itemize}
 
-
+Benutzung von flexiblen Isooberflächen nach \cite{carr2010flexibleIsosurfaces}.
 
 
 \appendix
