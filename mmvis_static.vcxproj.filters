@@ -81,6 +81,9 @@
     <ClInclude Include="include\lodepng\lodepng.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\StructureEventsClusterVisualization.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\mmvis_static.cpp">
@@ -108,6 +111,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="include\lodepng\lodepng.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StructureEventsClusterVisualization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
