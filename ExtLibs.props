@@ -5,10 +5,21 @@
 		<MegaMolCorePath>C:\Users\Roi\Bachelor\megamol\core\</MegaMolCorePath>
         <MegaMolDatatoolsPath>C:\Users\Roi\Bachelor\megamol\plugins\mmstd_datatools\</MegaMolDatatoolsPath>
 		<VISlibPath>C:\Users\Roi\Bachelor\vislib\</VISlibPath>
+        <ANNPath>C:\Users\Roi\Bachelor\3rdparty\</ANNPath>
 	</PropertyGroup>
 	<PropertyGroup>
 		<_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
 	</PropertyGroup>
+	<ItemDefinitionGroup>
+		<ClCompile>
+			<AdditionalIncludeDirectories>$(ANNPath)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			<PreprocessorDefinitions>WITH_ANN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+		</ClCompile>
+		<Link>
+			<AdditionalLibraryDirectories>$(ANNPath)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+			<AdditionalDependencies>ANN$(BitsD).lib;%(AdditionalDependencies)</AdditionalDependencies>
+		</Link>
+	</ItemDefinitionGroup>
 	<ItemGroup>
 		<BuildMacro Include="OutputBin">
 			<Value>$(OutputBin)</Value>
@@ -21,6 +32,9 @@
 		</BuildMacro>
 		<BuildMacro Include="VISlibPath">
 			<Value>$(VISlibPath)</Value>
+		</BuildMacro>
+		<BuildMacro Include="ANNPath">
+			<Value>$(ANNPath)</Value>
 		</BuildMacro>
 	</ItemGroup>
 </Project>

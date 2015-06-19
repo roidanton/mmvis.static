@@ -5,6 +5,7 @@
 		<MegaMolCorePath>%mmcorePath%</MegaMolCorePath>
         <MegaMolDatatoolsPath>%mmdatatoolsPath%</MegaMolDatatoolsPath>
 		<VISlibPath>%vislib%</VISlibPath>
+		<ANNPath>%ANNPath%</ANNPath>
 	</PropertyGroup>
 	<PropertyGroup>
 		<_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>

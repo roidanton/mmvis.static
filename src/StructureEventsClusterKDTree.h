@@ -1,5 +1,5 @@
 /**
- * StructureEventsClusterVisualization.h
+ * StructureEventsClusterKDTree.h
  *
  * Copyright (C) 2009-2015 by MegaMol Team
  * Copyright (C) 2015 by Richard Hähne, TU Dresden
@@ -12,8 +12,8 @@
  *  - Contour tree algorithm
  */
 
-#ifndef MMVISSTATIC_StructureEventsClusterVisualization_H_INCLUDED
-#define MMVISSTATIC_StructureEventsClusterVisualization_H_INCLUDED
+#ifndef MMVISSTATIC_StructureEventsClusterKDTree_H_INCLUDED
+#define MMVISSTATIC_StructureEventsClusterKDTree_H_INCLUDED
 #if (defined(_MSC_VER) && (_MSC_VER > 1000))
 #pragma once
 #endif /* (defined(_MSC_VER) && (_MSC_VER > 1000)) */
@@ -26,17 +26,13 @@
 #include "glm/glm/glm.hpp"
 #include <map>
 
-// File operations.
-#include <iostream>
-#include <fstream>
-
 
 namespace megamol {
 	namespace mmvis_static {
 		/**
 		 * TODO: This class is a stub!
 		 */
-		class StructureEventsClusterVisualization : public core::Module {
+		class StructureEventsClusterKDTree : public core::Module {
 		public:
 
 			struct Cluster;
@@ -54,17 +50,9 @@ namespace megamol {
 				float r, g, b;
 				float signedDistance;
 				uint64_t id;
-
-				// Store a pointer to the cluster. Bad when cluster is moved in memory.
-				Cluster* clusterPtr = NULL;
-
-				// Store pointer to the neighbours. Bad when they are moved in memory.
+				Cluster* clusterPtr = NULL; // old algorithm
+				std::vector<uint64_t> neighbourIDs;
 				std::vector<Particle*> neighbourPtrs;
-
-				// Copy & store neighbour directly to avoid costly
-				// list search everytime we need a neighbour.
-				// Doesn't work, takes way too much memory!
-				// std::vector<Particle> neighbours;
 
 				bool operator==(const Particle& rhs) const {
 					return this->id == rhs.id;
@@ -72,13 +60,11 @@ namespace megamol {
 			};
 
 			struct Cluster {
-				uint64_t rootParticleID;
-				//uint64_t id;
-				uint64_t numberOfParticles = 0;
-				float r, g, b = 0; // For visualization.
+				Particle* rootPtr;
+				uint64_t id;
 
 				bool operator==(const Cluster& rhs) const {
-					return this->rootParticleID == rhs.rootParticleID;
+					return this->id == rhs.id;
 				}
 			};
 
@@ -88,7 +74,7 @@ namespace megamol {
 			 * @return The name of this module.
 			 */
 			static const char *ClassName(void) {
-				return "StructureEventsClusterVisualization";
+				return "StructureEventsClusterKDTree";
 			}
 
 			/**
@@ -110,10 +96,10 @@ namespace megamol {
 			}
 
 			/// Ctor.
-			StructureEventsClusterVisualization(void);
+			StructureEventsClusterKDTree(void);
 
 			/// Dtor.
-			virtual ~StructureEventsClusterVisualization(void);
+			virtual ~StructureEventsClusterKDTree(void);
 
 		private:
 
@@ -176,27 +162,22 @@ namespace megamol {
 			 */
 			void setData(core::moldyn::MultiParticleDataCall& data);
 
-			/// Set neighbours in particleList.
-			void findNeighboursWithKDTree();
-
-			/// Set neighbour with highest depth as next path object.
-			void createClustersFastDepth();
+			void setSignedDistanceColor(float min, float max);
 
 			void setClusterColor();
 
-			void setSignedDistanceColor(float min, float max);
-
-			/// Iterate through whole list (exhaustive search), only check distance when signed distance is similar.
-			/// Must happen after list sorting by signed distance!
-			/// Takes forever! OBSOLETE.
+			/// Iterate through whole list (exhaustive search), only check distance when signed distance is similar
 			void findNeighboursBySignedDistance();
 
-			/// First, naiv implementation. OBSOLETE.
-			void createClustersSignedDistanceOnly();
-			/// Returns true if the particle is in signed distance range of the reference. OBSOLETE.
-			bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
+			/// Set neightbours with k-d-Tree.
+			void findNeighboursByKDTree();
 
-			std::ofstream logFile;
+			void createClustersFastDepth();
+
+			/// First, naiv implementation.
+			void createClustersSignedDistanceOnly();
+			/// Returns true if the particle is in signed distance range of the reference.
+			bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
 
 			/// The call for incoming data.
 			core::CallerSlot inDataSlot;
@@ -210,25 +191,20 @@ namespace megamol {
 			/** The frame id of the data stored */
 			unsigned int frameId;
 
+			/// List with new Colors.
+			std::vector<float> newColors;
+
 			/// List with all particles of one frame. Key = position of the particle in the MMPLD particle list.
 			std::vector<Particle> particleList;
-
-			/// Get a particle from particleList with particle ID.
-			mmvis_static::StructureEventsClusterVisualization::Particle
-				mmvis_static::StructureEventsClusterVisualization::_getParticle(const uint64_t particleID) const;
 
 			/// List with all clusters.
 			std::vector<Cluster> clusterList;
 
-			/// Get a cluster from clusterList with particle ID.
-			mmvis_static::StructureEventsClusterVisualization::Cluster*
-				mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const;
-
-			/// Cache container of a single MMPLD particle list.
+			/// Cache container of a single list of particles.
 			core::moldyn::MultiParticleDataCall::Particles particles;
 		};
 
 	} /* namespace mmvis_static */
 } /* namespace megamol */
 
-#endif /* MMVISSTATIC_StructureEventsClusterVisualization_H_INCLUDED */
+#endif /* MMVISSTATIC_StructureEventsClusterKDTree_H_INCLUDED */
