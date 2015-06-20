@@ -197,6 +197,7 @@ namespace megamol {
 			bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
 
 			std::ofstream logFile;
+			std::ofstream errFile;
 
 			/// The call for incoming data.
 			core::CallerSlot inDataSlot;

@@ -313,7 +313,8 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	//std::time_t t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	//std::ctime(&t);
 
-	logFile.open("SEClusterVis.log", std::ios_base::app | std::ios_base::out);
+	this->logFile.open("SEClusterVis.log", std::ios_base::app | std::ios_base::out);
+	this->errFile.open("SEClusterVisErrors.log");
 
 	{ // Time measurement. 4s
 			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_buildList);
@@ -379,7 +380,9 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	// Don't forget!
 	particleList.clear();
 
-	logFile.close();
+	this->logFile << "\n";
+	this->errFile.close();
+	this->logFile.close();
 }
 
 void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree() {
@@ -431,18 +434,18 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	/// 5*r, 60
 
 	int maxNeighbours = 35;
-	int radiusModifier = 4;
+	int radiusModifier = 3;
 	ANNdist sqrRadius = powf(radiusModifier * particleList[0].radius, 2);
 
 	printf("Radius: %f. Max neighbours: %d\n", sqrRadius, maxNeighbours);	// Debug.
 	this->logFile << radiusModifier << "*radius, " << maxNeighbours << " max neighbours ";
 
 	for (auto & particle : this->particleList) {
-		/*
+		
 		// Skip particles for faster testing.
 		if (particle.id > 1000)
 			break;
-			*/
+			
 		ANNpoint q = new ANNcoord[3];
 		q[0] = static_cast<ANNcoord>(particle.x);
 		q[1] = static_cast<ANNcoord>(particle.y);
@@ -565,6 +568,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	auto time_createCluster = std::chrono::system_clock::now();
 
 	size_t debugNoNeighbourCounter = 0;
+	size_t debugUsedExistingClusterCounter = 0;
 
 	for (auto & particle : this->particleList) {
 		if (particle.signedDistance < 0)
@@ -577,6 +581,11 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 
 		if (particle.clusterPtr)
 			continue; // Skip particles that already belong to a cluster.
+
+		// TODO: Reallocation of clusterList (due to growth) makes pointer invalid. Either fix by:
+		// - give clusterList big size, so list doesnt resize.
+		// - change references to ids, clusterList mustn't be resorted but may be reallocated in memory.
+		// - use id's in struct Cluster (+ vector may be resorted, - access very slow)
 
 		///
 		/// Find deepest neighbour.
@@ -610,6 +619,8 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 				});
 
 				Cluster* clusterPtr;
+				
+				this->errFile << "Particle " << particle.id;
 
 				// Create new cluster.
 				if (clusterListIterator == this->clusterList.end()) { // Iterator at the end of the list means std::find didnt find match.
@@ -618,22 +629,27 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 					//cluster.numberOfParticles++;
 					this->clusterList.push_back(cluster);
 					clusterPtr = &clusterList.back();
+					this->errFile << " created cluster at ";
 				}
-				// Point to existing cluster.
+				// Point to existing cluster. Since iterator is not at v.end(), it can be dereferenced.
 				else {
 					//(*clusterListIterator).numberOfParticles++;
+					this->errFile << " added to cluster at ";
+					debugUsedExistingClusterCounter++;
 					clusterPtr = &(*clusterListIterator);
 				}
 
 				// Add particle to cluster.
 				particle.clusterPtr = clusterPtr;
 				(*clusterPtr).numberOfParticles++;
-
+				/*
 				// Add all found deepest neighbours to the cluster.
 				for (auto &particleID : parsedParticleIDs) {
-					this->particleList[particleID].clusterPtr = clusterPtr; // Requires ontouched (i.e. sorting forbidden) particleList!
+					this->particleList[particleID].clusterPtr = clusterPtr; // Requires untouched (i.e. sorting forbidden) particleList!
 					(*clusterPtr).numberOfParticles++;
 				}
+				*/
+				this->errFile << clusterPtr << " with root " << (*clusterPtr).rootParticleID << ", parsed particles " << parsedParticleIDs.size() << " , number of particles " << (*clusterPtr).numberOfParticles << ".\n";
 
 				// Debug/progress, to not loose patience when waiting for results.
 				if (particle.id % 100000 == 0) {
@@ -647,23 +663,24 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 		}
 	}
 
-	// Time measurement. 
-	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_createCluster);
-	printf("Calculator: Clusters created in %lld ms with %d clusters and %d liquid particles without neighbour.\n", duration.count(), this->clusterList.size(), debugNoNeighbourCounter);
-	// Debug.
+	// Time measurement and Debug.
 	uint64_t minCluster = std::min_element(
 		this->clusterList.begin(), this->clusterList.end(), [](const Cluster& lhs, const Cluster& rhs) {
-			return lhs.numberOfParticles < rhs.numberOfParticles;
-		})->numberOfParticles;
+		return lhs.numberOfParticles < rhs.numberOfParticles;
+	})->numberOfParticles;
 	uint64_t maxCluster = std::max_element(
 		this->clusterList.begin(), this->clusterList.end(), [](const Cluster& lhs, const Cluster& rhs) {
-			return lhs.numberOfParticles < rhs.numberOfParticles;
-		})->numberOfParticles;
-	printf("Smallest cluster: %d. Biggest cluster: %d.\n", minCluster, maxCluster);
+		return lhs.numberOfParticles < rhs.numberOfParticles;
+	})->numberOfParticles;
+
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_createCluster);
+	printf("%d (%d/%d) clusters created in %lld ms. %d used existing clusters. %d liquid particles w/o neighbour.\n",
+		this->clusterList.size(), minCluster, maxCluster, duration.count(), debugUsedExistingClusterCounter, debugNoNeighbourCounter);
 
 	// Log.
 	this->logFile << this->clusterList.size() << " clusters created (" << duration.count() << " ms) with min/max size " << minCluster << "/" << maxCluster << "; ";
-	this->logFile << debugNoNeighbourCounter << " liquid particles w/o neighbour.\n";
+	this->logFile << debugUsedExistingClusterCounter << " used existing clusters; ";
+	this->logFile << debugNoNeighbourCounter << " liquid particles w/o neighbour; ";
 }
 
 void mmvis_static::StructureEventsClusterVisualization::createClustersSignedDistanceOnly() {
@@ -734,6 +751,8 @@ bool mmvis_static::StructureEventsClusterVisualization::isInSameComponent(
 void mmvis_static::StructureEventsClusterVisualization::setClusterColor() {
 	auto time_setClusterColor = std::chrono::system_clock::now();
 
+	size_t debugBlackParticles = 0;
+
 	///
 	/// Colourize cluster.
 	///
@@ -745,8 +764,12 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor() {
 		cluster.r = distribution(mt);
 		cluster.g = distribution(mt);
 		cluster.b = distribution(mt);
+		if (cluster.rootParticleID < 0) { // Debug.
+			printf("Cl: %d.\n", cluster.rootParticleID);
+		}
 	}
 
+	this->errFile << "\nBlack particles:\n";
 
 	///
 	/// Colourize particles.
@@ -766,13 +789,18 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor() {
 		particle.g = particle.clusterPtr->g;
 		particle.b = particle.clusterPtr->b;
 
-		if (particle.r < 0) // Debug wrong clusterPtr, points to nothing: particleID = -572662307 for all := points to the same adress.
-			printf("%d, ", particle.clusterPtr->rootParticleID);
+		if (particle.r < 0) { // Debug wrong clusterPtr, points to nothing: ints = -572662307; floats = -1998397155538108400.000000 for all -> points to the same adress?
+			debugBlackParticles++;
+			this->errFile << particle.id << "\n";
+			if (particle.id % 100 == 0)
+				printf("Part: %d, %d (%f, %f, %f).\n", particle.clusterPtr->rootParticleID, particle.clusterPtr->numberOfParticles, particle.r, particle.g, particle.b);
+		}
 	}
 
 	// Time measurement.
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_setClusterColor);
-	printf("Calculator: Colorized %d clusters in %lld ms\n", this->clusterList.size(), duration.count());
+	printf("Calculator: Colorized %d clusters in %lld ms with %d black particles.\n", this->clusterList.size(), duration.count(), debugBlackParticles);
+	this->logFile << debugBlackParticles << " black particles.";
 }
 
 void mmvis_static::StructureEventsClusterVisualization::setSignedDistanceColor(float min, float max) {
