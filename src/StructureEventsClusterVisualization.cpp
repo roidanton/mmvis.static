@@ -16,6 +16,7 @@
 //#include <ctime>
 #include <random>
 #include <string>
+#include <numeric>
 
 using namespace megamol;
 using namespace megamol::core;
@@ -27,7 +28,8 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	inDataSlot("in data", "Connects to the data source. Expects signed distance particles"),
 	outDataSlot("out data", "Slot to request data from this calculation."),
 	activateCalculationSlot("activateCalculation", "Triggers the calculation"),
-	dataHash(0), frameId(0), treeSize(0) {
+	periodicBoundaryConditionSlot("periodicBoundary", "Periodic boundary condition for dataset."),
+	minClusterSize(10), dataHash(0), frameId(0), treeSize(0) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
 	this->MakeSlotAvailable(&this->inDataSlot);
@@ -38,6 +40,9 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 
 	this->activateCalculationSlot << new param::BoolParam(false);
 	this->MakeSlotAvailable(&this->activateCalculationSlot);
+
+	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
+	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
 }
 
 
@@ -339,11 +344,11 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 			printf("Calculator: Created list with size %d after %lld ms\n", particleList.size(), duration.count());
 	}
 	
-	findNeighboursWithKDTree();
+	findNeighboursWithKDTree(data);
 
 	createClustersFastDepth();
 
-	mergeSmallClusters(10);
+	mergeSmallClusters();
 	
 	
 	//setDummyLists();
@@ -393,7 +398,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	this->logFile.close();
 }
 
-void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree() {
+void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data) {
 
 	///
 	/// Create k-d-Tree.
@@ -413,6 +418,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		q[2] = static_cast<ANNcoord>(particle.z);
 		annPts[annPtsCounter] = q;
 		annPtsCounter++;
+		delete[] q;
 	}
 	ANNkd_tree* tree = new ANNkd_tree(annPts, static_cast<int>(annPtsCounter), 3);
 
@@ -422,6 +428,15 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_buildTree);
 		printf("Calculator: Created k-d-tree after %lld ms\n", duration.count());
 	}
+
+	///
+	/// Get bounding box for periodic boundary condition.
+	///
+	auto bbox = data.AccessBoundingBoxes().ObjectSpaceBBox();
+	bbox.EnforcePositiveSize(); // paranoia says Sebastian. Nothing compared to list pointer consistency checks.
+	auto bbox_cntr = bbox.CalcCenter();
+	
+	bool periodicBoundary = this->periodicBoundaryConditionSlot.Param<megamol::core::param::BoolParam>()->Value();
 
 	///
 	/// Find and store neighbours.
@@ -458,51 +473,67 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		if (debugSkipParticles && particle.id > 1000)
 			break;
 			
-		ANNpoint q = new ANNcoord[3];
-		q[0] = static_cast<ANNcoord>(particle.x);
-		q[1] = static_cast<ANNcoord>(particle.y);
-		q[2] = static_cast<ANNcoord>(particle.z);
-
 		ANNidxArray   nn_idx = 0;
 		ANNdistArray  dd = 0;
-
 		nn_idx = new ANNidx[maxNeighbours];
 		dd = new ANNdist[maxNeighbours];
-		
-		if (useFRSearch)
-			tree->annkFRSearch(
-				q,				// the query point
-				sqrRadius,		// squared radius of query ball
-				maxNeighbours,	// number of neighbors to return
-				nn_idx,			// nearest neighbor array (modified)
-				dd				// dist to near neighbors as squared distance (modified)
-				);				// error bound (optional).
-		else
-			tree->annkSearch(
-				q,				// the query point
-				maxNeighbours,	// number of neighbors to return
-				nn_idx,			// nearest neighbor array (modified)
-				dd				// dist to near neighbors as squared distance (modified)
-				);				// error bound (optional).
-			
-		for (size_t i = 0; i < maxNeighbours; ++i) {
-			if (nn_idx[i] == ANN_NULL_IDX) {
-				debugSkippedNeighbours++;
-				continue;
+
+		ANNpoint q = new ANNcoord[3];
+
+		// The three loops are for periodic boundary condition.
+		for (int x_s = 0; x_s < (periodicBoundary ? 2 : 1); ++x_s) {
+			for (int y_s = 0; y_s < (periodicBoundary ? 2 : 1); ++y_s) {
+				for (int z_s = 0; z_s < (periodicBoundary ? 2 : 1); ++z_s) {
+
+					q[0] = static_cast<ANNcoord>(particle.x);
+					q[1] = static_cast<ANNcoord>(particle.y);
+					q[2] = static_cast<ANNcoord>(particle.z);
+
+					if (x_s > 0) q[0] = static_cast<ANNcoord>(particle.x + ((particle.x > bbox_cntr.X()) ? -bbox.Width() : bbox.Width()));
+					if (y_s > 0) q[1] = static_cast<ANNcoord>(particle.y + ((particle.y > bbox_cntr.Y()) ? -bbox.Height() : bbox.Height()));
+					if (z_s > 0) q[2] = static_cast<ANNcoord>(particle.z + ((particle.z > bbox_cntr.Z()) ? -bbox.Depth() : bbox.Depth()));
+
+					if (useFRSearch)
+						tree->annkFRSearch(
+						q,				// the query point
+						sqrRadius,		// squared radius of query ball
+						maxNeighbours,	// number of neighbors to return
+						nn_idx,			// nearest neighbor array (modified)
+						dd				// dist to near neighbors as squared distance (modified)
+						);				// error bound (optional).
+					else
+						tree->annkSearch(
+						q,				// the query point
+						maxNeighbours,	// number of neighbors to return
+						nn_idx,			// nearest neighbor array (modified)
+						dd				// dist to near neighbors as squared distance (modified)
+						);				// error bound (optional).
+
+					for (size_t i = 0; i < maxNeighbours; ++i) {
+						if (nn_idx[i] == ANN_NULL_IDX) {
+							debugSkippedNeighbours++;
+							continue;
+						}
+						if (dd[i] < 0.001f) // Exclude self to catch ANN_ALLOW_SELF_MATCH = true.
+							continue;
+
+						debugAddedNeighbours++;
+						//particle.neighbours.push_back(_getParticle(nn_idx[i])); // Up to 500ms/Particle + high memory consumption!
+						//particle.neighbours.push_back(this->particleList[nn_idx[i]]); // Takes a lot of memory and time! At maximum maxNeighbours = 3 and 2*r works on test machine.
+
+						// Requires untouched particleList but needs a lot less memory!
+						//particle.neighbourPtrs.push_back(&this->particleList[nn_idx[i]]);
+						particle.neighbourIDs.push_back(nn_idx[i]);
+					}
+					if (debugAddedNeighbours % 100000 == 0)
+						printf("SECalc progress: Neighbours: %d added, %d skipped.\n", debugAddedNeighbours, debugSkippedNeighbours); // Debug.
+				}
 			}
-			if (dd[i] < 0.001f) // Exclude self to catch ANN_ALLOW_SELF_MATCH = true.
-				continue;
-
-			debugAddedNeighbours++;
-			//particle.neighbours.push_back(_getParticle(nn_idx[i])); // Up to 500ms/Particle + high memory consumption!
-			//particle.neighbours.push_back(this->particleList[nn_idx[i]]); // Takes a lot of memory and time! At maximum maxNeighbours = 3 and 2*r works on test machine.
-
-			// Requires untouched particleList but needs a lot less memory!
-			//particle.neighbourPtrs.push_back(&this->particleList[nn_idx[i]]);
-			particle.neighbourIDs.push_back(nn_idx[i]);
 		}
-		if (debugAddedNeighbours % 100000 == 0)
-			printf("SECalc progress: Neighbours: %d added, %d skipped.\n", debugAddedNeighbours, debugSkippedNeighbours); // Debug.
+
+		delete[] nn_idx;
+		delete[] dd;
+		delete[] q;
 	}
 
 	{ // Time measurement depends heavily on maxNeighbours and sqrRadius (when using annkFRSearch) as well as on save method in particleList.
@@ -525,6 +556,9 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 			particleList[id].id, particleList[id].x, particleList[id].y, particleList[id].z,
 			nearestNeighbour.id, nearestNeighbour.x, nearestNeighbour.y, nearestNeighbour.z);
 	}
+
+	delete tree;
+	delete[] annPts;
 }
 
 
@@ -533,6 +567,8 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 
 	size_t debugNoNeighbourCounter = 0;
 	size_t debugUsedExistingClusterCounter = 0;
+
+	int clusterID = 0;
 
 	/// Reallocation of clusterList (due to growth) makes pointer invalid. Either fix by:
 	/// 1) give clusterList big size, so list doesnt resize.
@@ -606,7 +642,8 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 				if (clusterListIterator == this->clusterList.end()) { // Iterator at the end of the list means std::find didnt find match.
 					Cluster cluster;
 					cluster.rootParticleID = currentParticle.id;
-					cluster.id = static_cast<int> (this->clusterList.size());
+					//cluster.id = static_cast<int> (this->clusterList.size());
+					cluster.id = clusterID; clusterID++; // Clearer than statement above.
 					this->clusterList.push_back(cluster);
 					clusterPtr = &clusterList.back();
 					// this->debugFile << " created cluster at "; // Debugging black particles (clusterList got reallocated during creation).
@@ -622,6 +659,9 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 				//particle.clusterPtr = clusterPtr;
 				particle.clusterID = clusterPtr->id;
 				(*clusterPtr).numberOfParticles++;
+				// Check for list ids consistency.
+				if (particle.clusterID != this->clusterList[particle.clusterID].id)
+					this->debugFile << "Error: Cluster ID and position in cluster don't match: " << particle.clusterID << " != " << this->clusterList[particle.clusterID].id << "!\n";
 				
 				// Add all found deepest neighbours to the cluster.
 				for (auto &particleID : parsedParticleIDs) {
@@ -665,12 +705,13 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	this->logFile << debugNoNeighbourCounter << " liquid p w/o neighbour; ";
 }
 
-void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int minClusterSize) {
+void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 	auto time_mergeClusters = std::chrono::system_clock::now();
 
 	int mergedParticles = 0;
 
-	std::vector<Cluster*> neighbourClusters;
+	//std::vector<Cluster*> neighbourClusters;
+	std::vector<int> neighbourClusterIDs;
 
 	for (auto particle : this->particleList) {
 		if (particle.signedDistance < 0)
@@ -684,11 +725,17 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 		if (particle.clusterID == -1)
 			continue; // Skip particles w/o pointers, mandatory for test runs.
 
-		//if (particle.clusterPtr->numberOfParticles >= minClusterSize)
-		if (this->clusterList[particle.clusterID].numberOfParticles >= minClusterSize)
+		// Check for list ids consistency.
+		if (particle.clusterID != this->clusterList[particle.clusterID].id)
+			this->debugFile << "Error: Cluster ID and position in cluster don't match: " << particle.clusterID << " != " << this->clusterList[particle.clusterID].id << "!\n";
+		if (this->clusterList[particle.clusterID].rootParticleID != this->particleList[this->clusterList[particle.clusterID].rootParticleID].id)
+			this->debugFile << "Error: Particle ID and position in particleList don't match: " << this->clusterList[particle.clusterID].rootParticleID << " != " << this->particleList[this->clusterList[particle.clusterID].rootParticleID].id << "!\n";
+
+		//if (particle.clusterPtr->numberOfParticles >= this->minClusterSize)
+		if (this->clusterList[particle.clusterID].numberOfParticles >= this->minClusterSize) // Requires untouched (i.e. sorting forbidden) clusterList!
 			continue; // Skip particles of bigger clusters.
 
-		// Add clusters in range which are bigger than minClusterSize.
+		// Add clusters in range which are bigger than this->minClusterSize.
 		//for (auto neighbour : particle.neighbourPtrs) {
 		for (auto neighbourID : particle.neighbourIDs) {
 			Particle* neighbour = &this->particleList[neighbourID];
@@ -698,15 +745,16 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 				continue; // Skip particles w/o pointers, mandatory for test runs.
 
 			//if (neighbour->clusterPtr->rootParticleID != particle.clusterPtr->rootParticleID
-			//	&& neighbour->clusterPtr->numberOfParticles >= minClusterSize)
+			//	&& neighbour->clusterPtr->numberOfParticles >= this->minClusterSize)
 			//	neighbourClusters.push_back(neighbour->clusterPtr);
 			if (this->clusterList[neighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-				&& this->clusterList[neighbour->clusterID].numberOfParticles >= minClusterSize)
-				neighbourClusters.push_back(&this->clusterList[neighbour->clusterID]);
+				&& this->clusterList[neighbour->clusterID].numberOfParticles >= this->minClusterSize)
+				//neighbourClusters.push_back(&this->clusterList[neighbour->clusterID]);
+				neighbourClusterIDs.push_back(this->clusterList[neighbour->clusterID].id);
 		}
 
 		// If no clusters in range, check neighbours of neighbours.
-		if (neighbourClusters.size() == 0) {
+		if (neighbourClusterIDs.size() == 0) {
 
 			//#pragma omp parallel for
 			for (auto neighbourIT = particle.neighbourIDs.begin(); neighbourIT < particle.neighbourIDs.end(); ++neighbourIT) {
@@ -725,17 +773,42 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 						continue; // Skip particles w/o pointers, mandatory for test runs.
 
 					//if (secondaryNeighbour->clusterPtr->rootParticleID != particle.clusterPtr->rootParticleID
-					//	&& secondaryNeighbour->clusterPtr->numberOfParticles >= minClusterSize)
+					//	&& secondaryNeighbour->clusterPtr->numberOfParticles >= this->minClusterSize)
 					//	neighbourClusters.push_back(secondaryNeighbour->clusterPtr);
 					if (this->clusterList[secondaryNeighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-						&& this->clusterList[secondaryNeighbour->clusterID].numberOfParticles >= minClusterSize)
-						neighbourClusters.push_back(&this->clusterList[secondaryNeighbour->clusterID]);
+						&& this->clusterList[secondaryNeighbour->clusterID].numberOfParticles >= this->minClusterSize)
+						//neighbourClusters.push_back(&this->clusterList[secondaryNeighbour->clusterID]);
+						neighbourClusterIDs.push_back(this->clusterList[secondaryNeighbour->clusterID].id);
 				}
 			}
 		}
-			
+
+		// If no clusters in range, check neighbours of neighbour neighbours.
+		if (neighbourClusterIDs.size() == 0) {
+			for (auto neighbourIT = particle.neighbourIDs.begin(); neighbourIT < particle.neighbourIDs.end(); ++neighbourIT) {
+				Particle* neighbour = &this->particleList[*neighbourIT];
+
+				for (auto secondaryNeighbourID : neighbour->neighbourIDs) {
+					Particle* secondaryNeighbour = &this->particleList[secondaryNeighbourID];
+
+					// Check neighbours of neighbours neighbour.
+					for (auto tertiaryNeighbourID : secondaryNeighbour->neighbourIDs) {
+						Particle* tertiaryNeighbour = &this->particleList[tertiaryNeighbourID];
+
+						if (tertiaryNeighbour->clusterID == -1)
+							continue; // Skip particles w/o pointers, mandatory for test runs.
+
+						if (this->clusterList[tertiaryNeighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
+							&& this->clusterList[tertiaryNeighbour->clusterID].numberOfParticles >= this->minClusterSize)
+							//neighbourClusters.push_back(&this->clusterList[tertiaryNeighbour->clusterID]);
+							neighbourClusterIDs.push_back(this->clusterList[tertiaryNeighbour->clusterID].id);
+					}
+				}
+			}
+		}
+
 		// If still no other clusters are in range it is assumed there are no connected other clusters, so this particle stays in the small cluster.
-		if (neighbourClusters.size() == 0)
+		if (neighbourClusterIDs.size() == 0)
 			continue;
 
 		///
@@ -744,20 +817,21 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 		
 		//this->debugFile << "Angle: ";
 
-		Cluster* newClusterPtr;
+		//Cluster* newClusterPtr;
+		int newClusterID;
 		double M_PI = 3.14159265358979323846;
 		double smallestAngle = 2*M_PI;
 
 		// Direction of particle to its root.
-		Particle particleClusterRoot = this->particleList[this->clusterList[particle.clusterID].rootParticleID];
+		Particle particleClusterRoot = this->particleList[this->clusterList[particle.clusterID].rootParticleID];  // Requires untouched (i.e. sorting forbidden) clusterList and particleList!
 		vislib::math::Vector<float, 3> dirParticle;
 		dirParticle.SetX(particle.x - particleClusterRoot.x);
 		dirParticle.SetY(particle.y - particleClusterRoot.y);
 		dirParticle.SetZ(particle.z - particleClusterRoot.z);
 
 		// Direction of particle to its neighbour clusters roots.
-		for (auto clusterPtr : neighbourClusters) {
-			Particle clusterRoot = this->particleList[clusterPtr->rootParticleID]; // Requires untouched (i.e. sorting forbidden) particleList!
+		for (auto clusterID : neighbourClusterIDs) {
+			Particle clusterRoot = this->particleList[this->clusterList[clusterID].rootParticleID]; // Requires untouched (i.e. sorting forbidden) clusterList and particleList!
 			vislib::math::Vector<float, 3> dirNeighbourCluster;
 			dirNeighbourCluster.SetX(particle.x - clusterRoot.x);
 			dirNeighbourCluster.SetY(particle.y - clusterRoot.y);
@@ -772,7 +846,8 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 
 			// Smallest angle.
 			if (angle < smallestAngle) {
-				newClusterPtr = clusterPtr; // Requires untouched (i.e. sorting forbidden) particleList!
+				//newClusterPtr = clusterPtr; // Requires untouched (i.e. sorting forbidden) clusterList!
+				newClusterID = clusterID;
 				smallestAngle = angle;
 			}
 			//this->debugFile << angle << ", ";
@@ -781,9 +856,9 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 		//this->debugFile << "\nSmallest Angle: " << smallestAngle << ".\n";
 
 		// Eventually set new cluster.
-		this->clusterList[particle.clusterID].numberOfParticles--;
-		particle.clusterID = newClusterPtr->id;
-		newClusterPtr->numberOfParticles++;
+		this->clusterList[particle.clusterID].numberOfParticles--; // Remove particle from old cluster.
+		particle.clusterID = newClusterID;
+		this->clusterList[particle.clusterID].numberOfParticles++; // Add particle to new cluster.
 
 		mergedParticles++;
 	}
@@ -812,7 +887,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 
 	///
 	/// Method 1: Search for nearest cluster (= root particle)
-	/// Bad since connected components would be needed, too see if cluster is adjacent.
+	/// Bad since connected components would be needed to see if cluster is adjacent.
 	/// 
 	/*
 	int rootParticleIndex = 0;
@@ -822,7 +897,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 	minClusters.reserve(this->clusterList.size()); // Bigger than needed to avoid reallocation.
 
 	for (auto cluster : this->clusterList) {
-		if (cluster.numberOfParticles < minClusterSize) {
+		if (cluster.numberOfParticles < this->minClusterSize) {
 			minClusters.push_back(cluster);
 			continue;
 		}
@@ -887,12 +962,19 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters(int m
 void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	std::ofstream compareAllFile;
 	std::ofstream compareSummaryFile;
+	std::ofstream forwardListFile;
+	std::ofstream backwardsListFile;
+
+	// SECC == Structure Events Cluster Compare.
 	std::string filenameEnd = " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
-	filenameEnd += ".log";
-	std::string filename = "SEClusterVisCompareAll" + filenameEnd;
+	std::string filename = "SECC All" + filenameEnd + ".log";
 	compareAllFile.open(filename.c_str());
-	filename = "SEClusterVisCompareSummary" + filenameEnd;
+	filename = "SECC Summary" + filenameEnd + ".log";
 	compareSummaryFile.open(filename.c_str());
+	filename = "SECC forwardList" + filenameEnd + ".csv";
+	forwardListFile.open(filename.c_str());
+	filename = "SECC backwardsList" + filenameEnd + ".csv";
+	backwardsListFile.open(filename.c_str());
 
 	if (this->previousParticleList.size() == 0 || this->previousClusterList.size() == 0) {
 		printf("Quit compareClusters. Nothing to compare!\n");
@@ -912,67 +994,71 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	std::vector<std::vector<int>> clusterCompareMatrix;
 	clusterCompareMatrix.resize(this->clusterList.size(), std::vector<int>(this->previousClusterList.size(), 0));
 
-	//#pragma omp parallel for
-	for (int pid = 0; pid < this->particleList.size(); ++pid) {
-		// Possible race condition!
+	// ToDo: Get gas particles for analyzing the algorithm.
+	//int currentGasClusterID = this->clusterList.size();
+	//int previousGasClusterID = this->previousClusterList.size();
+
+	// Previous to current particle comparison.
+	for (int pid = 0; pid < this->particleList.size(); ++pid) { // Since particleList size stays the same for each frame, one loop is just fine.
+		// Maybe add a "gas cluster" at the end each clusterList, so particles who were partly in gas can be analysed.
 		if (this->particleList[pid].clusterID != -1 && this->previousParticleList[pid].clusterID != -1) // Skip gas.
-			clusterCompareMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++;
+			clusterCompareMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++; // Race condition.
 	}
 
 	///
 	/// Detecting the type of event.
-	/// First checking all new clusters for each previous cluster,
-	/// then vice versa.
+	/// First checking all new clusters for each previous cluster (forward),
+	/// then vice versa (backwards).
 	///
 
-	std::vector<ConnectedClusters> connectedClusterListForward;
-	std::vector<ConnectedClusters> connectedClusterListBackwards;
+	std::vector<PartnerClusters> partnerClusterListForward;
+	std::vector<PartnerClusters> partnerClusterListBackwards;
 
 	///
 	/// Forward check.
 	///
 	for (int pcid = 0; pcid < this->previousClusterList.size(); ++pcid) {
 		
-		if (this->previousClusterList[pcid].numberOfParticles == 0)
-			continue; // Skip empty (merged) clusters.
+		if (this->previousClusterList[pcid].numberOfParticles < this->minClusterSize)
+			continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
 
 		// Debug.
-		ConnectedClusters connectedClusters;
-		connectedClusters.cluster = this->previousClusterList[pcid];
+		PartnerClusters partnerClusters;
+		partnerClusters.cluster = this->previousClusterList[pcid];
 
 		for (int cid = 0; cid < this->clusterList.size(); ++cid) {
 
-			if (this->clusterList[cid].numberOfParticles == 0)
-				continue; // Skip empty (merged) clusters.
+			if (this->clusterList[cid].numberOfParticles < this->minClusterSize)
+				continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
 
 			int numberOfCommonParticles = clusterCompareMatrix[cid][pcid];
 
-			// Debug.
+			// For output.
 			if (numberOfCommonParticles > 0) {
-				connectedClusters.addConnected(this->clusterList[cid], numberOfCommonParticles);
+				partnerClusters.addPartner(this->clusterList[cid], numberOfCommonParticles);
 			}
 		}
 
 		// Debug.
 		compareAllFile << "Previous cluster " << pcid;
-		compareAllFile << ", " << connectedClusters.cluster.numberOfParticles << " particles";
-		compareAllFile << ", " << connectedClusters.getTotalCommonParticles() << " common particles (" << connectedClusters.getTotalCommonPercentage() << "%)";
-		compareAllFile << ", " << connectedClusters.getLocalTotalRatio() << " % max to total ratio";
-		compareAllFile << ", common particles min/max (" << connectedClusters.getMinCommonParticles() << ", " << connectedClusters.getMaxCommonParticles() << ")";
-		compareAllFile << ", percentage min/max (" << connectedClusters.getMinCommonPercentage() << "%, " << connectedClusters.getMaxCommonPercentage() << "%)";
-		compareAllFile << ", " << connectedClusters.getNumberOfConnected() << " connected clusters";
+		compareAllFile << ", " << partnerClusters.cluster.numberOfParticles << " particles";
+		compareAllFile << ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)";
+		compareAllFile << ", " << partnerClusters.getLocalTotalRatio() << " % max to total ratio";
+		compareAllFile << ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")";
+		compareAllFile << ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)";
+		compareAllFile << ", " << partnerClusters.getNumberOfPartners() << " partner clusters";
 		compareAllFile << "\n";
 
-		connectedClusters.sortConnected();
+		partnerClusters.sortPartners();
 
-		for (int i = 0; i < connectedClusters.getNumberOfConnected(); ++i) {
-			ConnectedClusters::ConnectedCluster cc = connectedClusters.getConnected(i);
+		for (int i = 0; i < partnerClusters.getNumberOfPartners(); ++i) {
+			PartnerClusters::PartnerCluster cc = partnerClusters.getPartner(i);
 			compareAllFile << "Cluster " << cc.cluster.id << " (size " << cc.cluster.numberOfParticles << "): " << cc.commonParticles << " common";
-			compareAllFile << ", ratio this/global (" << cc.getCommonPercentage() << "%, " << cc.getClusterCommonPercentage(connectedClusters.cluster) << "%)";
+			compareAllFile << ", ratio this/global (" << cc.getCommonPercentage() << "%, " << cc.getClusterCommonPercentage(partnerClusters.cluster) << "%)";
 			compareAllFile << "\n";
 		}
 		compareAllFile << "\n";
-		connectedClusterListForward.push_back(connectedClusters);
+		partnerClusterListForward.push_back(partnerClusters);
 	}
 
 
@@ -981,61 +1067,100 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	///
 	for (int cid = 0; cid < this->clusterList.size(); ++cid) {
 
-		if (this->clusterList[cid].numberOfParticles == 0)
-			continue; // Skip empty (merged) clusters.
+		if (this->clusterList[cid].numberOfParticles < this->minClusterSize)
+			continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
 
 		// Debug.
-		ConnectedClusters connectedClusters;
-		connectedClusters.cluster = this->clusterList[cid];
+		PartnerClusters partnerClusters;
+		partnerClusters.cluster = this->clusterList[cid];
 
 		for (int pcid = 0; pcid < this->previousClusterList.size(); ++pcid) {
 
-			if (this->previousClusterList[pcid].numberOfParticles == 0)
-				continue; // Skip empty (merged) clusters.
+			if (this->previousClusterList[pcid].numberOfParticles < this->minClusterSize)
+				continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
 
 			int numberOfCommonParticles = clusterCompareMatrix[cid][pcid];
 
-			// Debug.
+			// For output.
 			if (numberOfCommonParticles > 0) {
-				connectedClusters.addConnected(this->previousClusterList[pcid], numberOfCommonParticles);
+				partnerClusters.addPartner(this->previousClusterList[pcid], numberOfCommonParticles);
 			}
 		}
 
 		// Debug.
 		compareAllFile << "Cluster " << cid;
-		compareAllFile << ", " << connectedClusters.cluster.numberOfParticles << " particles";
-		compareAllFile << ", " << connectedClusters.getTotalCommonParticles() << " common particles (" << connectedClusters.getTotalCommonPercentage() << "%)";
-		compareAllFile << ", " << connectedClusters.getLocalTotalRatio() << " % max to total ratio";
-		compareAllFile << ", common particles min/max (" << connectedClusters.getMinCommonParticles() << ", " << connectedClusters.getMaxCommonParticles() << ")";
-		compareAllFile << ", percentage min/max (" << connectedClusters.getMinCommonPercentage() << "%, " << connectedClusters.getMaxCommonPercentage() << "%)";
-		compareAllFile << ", " << connectedClusters.getNumberOfConnected() << " connected clusters";
+		compareAllFile << ", " << partnerClusters.cluster.numberOfParticles << " particles";
+		compareAllFile << ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)";
+		compareAllFile << ", " << partnerClusters.getLocalTotalRatio() << " % max to total ratio";
+		compareAllFile << ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")";
+		compareAllFile << ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)";
+		compareAllFile << ", " << partnerClusters.getNumberOfPartners() << " partner clusters";
 		compareAllFile << "\n";
 
-		connectedClusters.sortConnected();
+		partnerClusters.sortPartners();
 
-		for (int i = 0; i < connectedClusters.getNumberOfConnected(); ++i) {
-			ConnectedClusters::ConnectedCluster cc = connectedClusters.getConnected(i);
-			compareAllFile << "Previous cluster " << cc.cluster.id << " (size " << cc.cluster.numberOfParticles << "): " << cc.commonParticles << " common";
-			compareAllFile << ", ratio this/global (" << cc.getCommonPercentage() << "%, " << cc.getClusterCommonPercentage(connectedClusters.cluster) << "%)";
+		for (int i = 0; i < partnerClusters.getNumberOfPartners(); ++i) {
+			PartnerClusters::PartnerCluster pc = partnerClusters.getPartner(i);
+			compareAllFile << "Previous cluster " << pc.cluster.id << " (size " << pc.cluster.numberOfParticles << "): " << pc.commonParticles << " common";
+			compareAllFile << ", ratio this/global (" << pc.getCommonPercentage() << "%, " << pc.getClusterCommonPercentage(partnerClusters.cluster) << "%)";
 			compareAllFile << "\n";
 		}
 		compareAllFile << "\n";
 
-		connectedClusterListBackwards.push_back(connectedClusters);
+		partnerClusterListBackwards.push_back(partnerClusters);
 	}
 
 	///
-	/// Summary evaluation: Max percentage.
+	/// Summary evaluation:
+	/// - Files to create diagrams.
+	/// - for frame to frame comparison: Mean value and standard deviation of values: http://stackoverflow.com/a/7616783/4566599
 	///
-	auto maxPercentageFwdIT = std::max_element(connectedClusterListForward.begin(), connectedClusterListForward.end(), [](const ConnectedClusters& lhs, const ConnectedClusters& rhs) {
+	std::vector<double> vTotalCommonPercentage;
+	forwardListFile << "Cluster id; Cluster size; Common particle no; Common particle percentage; Amount of biggest partners\n";
+	for (auto partnerClusters : partnerClusterListForward) {
+		forwardListFile << partnerClusters.cluster.id << ";";
+		forwardListFile << partnerClusters.cluster.numberOfParticles << ";";
+		forwardListFile << partnerClusters.getTotalCommonParticles() << ";";
+		forwardListFile << partnerClusters.getTotalCommonPercentage() << ";";
+		forwardListFile << partnerClusters.getBiggestPartnerAmount() << "\n";
+		vTotalCommonPercentage.push_back(partnerClusters.getTotalCommonPercentage());
+	}
+
+	MeanStdDev mdTotalCommonPercentageFwd = meanStdDeviation(vTotalCommonPercentage);
+	vTotalCommonPercentage.clear();
+
+	backwardsListFile << "Cluster id; Cluster size; Common particle no; Common particle percentage; Amount of biggest partners\n";
+	for (auto partnerClusters : partnerClusterListBackwards) {
+		backwardsListFile << partnerClusters.cluster.id << ";";
+		backwardsListFile << partnerClusters.cluster.numberOfParticles << ";";
+		backwardsListFile << partnerClusters.getTotalCommonParticles() << ";";
+		backwardsListFile << partnerClusters.getTotalCommonPercentage() << ";";
+		backwardsListFile << partnerClusters.getBiggestPartnerAmount() << "\n";
+		vTotalCommonPercentage.push_back(partnerClusters.getTotalCommonPercentage());
+	}
+
+	MeanStdDev mdTotalCommonPercentageBw = meanStdDeviation(vTotalCommonPercentage);
+
+	///
+	/// Frame to frame evaluation: Min/Max/Mean/StdDev.
+	///
+	auto maxPercentageFwdIT = std::max_element(partnerClusterListForward.begin(), partnerClusterListForward.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
-	compareSummaryFile << "Forward: " << maxPercentageFwdIT->cluster.id << " maximal percentage " << maxPercentageFwdIT->getTotalCommonPercentage() << "% and LocalTotalRatio " << maxPercentageFwdIT->getLocalTotalRatio() << "%\n";
-	
-	auto maxPercentageBwIT = std::max_element(connectedClusterListBackwards.begin(), connectedClusterListBackwards.end(), [](const ConnectedClusters& lhs, const ConnectedClusters& rhs) {
+	auto minPercentageFwdIT = std::min_element(partnerClusterListForward.begin(), partnerClusterListForward.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
-	compareSummaryFile << "Backwards: " << maxPercentageBwIT->cluster.id << " maximal percentage " << maxPercentageBwIT->getTotalCommonPercentage() << "% and LocalTotalRatio " << maxPercentageBwIT->getLocalTotalRatio() << "%\n";
+	compareSummaryFile << "Forward:\n";
+	compareSummaryFile << "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation" << mdTotalCommonPercentageFwd.deviation << "%\n";
+	compareSummaryFile << "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (" << maxPercentageFwdIT->cluster.id << " with LocalTotalRatio " << maxPercentageFwdIT->getLocalTotalRatio() << "%)\n";
+	compareSummaryFile << "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (" << minPercentageFwdIT->cluster.id << " with LocalTotalRatio " << minPercentageFwdIT->getLocalTotalRatio() << "%)\n";
+
+	auto maxPercentageBwIT = std::max_element(partnerClusterListBackwards.begin(), partnerClusterListBackwards.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
+		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
+	});
+	compareSummaryFile << "Backwards:\n";
+	compareSummaryFile << "Mean " << mdTotalCommonPercentageBw.mean << "%, std deviation" << mdTotalCommonPercentageBw.deviation << "%\n";
+	compareSummaryFile << "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (" << maxPercentageBwIT->cluster.id << " with LocalTotalRatio " << maxPercentageBwIT->getLocalTotalRatio() << "%)\n";
 
 	///
 	/// Summary evaluation: Most common/uncommon clusters, critical values have to be evaluated depending on:
@@ -1047,12 +1172,6 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	/// Number of clusters with TotalCommonPercentage < 5%, 15%, 25%. Fwd: Detect birth, bw: Detect death.
 	/// Specific numbers have to be tested!
 	///
-
-	///
-	/// Summary evaluation: Number of biggest partner clusters:
-	/// Ratio clusterCommonPercentage / TotalCommonPercentage > 25%.
-	///
-
 
 
 	///
@@ -1232,6 +1351,24 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists() {
 		std::uniform_int_distribution<int> distribution2(std::max(0, this->particleList[i].clusterID - streuung), std::min(9, this->particleList[i].clusterID + streuung));
 		this->previousParticleList[i].clusterID = distribution2(mt);
 	}
+}
+
+
+mmvis_static::StructureEventsClusterVisualization::MeanStdDev
+mmvis_static::StructureEventsClusterVisualization::meanStdDeviation(std::vector<double> v) {
+	double sum = std::accumulate(v.begin(), v.end(), 0.0);
+	double mean = sum / v.size();
+	
+	std::vector<double> diff(v.size());
+	std::transform(v.begin(), v.end(), diff.begin(),
+		std::bind2nd(std::minus<double>(), mean));
+	double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+	double stdev = std::sqrt(sq_sum / v.size());
+	
+	MeanStdDev md;
+	md.mean = mean;
+	md.deviation = stdev;
+	return md;
 }
 
 

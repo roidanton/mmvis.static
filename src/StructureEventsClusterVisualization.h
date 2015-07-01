@@ -41,6 +41,11 @@ namespace megamol {
 		class StructureEventsClusterVisualization : public core::Module {
 		public:
 
+			struct MeanStdDev {
+				double mean = 0;
+				double deviation = 0;
+			};
+
 			struct Cluster;
 
 			///
@@ -87,14 +92,14 @@ namespace megamol {
 				}
 			};
 
-			class ConnectedClusters {
+			class PartnerClusters {
 			public:
-				struct ConnectedCluster {
+				struct PartnerCluster {
 					Cluster cluster;
 					int commonParticles = 0;
 
-					//ConnectedClusters &parent;  // Reference to parent
-					//ConnectedCluster(ConnectedClusters &ccs) : parent(ccs) {}  // Initialise reference in constructor
+					//PartnerClusters &parent;  // Reference to parent
+					//PartnerCluster(PartnerClusters &ccs) : parent(ccs) {}  // Initialise reference in constructor
 
 					float getCommonPercentage() {
 						return (static_cast<float> (this->commonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100.f;
@@ -104,29 +109,29 @@ namespace megamol {
 						return (static_cast<float> (this->commonParticles) / static_cast<float> (c.numberOfParticles)) * 100.f;
 					}
 					/*
-					ConnectedCluster operator=(const ConnectedCluster& rhs) {
-						//ConnectedCluster cc(rhs.parent);
+					PartnerCluster operator=(const PartnerCluster& rhs) {
+						//PartnerCluster cc(rhs.parent);
 						cc.cluster = rhs.cluster;
 						cc.commonParticles = rhs.commonParticles;
 						return cc;
 					}
 					*/
-					bool operator==(const ConnectedCluster& rhs) const {
+					bool operator==(const PartnerCluster& rhs) const {
 						return this->cluster == rhs.cluster;
 					}
 
-					//bool operator<(const ConnectedCluster& rhs) const {
+					//bool operator<(const PartnerCluster& rhs) const {
 					//	return this->commonParticles > rhs.commonParticles;
 					//}
 				};
 			private:
-				std::vector<ConnectedCluster> connected;
-				//std::multimap<int, ConnectedCluster, std::greater<int>> connected; // Highest int first.
+				std::vector<PartnerCluster> partners;
+				//std::multimap<int, PartnerCluster, std::greater<int>> partners; // Highest int first.
 				int minCommonParticles = -1;
 				int maxCommonParticles = -1;
 				int totalCommonParticles = 0;
-				float minCommonPercentage = -1.f;
-				float maxCommonPercentage = -1.f;
+				double minCommonPercentage = -1.f;
+				double maxCommonPercentage = -1.f;
 
 				// Amount of partner clusters with ClusterCommonPercentage / TotalCommonPercentage > 25%.
 				// Previous->current: Can be a split.
@@ -135,34 +140,46 @@ namespace megamol {
 
 			public:
 				Cluster cluster;
-				void addConnected(Cluster newCluster, int commonParticles) {
-					ConnectedCluster connectedCluster;
-					connectedCluster.cluster = newCluster;
-					connectedCluster.commonParticles = commonParticles;
-					this->connected.push_back(connectedCluster);
-					//this->connected.insert(std::pair<int, ConnectedCluster> (commonParticles, connectedCluster));
+				void addPartner(Cluster newCluster, int commonParticles) {
+					PartnerCluster PartnerCluster;
+					PartnerCluster.cluster = newCluster;
+					PartnerCluster.commonParticles = commonParticles;
+					this->partners.push_back(PartnerCluster);
+					//this->partners.insert(std::pair<int, PartnerCluster> (commonParticles, PartnerCluster));
 
+					
 					totalCommonParticles += commonParticles;
 
+					// Max and min.
 					if (minCommonParticles < 0 || minCommonParticles > commonParticles)
 						minCommonParticles = commonParticles;
 					if (maxCommonParticles < 0 || maxCommonParticles < commonParticles)
 						maxCommonParticles = commonParticles;
-					if (minCommonPercentage < 0 || minCommonPercentage > connectedCluster.getClusterCommonPercentage(this->cluster))
-						minCommonPercentage = connectedCluster.getClusterCommonPercentage(this->cluster);
-					if (maxCommonPercentage < 0 || maxCommonPercentage < connectedCluster.getClusterCommonPercentage(this->cluster))
-						maxCommonPercentage = connectedCluster.getClusterCommonPercentage(this->cluster);
+					if (minCommonPercentage < 0 || minCommonPercentage > PartnerCluster.getClusterCommonPercentage(this->cluster))
+						minCommonPercentage = PartnerCluster.getClusterCommonPercentage(this->cluster);
+					if (maxCommonPercentage < 0 || maxCommonPercentage < PartnerCluster.getClusterCommonPercentage(this->cluster))
+						maxCommonPercentage = PartnerCluster.getClusterCommonPercentage(this->cluster);
 				}
 
-				void sortConnected() {
-					//std::sort(this->connected.begin(), this->connected.end());
-					std::sort(this->connected.begin(), this->connected.end(), [](const ConnectedCluster& lhs, const ConnectedCluster& rhs) {
+				void sortPartners() {
+					std::sort(this->partners.begin(), this->partners.end(), [](const PartnerCluster& lhs, const PartnerCluster& rhs) {
 						return (lhs.commonParticles > rhs.commonParticles);
 					});
 				}
 
-				ConnectedCluster getConnected(int connectedPosition) {
-					return this->connected[connectedPosition];
+				PartnerCluster getPartner(int partnerPosition) {
+					return this->partners[partnerPosition];
+				}
+
+				/// Currently ratio clusterCommonPercentage / TotalCommonPercentage > 25 % .
+				int getBiggestPartnerAmount() {
+					if (biggestPartnerAmount > 0)
+						return biggestPartnerAmount;
+					for (auto partner : this->partners) {
+						if (partner.getClusterCommonPercentage(this->cluster) / this->getTotalCommonPercentage() >= .25)
+							biggestPartnerAmount++;
+					}
+					return biggestPartnerAmount;
 				}
 
 				int getMinCommonParticles() const {
@@ -177,35 +194,35 @@ namespace megamol {
 					return this->totalCommonParticles;
 				}
 
-				float getMinCommonPercentage() const {
+				double getMinCommonPercentage() const {
 					return this->minCommonPercentage;
 				}
 
-				float getMaxCommonPercentage() const {
+				double getMaxCommonPercentage() const {
 					return this->maxCommonPercentage;
 				}
 
-				float getTotalCommonPercentage() const {
+				double getTotalCommonPercentage() const {
 					return (static_cast<float> (this->totalCommonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100;
 				}
 
-				float getLocalTotalRatio() const { // Name props to Andreas.
+				double getLocalTotalRatio() const { // Name props to Andreas.
 					return (this->maxCommonPercentage / this->getTotalCommonPercentage()) * 100;
 				}
 
-				int getNumberOfConnected() const {
-					return static_cast<int> (connected.size());
+				int getNumberOfPartners() const {
+					return static_cast<int> (partners.size());
 				}
 			};
 
-			class ConnectedClustersList {
+			class PartnerClustersList {
 			private:
 			public:
-				std::vector<ConnectedClusters> connectedClusterListForward;
-				std::vector<ConnectedClusters> connectedClusterListBackwards;
+				std::vector<PartnerClusters> PartnerClusterListForward;
+				std::vector<PartnerClusters> PartnerClusterListBackwards;
 
 				/*auto getMaxPercentage() {
-					return std::max_element(connectedClusterListForward.begin(), connectedClusterListForward.end(), [](const ConnectedClusters& lhs, const ConnectedClusters& rhs) {
+					return std::max_element(PartnerClusterListForward.begin(), PartnerClusterListForward.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 						return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 					});
 				}*/
@@ -306,13 +323,13 @@ namespace megamol {
 			void setData(core::moldyn::MultiParticleDataCall& data);
 
 			/// Set neighbours in particleList.
-			void findNeighboursWithKDTree();
+			void findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data);
 
 			/// Set neighbour with highest depth as next path object.
 			void createClustersFastDepth();
 
 			/// Merge small clusters into bigger ones.
-			void mergeSmallClusters(int minClusterSize);
+			void mergeSmallClusters();
 
 			/// Compare clusters of two frames.
 			void compareClusters();
@@ -328,8 +345,7 @@ namespace megamol {
 			/// Only sets ids, cluster id and numberOfParticles.
 			void setDummyLists();
 
-			/// Answer if the calculation should be done.
-			bool activateCalculationTrigger();
+			MeanStdDev meanStdDeviation(std::vector<double> v);
 
 			/// Iterate through whole list (exhaustive search), only check distance when signed distance is similar.
 			/// Must happen after list sorting by signed distance!
@@ -359,11 +375,11 @@ namespace megamol {
 			/// The call for outgoing data.
 			core::CalleeSlot outDataSlot;
 
-			/// Bool flag to activate software cursor rendering.
-			bool activateCalculation;
-
 			/// The knob to manually start the calculation.
 			core::param::ParamSlot activateCalculationSlot;
+
+			/// Switch for periodic boundary condition.
+			core::param::ParamSlot periodicBoundaryConditionSlot;
 
 			/// The hash id of the data stored
 			size_t dataHash;
@@ -378,6 +394,9 @@ namespace megamol {
 			/// List with all clusters.
 			std::vector<Cluster> clusterList;
 			std::vector<Cluster> previousClusterList;
+
+			/// For merge and compare functions.
+			int minClusterSize;
 
 			/// The size of the kdTree, global for output purpose.
 			unsigned int treeSize;
