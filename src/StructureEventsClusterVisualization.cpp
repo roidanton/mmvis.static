@@ -536,7 +536,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 						particle.neighbourIDs.push_back(nn_idx[i]);
 					}
 					if (debugAddedNeighbours % 100000 == 0)
-						printf("SECalc progress: Neighbours: %d added, %d skipped.\n", debugAddedNeighbours, debugSkippedNeighbours); // Debug.
+						printf("SECalc progress: Neighbours: %d added, %d out of radius.\n", debugAddedNeighbours, debugSkippedNeighbours); // Debug.
 				}
 			}
 		}
@@ -548,10 +548,10 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 
 	{ // Time measurement depends heavily on maxNeighbours and sqrRadius (when using annkFRSearch) as well as on save method in particleList.
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_findNeighbours);
-		printf("Calculator: Neighbours set in %lld ms with %d added and %d skipped.\n", duration.count(), debugAddedNeighbours, debugSkippedNeighbours);
+		printf("Calculator: Neighbours set in %lld ms with %d added and %d out of radius.\n", duration.count(), debugAddedNeighbours, debugSkippedNeighbours);
 
 		// Log.
-		this->logFile << "(added/skipped " << debugAddedNeighbours << "/" << debugSkippedNeighbours << ") (" << duration.count() << " ms); ";
+		this->logFile << "(added/out of radius " << debugAddedNeighbours << "/" << debugSkippedNeighbours << ") (" << duration.count() << " ms); ";
 	}
 
 	///
@@ -578,6 +578,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 
 	size_t debugNoNeighbourCounter = 0;
 	size_t debugUsedExistingClusterCounter = 0;
+	size_t debugNumberOfGasParticles = 0;
 
 	int clusterID = 0;
 
@@ -595,8 +596,10 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	// for (auto part = this->particleList.begin(); part < this->particleList.end(); part++) {
 	//	auto particle = *part;
 	for (auto & particle : this->particleList) {
-		if (particle.signedDistance < 0)
+		if (particle.signedDistance < 0) {
+			debugNumberOfGasParticles++;
 			continue; // Skip gas.
+		}
 
 		//if (particle.neighbourPtrs.size() == 0) {
 		if (particle.neighbourIDs.size() == 0) {
@@ -711,7 +714,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 		this->clusterList.size(), minCluster, maxCluster, duration.count(), debugUsedExistingClusterCounter, debugNoNeighbourCounter);
 		
 	// Log.
-	this->logFile << this->clusterList.size() << " cl (min/max " << minCluster << "/" << maxCluster << ") (" << duration.count() << " ms); ";
+	this->logFile << this->clusterList.size() << " cl (min/max " << minCluster << "/" << maxCluster << "), " << debugNumberOfGasParticles << " gas p (" << duration.count() << " ms); ";
 	this->logFile << debugUsedExistingClusterCounter << " p used existing cl; ";
 	this->logFile << debugNoNeighbourCounter << " liquid p w/o neighbour; ";
 }
@@ -1161,21 +1164,39 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	auto minPercentageFwdIT = std::min_element(partnerClusterListForward.begin(), partnerClusterListForward.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
-	compareSummaryFile << "Forward:\n";
-	compareSummaryFile << "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (" << maxPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
-	compareSummaryFile << "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation " << mdTotalCommonPercentageFwd.deviation << "%\n";
-	compareSummaryFile << "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (" << minPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
-
 	auto maxPercentageBwIT = std::max_element(partnerClusterListBackwards.begin(), partnerClusterListBackwards.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
 	auto minPercentageBwIT = std::min_element(partnerClusterListBackwards.begin(), partnerClusterListBackwards.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
-	compareSummaryFile << "Backwards:\n";
-	compareSummaryFile << "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (" << maxPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
+
+	// Count gas percentage.
+	int gasCountPrevious, gasCountCurrent;
+	gasCountPrevious = gasCountCurrent = 0;
+	for (auto & particle : this->previousParticleList) {
+		if (particle.clusterID < 0)
+			gasCountPrevious++;
+	}
+	for (auto & particle : this->particleList) {
+		if (particle.clusterID < 0)
+			gasCountCurrent++;
+	}
+	double gasPercentagePrevious = gasCountPrevious / static_cast<double> (this->previousParticleList.size()) * 100;
+	double gasPercentageCurrent = gasCountCurrent / static_cast<double> (this->particleList.size()) * 100;
+
+	// Output.
+	compareSummaryFile << "Gas ratio: previous Frame " << gasPercentagePrevious << "% (" << gasCountPrevious << "), ";
+	compareSummaryFile << "current Frame " << gasPercentageCurrent << "% (" << gasCountCurrent << ").\n\n";
+	compareSummaryFile << "Ratio of common particles.\n";
+	compareSummaryFile << "Forward direction (previous -> current):\n";
+	compareSummaryFile << "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
+	compareSummaryFile << "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation " << mdTotalCommonPercentageFwd.deviation << "%\n";
+	compareSummaryFile << "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << minPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
+	compareSummaryFile << "Backward direction (current -> previous):\n";
+	compareSummaryFile << "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
 	compareSummaryFile << "Mean " << mdTotalCommonPercentageBw.mean << "%, std deviation " << mdTotalCommonPercentageBw.deviation << "%\n";
-	compareSummaryFile << "Min " << minPercentageBwIT->getTotalCommonPercentage() << "% (" << minPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
+	compareSummaryFile << "Min " << minPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << minPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
 
 	///
 	/// Summary evaluation: Most common/uncommon clusters, critical values have to be evaluated depending on:
@@ -1272,7 +1293,7 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor(bool ren
 	// Time measurement.
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_setClusterColor);
 	printf("Calculator: Colorized %d clusters in %lld ms with %d black particles.\n", this->clusterList.size(), duration.count(), debugBlackParticles);
-	this->logFile << debugBlackParticles << " black p.";
+	//this->logFile << debugBlackParticles << " black p.";
 }
 
 
