@@ -409,18 +409,28 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	///
 	auto time_buildTree = std::chrono::system_clock::now();
 
+	ANNpoint annPtsData = new ANNcoord[3 * this->particleList.size()]; // Container for pointdata. Can be deleted at the end of the function.
 	ANNpointArray annPts = new ANNpoint[this->particleList.size()];
-	uint64_t annPtsCounter = 0;
+	//uint64_t annPtsCounter = 0;
 	for (auto & particle : this->particleList) {
-		ANNpoint q = new ANNcoord[3];
-		q[0] = static_cast<ANNcoord>(particle.x);
-		q[1] = static_cast<ANNcoord>(particle.y);
-		q[2] = static_cast<ANNcoord>(particle.z);
-		annPts[annPtsCounter] = q;
-		annPtsCounter++;
-		delete[] q;
+		// Creating new points causes missing memory deallocation since they can't be deleted at the end of the function.
+		//ANNpoint qTree = new ANNcoord[3]; // Mustn't be deleted before the end of the function.
+		//qTree[0] = static_cast<ANNcoord>(particle.x);
+		//qTree[1] = static_cast<ANNcoord>(particle.y);
+		//qTree[2] = static_cast<ANNcoord>(particle.z);
+		//annPts[annPtsCounter] = qTree;
+		//annPtsCounter++;
+		// //delete[] qTree; // Wrong here, mustn't be called before end of the function!
+		
+		annPtsData[(particle.id * 3) + 0] = static_cast<ANNcoord>(particle.x);
+		annPtsData[(particle.id * 3) + 1] = static_cast<ANNcoord>(particle.y);
+		annPtsData[(particle.id * 3) + 2] = static_cast<ANNcoord>(particle.z);
 	}
-	ANNkd_tree* tree = new ANNkd_tree(annPts, static_cast<int>(annPtsCounter), 3);
+	for (size_t i = 0; i < this->particleList.size(); ++i) {
+		annPts[i] = annPtsData + (i * 3);
+	}
+
+	ANNkd_tree* tree = new ANNkd_tree(annPts, static_cast<int>(this->particleList.size()), 3);
 
 	this->treeSize = tree->nPoints() * sizeof(ANNcoord) * 3; // One ANNPoint consists of 3 ANNcoords here.
 
@@ -559,6 +569,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 
 	delete tree;
 	delete[] annPts;
+	delete[] annPtsData;
 }
 
 
@@ -1004,7 +1015,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		if (this->particleList[pid].clusterID != -1 && this->previousParticleList[pid].clusterID != -1) // Skip gas.
 			clusterCompareMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++; // Race condition.
 	}
-
+	
 	///
 	/// Detecting the type of event.
 	/// First checking all new clusters for each previous cluster (forward),
@@ -1043,7 +1054,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		compareAllFile << "Previous cluster " << pcid;
 		compareAllFile << ", " << partnerClusters.cluster.numberOfParticles << " particles";
 		compareAllFile << ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)";
-		compareAllFile << ", " << partnerClusters.getLocalTotalRatio() << " % max to total ratio";
+		compareAllFile << ", " << partnerClusters.getLocalMaxTotalRatio() << " % max to total ratio";
 		compareAllFile << ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")";
 		compareAllFile << ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)";
 		compareAllFile << ", " << partnerClusters.getNumberOfPartners() << " partner clusters";
@@ -1091,7 +1102,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		compareAllFile << "Cluster " << cid;
 		compareAllFile << ", " << partnerClusters.cluster.numberOfParticles << " particles";
 		compareAllFile << ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)";
-		compareAllFile << ", " << partnerClusters.getLocalTotalRatio() << " % max to total ratio";
+		compareAllFile << ", " << partnerClusters.getLocalMaxTotalRatio() << " % max to total ratio";
 		compareAllFile << ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")";
 		compareAllFile << ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)";
 		compareAllFile << ", " << partnerClusters.getNumberOfPartners() << " partner clusters";
@@ -1151,16 +1162,20 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
 	compareSummaryFile << "Forward:\n";
-	compareSummaryFile << "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation" << mdTotalCommonPercentageFwd.deviation << "%\n";
-	compareSummaryFile << "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (" << maxPercentageFwdIT->cluster.id << " with LocalTotalRatio " << maxPercentageFwdIT->getLocalTotalRatio() << "%)\n";
-	compareSummaryFile << "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (" << minPercentageFwdIT->cluster.id << " with LocalTotalRatio " << minPercentageFwdIT->getLocalTotalRatio() << "%)\n";
+	compareSummaryFile << "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (" << maxPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
+	compareSummaryFile << "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation " << mdTotalCommonPercentageFwd.deviation << "%\n";
+	compareSummaryFile << "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (" << minPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
 
 	auto maxPercentageBwIT = std::max_element(partnerClusterListBackwards.begin(), partnerClusterListBackwards.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
+	auto minPercentageBwIT = std::min_element(partnerClusterListBackwards.begin(), partnerClusterListBackwards.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
+		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
+	});
 	compareSummaryFile << "Backwards:\n";
-	compareSummaryFile << "Mean " << mdTotalCommonPercentageBw.mean << "%, std deviation" << mdTotalCommonPercentageBw.deviation << "%\n";
-	compareSummaryFile << "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (" << maxPercentageBwIT->cluster.id << " with LocalTotalRatio " << maxPercentageBwIT->getLocalTotalRatio() << "%)\n";
+	compareSummaryFile << "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (" << maxPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
+	compareSummaryFile << "Mean " << mdTotalCommonPercentageBw.mean << "%, std deviation " << mdTotalCommonPercentageBw.deviation << "%\n";
+	compareSummaryFile << "Min " << minPercentageBwIT->getTotalCommonPercentage() << "% (" << minPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
 
 	///
 	/// Summary evaluation: Most common/uncommon clusters, critical values have to be evaluated depending on:

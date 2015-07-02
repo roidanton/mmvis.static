@@ -206,7 +206,7 @@ namespace megamol {
 					return (static_cast<float> (this->totalCommonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100;
 				}
 
-				double getLocalTotalRatio() const { // Name props to Andreas.
+				double getLocalMaxTotalRatio() const { // Name props to Andreas.
 					return (this->maxCommonPercentage / this->getTotalCommonPercentage()) * 100;
 				}
 
