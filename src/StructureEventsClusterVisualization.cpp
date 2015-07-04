@@ -350,7 +350,6 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 
 	mergeSmallClusters();
 	
-	
 	//setDummyLists();
 
 	if (this->previousClusterList.size() > 0 && this->previousParticleList.size() > 0) {
@@ -624,12 +623,14 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 		for (;;) {
 			float signedDistance = 0; // For comparison.
 			Particle currentParticle = deepestNeighbour; // Set last deepest particle as new current.
+
 			//for (int i = 0; i < currentParticle.neighbourPtrs.size(); ++i) {
 			//	if (currentParticle.neighbourPtrs[i]->signedDistance > signedDistance) {
 			//		signedDistance = currentParticle.neighbourPtrs[i]->signedDistance;
 			//		deepestNeighbour = *currentParticle.neighbourPtrs[i];
 			//	}
 			//}
+
 			for (int i = 0; i < currentParticle.neighbourIDs.size(); ++i) {
 				if (this->particleList[currentParticle.neighbourIDs[i]].signedDistance > signedDistance) {
 					signedDistance = this->particleList[currentParticle.neighbourIDs[i]].signedDistance;
@@ -673,15 +674,24 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 				//particle.clusterPtr = clusterPtr;
 				particle.clusterID = clusterPtr->id;
 				(*clusterPtr).numberOfParticles++;
+
 				// Check for list ids consistency.
 				if (particle.clusterID != this->clusterList[particle.clusterID].id)
 					this->debugFile << "Error: Cluster ID and position in cluster don't match: " << particle.clusterID << " != " << this->clusterList[particle.clusterID].id << "!\n";
-				
-				// Add all found deepest neighbours to the cluster.
-				for (auto &particleID : parsedParticleIDs) {
+
+				// Add those found deepest neighbours to the cluster
+				// that are not already in a cluster and except the last one.
+				parsedParticleIDs.pop_back(); // Remove last deepest neighbour since it is not deeper than current particle.
+				for (auto & particleID : parsedParticleIDs) {
+					if (this->particleList[particleID].id != particleID)
+						this->debugFile << "Error: Particle ID and position in particle list don't match: " << particleID << " != " << this->particleList[particleID].id << "!\n";
+
+					if (this->particleList[particleID].clusterID >= 0)
+						continue; // Skip particles already in a cluster.
+
 					//this->particleList[particleID].clusterPtr = clusterPtr;
 					this->particleList[particleID].clusterID = clusterPtr->id; // Requires untouched (i.e. sorting forbidden) particleList!
-					(*clusterPtr).numberOfParticles++;
+					(*clusterPtr).numberOfParticles++; // Caused a bug since particles that are already part of the cluster are added again. Checks above avoid this now.
 				}
 				
 				//this->debugFile << clusterPtr << " with root " << (*clusterPtr).rootParticleID << ", parsed particles " << parsedParticleIDs.size() << " , number of particles " << (*clusterPtr).numberOfParticles << ".\n"; // Debugging black particles (clusterList got reallocated during creation).
@@ -712,7 +722,15 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_createCluster);
 	printf("%d (%d/%d) clusters created in %lld ms. %d used existing clusters. %d liquid particles w/o neighbour.\n",
 		this->clusterList.size(), minCluster, maxCluster, duration.count(), debugUsedExistingClusterCounter, debugNoNeighbourCounter);
-		
+
+	int debugParticleNumber = 0;
+	for (auto & cluster : this->clusterList) {
+		debugParticleNumber += static_cast<int>(cluster.numberOfParticles);
+	}
+
+	this->debugFile << "Number of particles in clusters: " << debugParticleNumber << "\n";
+	assert(debugParticleNumber + debugNumberOfGasParticles == particleList.size());
+
 	// Log.
 	this->logFile << this->clusterList.size() << " cl (min/max " << minCluster << "/" << maxCluster << "), " << debugNumberOfGasParticles << " gas p (" << duration.count() << " ms); ";
 	this->logFile << debugUsedExistingClusterCounter << " p used existing cl; ";
@@ -1002,23 +1020,66 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	/// The inner vector contains the columns, the outer vector contains the rows.
 	/// The columns represents the previous clusters. Column id == cluster id of previous clusterList.
 	/// The rows represents the current clusters. Row id == cluster id of current clusterList.
-	/// Access by clusterCompareMatrix[row][column].
+	/// Access by clusterComparisonMatrix[row][column].
 	///
 
-	std::vector<std::vector<int>> clusterCompareMatrix;
-	clusterCompareMatrix.resize(this->clusterList.size(), std::vector<int>(this->previousClusterList.size(), 0));
+	std::vector<std::vector<int>> clusterComparisonMatrix;
+	clusterComparisonMatrix.resize(this->clusterList.size(), std::vector<int>(this->previousClusterList.size(), 0));
+	//clusterComparisonMatrix.resize(this->clusterList.size() + 1, std::vector<int>(this->previousClusterList.size() + 1, 0));	// Adding a "gas cluster" at the end of each list.
 
-	// ToDo: Get gas particles for analyzing the algorithm.
-	//int currentGasClusterID = this->clusterList.size();
-	//int previousGasClusterID = this->previousClusterList.size();
+	// Set gas cluster ids (for analyzing the algorithm).
+	//int currentGasClusterID = static_cast<int>(this->clusterList.size());
+	//int previousGasClusterID = static_cast<int>(this->previousClusterList.size());
 
 	// Previous to current particle comparison.
 	for (int pid = 0; pid < this->particleList.size(); ++pid) { // Since particleList size stays the same for each frame, one loop is just fine.
-		// Maybe add a "gas cluster" at the end each clusterList, so particles who were partly in gas can be analysed.
 		if (this->particleList[pid].clusterID != -1 && this->previousParticleList[pid].clusterID != -1) // Skip gas.
-			clusterCompareMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++; // Race condition.
+			clusterComparisonMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++; // Race condition.
+
+		// Uses a "gas cluster" at the end of each clusterList to catch particles who were partly in gas or stay in gas.
+		//int clusterID = -2;
+		//int previousClusterID = -2;
+		//if (this->previousParticleList[pid].clusterID == -1)
+		//	previousClusterID = previousGasClusterID;
+		//else
+		//	previousClusterID = this->previousParticleList[pid].clusterID;
+		//if (this->particleList[pid].clusterID == -1)
+		//	clusterID = currentGasClusterID;
+		//else
+		//	clusterID = this->particleList[pid].clusterID;
+		//clusterComparisonMatrix[clusterID][previousClusterID]++; // Race condition.
 	}
 	
+	// Count gas and percentage.
+	int gasCountPrevious, gasCountCurrent;
+	gasCountPrevious = gasCountCurrent = 0;
+	for (auto & particle : this->previousParticleList) {
+		if (particle.clusterID < 0)
+			gasCountPrevious++;
+	}
+	for (auto & particle : this->particleList) {
+		if (particle.clusterID < 0)
+			gasCountCurrent++;
+	}
+	double gasPercentagePrevious = gasCountPrevious / static_cast<double> (this->previousParticleList.size()) * 100;
+	double gasPercentageCurrent = gasCountCurrent / static_cast<double> (this->particleList.size()) * 100;
+
+	// Check size of compare matrix.
+	this->debugFile << "Compare Matrix size: " << clusterComparisonMatrix.size() << " x " << clusterComparisonMatrix[0].size() << ".\n";
+	int sum = 0;
+	std::vector<int> rowSums;
+	rowSums.resize(clusterComparisonMatrix.size(), 0);
+	for (int row = 0; row < clusterComparisonMatrix.size(); ++row) {
+		for (int column = 0; column < clusterComparisonMatrix[row].size(); ++column) {
+			sum += clusterComparisonMatrix[row][column];
+			rowSums[row] += clusterComparisonMatrix[row][column];
+		}
+	}
+	this->debugFile << "Comparison Matrix sum + gasCount current/previous: " << sum << " + " << gasCountCurrent << "/" << gasCountPrevious;
+	//this->debugFile << " and the sum of each row:\n";
+	//for (auto & value : rowSums)
+	//	this->debugFile << value << "\n";
+
 	///
 	/// Detecting the type of event.
 	/// First checking all new clusters for each previous cluster (forward),
@@ -1032,44 +1093,64 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	/// Forward check.
 	///
 	for (int pcid = 0; pcid < this->previousClusterList.size(); ++pcid) {
-		
-		if (this->previousClusterList[pcid].numberOfParticles < this->minClusterSize)
-			continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
 
-		// Debug.
 		PartnerClusters partnerClusters;
-		partnerClusters.cluster = this->previousClusterList[pcid];
 
+		// Add gas cluster.
+		//if (pcid == previousGasClusterID) {
+		//	Cluster cluster;
+		//	cluster.id = previousGasClusterID;
+		//	cluster.numberOfParticles = gasCountPrevious;
+		//	partnerClusters.cluster = cluster;
+		//}
+		//else {
+		//	if (this->previousClusterList[pcid].numberOfParticles < this->minClusterSize)
+		//		continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
+			if (this->previousClusterList[pcid].numberOfParticles == 0)
+				continue; // Skip merged clusters.
+
+			partnerClusters.cluster = this->previousClusterList[pcid];
+		//}
+
+		//for (int cid = 0; cid < this->clusterList.size() + 1; ++cid) { // +1 for gas cluster.
 		for (int cid = 0; cid < this->clusterList.size(); ++cid) {
 
-			if (this->clusterList[cid].numberOfParticles < this->minClusterSize)
-				continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
+			// Add gas cluster.
+			//if (cid == currentGasClusterID) {
+			//	Cluster cluster;
+			//	cluster.id = currentGasClusterID;
+			//	cluster.numberOfParticles = gasCountCurrent;
+			//	int numberOfCommonParticles = clusterComparisonMatrix[cid][pcid];
+			//	if (numberOfCommonParticles > 0) {
+			//		partnerClusters.addPartner(cluster, numberOfCommonParticles, true);
+			//	}
+			//	continue;
+			//}
 
-			int numberOfCommonParticles = clusterCompareMatrix[cid][pcid];
+			int numberOfCommonParticles = clusterComparisonMatrix[cid][pcid];
 
-			// For output.
 			if (numberOfCommonParticles > 0) {
 				partnerClusters.addPartner(this->clusterList[cid], numberOfCommonParticles);
 			}
 		}
 
-		// Debug.
-		compareAllFile << "Previous cluster " << pcid;
-		compareAllFile << ", " << partnerClusters.cluster.numberOfParticles << " particles";
-		compareAllFile << ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)";
-		compareAllFile << ", " << partnerClusters.getLocalMaxTotalRatio() << " % max to total ratio";
-		compareAllFile << ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")";
-		compareAllFile << ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)";
-		compareAllFile << ", " << partnerClusters.getNumberOfPartners() << " partner clusters";
-		compareAllFile << "\n";
+		// Output.
+		compareAllFile << "Previous cluster " << partnerClusters.cluster.id
+			<< ", " << partnerClusters.cluster.numberOfParticles << " particles"
+			<< ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)"
+			<< ", " << partnerClusters.getLocalMaxTotalPercentage() << " % max to total ratio"
+			<< ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")"
+			<< ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)"
+			<< ", " << partnerClusters.getNumberOfPartners() << " partner clusters"
+			<< "\n";
 
 		partnerClusters.sortPartners();
 
 		for (int i = 0; i < partnerClusters.getNumberOfPartners(); ++i) {
 			PartnerClusters::PartnerCluster cc = partnerClusters.getPartner(i);
-			compareAllFile << "Cluster " << cc.cluster.id << " (size " << cc.cluster.numberOfParticles << "): " << cc.commonParticles << " common";
-			compareAllFile << ", ratio this/global (" << cc.getCommonPercentage() << "%, " << cc.getClusterCommonPercentage(partnerClusters.cluster) << "%)";
-			compareAllFile << "\n";
+			compareAllFile << "Cluster " << cc.cluster.id << " (size " << cc.cluster.numberOfParticles << "): " << cc.commonParticles << " common"
+				<< ", ratio this/global (" << cc.getCommonPercentage() << "%, " << cc.getClusterCommonPercentage(partnerClusters.cluster) << "%)"
+				<< "\n";
 		}
 		compareAllFile << "\n";
 		partnerClusterListForward.push_back(partnerClusters);
@@ -1081,43 +1162,64 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	///
 	for (int cid = 0; cid < this->clusterList.size(); ++cid) {
 
-		if (this->clusterList[cid].numberOfParticles < this->minClusterSize)
-			continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
-
-		// Debug.
 		PartnerClusters partnerClusters;
-		partnerClusters.cluster = this->clusterList[cid];
 
+		// Add gas cluster.
+		//if (cid == currentGasClusterID) {
+		//	Cluster cluster;
+		//	cluster.id = currentGasClusterID;
+		//	cluster.numberOfParticles = gasCountCurrent;
+		//	partnerClusters.cluster = cluster;
+		//}
+		//else {
+		//	if (this->clusterList[cid].numberOfParticles < this->minClusterSize)
+		//		continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
+			if (this->clusterList[cid].numberOfParticles == 0)
+				continue; // Skip merged clusters.
+
+			partnerClusters.cluster = this->clusterList[cid];
+		//}
+		
+
+		//for (int pcid = 0; pcid < this->previousClusterList.size() + 1; ++pcid) { // +1 for gas cluster.
 		for (int pcid = 0; pcid < this->previousClusterList.size(); ++pcid) {
 
-			if (this->previousClusterList[pcid].numberOfParticles < this->minClusterSize)
-				continue; // Skip clusters smaller than minClusterSize. Some 1 particles clusters are left and produce bad results.
+			// Add gas cluster.
+			//if (pcid == previousGasClusterID) {
+			//	Cluster cluster;
+			//	cluster.id = previousGasClusterID;
+			//	cluster.numberOfParticles = gasCountPrevious;
+			//	int numberOfCommonParticles = clusterComparisonMatrix[cid][pcid];
+			//	if (numberOfCommonParticles > 0) {
+			//		partnerClusters.addPartner(cluster, numberOfCommonParticles, true);
+			//	}
+			//	continue;
+			//}
 
-			int numberOfCommonParticles = clusterCompareMatrix[cid][pcid];
+			int numberOfCommonParticles = clusterComparisonMatrix[cid][pcid];
 
-			// For output.
 			if (numberOfCommonParticles > 0) {
 				partnerClusters.addPartner(this->previousClusterList[pcid], numberOfCommonParticles);
 			}
 		}
 
-		// Debug.
-		compareAllFile << "Cluster " << cid;
-		compareAllFile << ", " << partnerClusters.cluster.numberOfParticles << " particles";
-		compareAllFile << ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)";
-		compareAllFile << ", " << partnerClusters.getLocalMaxTotalRatio() << " % max to total ratio";
-		compareAllFile << ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")";
-		compareAllFile << ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)";
-		compareAllFile << ", " << partnerClusters.getNumberOfPartners() << " partner clusters";
-		compareAllFile << "\n";
+		// Output.
+		compareAllFile << "Cluster " << partnerClusters.cluster.id
+			<< ", " << partnerClusters.cluster.numberOfParticles << " particles"
+			<< ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)"
+			<< ", " << partnerClusters.getLocalMaxTotalPercentage() << " % max to total ratio"
+			<< ", common particles min/max (" << partnerClusters.getMinCommonParticles() << ", " << partnerClusters.getMaxCommonParticles() << ")"
+			<< ", percentage min/max (" << partnerClusters.getMinCommonPercentage() << "%, " << partnerClusters.getMaxCommonPercentage() << "%)"
+			<< ", " << partnerClusters.getNumberOfPartners() << " partner clusters"
+			<< "\n";
 
 		partnerClusters.sortPartners();
 
 		for (int i = 0; i < partnerClusters.getNumberOfPartners(); ++i) {
 			PartnerClusters::PartnerCluster pc = partnerClusters.getPartner(i);
-			compareAllFile << "Previous cluster " << pc.cluster.id << " (size " << pc.cluster.numberOfParticles << "): " << pc.commonParticles << " common";
-			compareAllFile << ", ratio this/global (" << pc.getCommonPercentage() << "%, " << pc.getClusterCommonPercentage(partnerClusters.cluster) << "%)";
-			compareAllFile << "\n";
+			compareAllFile << "Previous cluster " << pc.cluster.id << " (size " << pc.cluster.numberOfParticles << "): " << pc.commonParticles << " common"
+				<< ", ratio this/global (" << pc.getCommonPercentage() << "%, " << pc.getClusterCommonPercentage(partnerClusters.cluster) << "%)"
+				<< "\n";
 		}
 		compareAllFile << "\n";
 
@@ -1125,31 +1227,49 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	}
 
 	///
-	/// Summary evaluation:
-	/// - Files to create diagrams.
-	/// - for frame to frame comparison: Mean value and standard deviation of values: http://stackoverflow.com/a/7616783/4566599
+	/// Evaluation:
+	/// - csv to create diagrams
+	/// - for frame to frame comparison: Mean value and standard deviation of values.
 	///
 	std::vector<double> vTotalCommonPercentage;
-	forwardListFile << "Cluster id; Cluster size; Common particle no; Common particle percentage; Amount of biggest partners\n";
+	forwardListFile << "Cluster id; Cluster size [#]; Common particles [#]; Common particles [%]; Partners [#]; Average partner common particles [%]; "
+		<< "LocalMaxTotal [%]; 75 % partners; 50 % partners; 25 % partners; below 10 % partners; below 1 % partners\n";
 	for (auto partnerClusters : partnerClusterListForward) {
-		forwardListFile << partnerClusters.cluster.id << ";";
-		forwardListFile << partnerClusters.cluster.numberOfParticles << ";";
-		forwardListFile << partnerClusters.getTotalCommonParticles() << ";";
-		forwardListFile << partnerClusters.getTotalCommonPercentage() << ";";
-		forwardListFile << partnerClusters.getBiggestPartnerAmount() << "\n";
+		forwardListFile << partnerClusters.cluster.id << ";"
+			<< partnerClusters.cluster.numberOfParticles << ";"
+			<< partnerClusters.getTotalCommonParticles() << ";"
+			<< partnerClusters.getTotalCommonPercentage() << ";"
+			<< partnerClusters.getNumberOfPartners() << ";"
+			<< partnerClusters.getAveragePartnerCommonPercentage() << ";"
+			<< partnerClusters.getLocalMaxTotalPercentage() << ";"
+			<< partnerClusters.getBigPartnerAmount(75) << ";"
+			<< partnerClusters.getBigPartnerAmount(50) << ";"
+			<< partnerClusters.getBigPartnerAmount(25) << ";"
+			<< partnerClusters.getSmallPartnerAmount(10) << ";"
+			<< partnerClusters.getSmallPartnerAmount(1)
+			<< "\n";
 		vTotalCommonPercentage.push_back(partnerClusters.getTotalCommonPercentage());
 	}
 
 	MeanStdDev mdTotalCommonPercentageFwd = meanStdDeviation(vTotalCommonPercentage);
 	vTotalCommonPercentage.clear();
 
-	backwardsListFile << "Cluster id; Cluster size; Common particle no; Common particle percentage; Amount of biggest partners\n";
+	backwardsListFile << "Cluster id; Cluster size [#]; Common particles [#]; Common particles [%]; Partners [#]; Average partner common particles [%]; "
+		<< "LocalMaxTotal [%]; 75 % partners; 50 % partners; 25 % partners; below 10 % partners; below 1 % partners\n";
 	for (auto partnerClusters : partnerClusterListBackwards) {
-		backwardsListFile << partnerClusters.cluster.id << ";";
-		backwardsListFile << partnerClusters.cluster.numberOfParticles << ";";
-		backwardsListFile << partnerClusters.getTotalCommonParticles() << ";";
-		backwardsListFile << partnerClusters.getTotalCommonPercentage() << ";";
-		backwardsListFile << partnerClusters.getBiggestPartnerAmount() << "\n";
+		backwardsListFile << partnerClusters.cluster.id << ";"
+			<< partnerClusters.cluster.numberOfParticles << ";"
+			<< partnerClusters.getTotalCommonParticles() << ";"
+			<< partnerClusters.getTotalCommonPercentage() << ";"
+			<< partnerClusters.getNumberOfPartners() << ";"
+			<< partnerClusters.getAveragePartnerCommonPercentage() << ";"
+			<< partnerClusters.getLocalMaxTotalPercentage() << ";"
+			<< partnerClusters.getBigPartnerAmount(75) << ";"
+			<< partnerClusters.getBigPartnerAmount(50) << ";"
+			<< partnerClusters.getBigPartnerAmount(25) << ";"
+			<< partnerClusters.getSmallPartnerAmount(10) << ";"
+			<< partnerClusters.getSmallPartnerAmount(1)
+			<< "\n";
 		vTotalCommonPercentage.push_back(partnerClusters.getTotalCommonPercentage());
 	}
 
@@ -1171,32 +1291,17 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 	});
 
-	// Count gas percentage.
-	int gasCountPrevious, gasCountCurrent;
-	gasCountPrevious = gasCountCurrent = 0;
-	for (auto & particle : this->previousParticleList) {
-		if (particle.clusterID < 0)
-			gasCountPrevious++;
-	}
-	for (auto & particle : this->particleList) {
-		if (particle.clusterID < 0)
-			gasCountCurrent++;
-	}
-	double gasPercentagePrevious = gasCountPrevious / static_cast<double> (this->previousParticleList.size()) * 100;
-	double gasPercentageCurrent = gasCountCurrent / static_cast<double> (this->particleList.size()) * 100;
-
-	// Output.
-	compareSummaryFile << "Gas ratio: previous Frame " << gasPercentagePrevious << "% (" << gasCountPrevious << "), ";
-	compareSummaryFile << "current Frame " << gasPercentageCurrent << "% (" << gasCountCurrent << ").\n\n";
-	compareSummaryFile << "Ratio of common particles.\n";
-	compareSummaryFile << "Forward direction (previous -> current):\n";
-	compareSummaryFile << "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
-	compareSummaryFile << "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation " << mdTotalCommonPercentageFwd.deviation << "%\n";
-	compareSummaryFile << "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << minPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageFwdIT->getLocalMaxTotalRatio() << "%)\n";
-	compareSummaryFile << "Backward direction (current -> previous):\n";
-	compareSummaryFile << "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
-	compareSummaryFile << "Mean " << mdTotalCommonPercentageBw.mean << "%, std deviation " << mdTotalCommonPercentageBw.deviation << "%\n";
-	compareSummaryFile << "Min " << minPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << minPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageBwIT->getLocalMaxTotalRatio() << "%)\n";
+	compareSummaryFile << "Gas ratio: previous frame " << gasPercentagePrevious << "% (" << gasCountPrevious << "), "
+		<< "current frame (" << this->frameId << ") " << gasPercentageCurrent << "% (" << gasCountCurrent << ").\n\n"
+		<< "Ratio of common particles.\n"
+		<< "Forward direction (previous -> current):\n"
+		<< "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageFwdIT->getLocalMaxTotalPercentage() << "%)\n"
+		<< "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation " << mdTotalCommonPercentageFwd.deviation << "%\n"
+		<< "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << minPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageFwdIT->getLocalMaxTotalPercentage() << "%)\n"
+		<< "Backward direction (current -> previous):\n"
+		<< "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageBwIT->getLocalMaxTotalPercentage() << "%)\n"
+		<< "Mean " << mdTotalCommonPercentageBw.mean << "%, std deviation " << mdTotalCommonPercentageBw.deviation << "%\n"
+		<< "Min " << minPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << minPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageBwIT->getLocalMaxTotalPercentage() << "%)\n";
 
 	///
 	/// Summary evaluation: Most common/uncommon clusters, critical values have to be evaluated depending on:
@@ -1205,7 +1310,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	/// - how many clusters are close to median.
 	///
 	/// Number of clusters with TotalCommonPercentage > 70%, 50%, 30%, ... . Fwd: Detect split, bw: Detect merge.
-	/// Number of clusters with TotalCommonPercentage < 5%, 15%, 25%. Fwd: Detect birth, bw: Detect death.
+	/// Number of clusters with TotalCommonPercentage < 5%, 15%, 25%. Fwd: Detect birth, bw: Detect death.? Don't.
 	/// Specific numbers have to be tested!
 	///
 
@@ -1387,6 +1492,7 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists() {
 		std::uniform_int_distribution<int> distribution2(std::max(0, this->particleList[i].clusterID - streuung), std::min(9, this->particleList[i].clusterID + streuung));
 		this->previousParticleList[i].clusterID = distribution2(mt);
 	}
+	printf("Dummy lists set: %d, %d.\n", particleAmount, clusterAmount);
 }
 
 
@@ -1531,7 +1637,7 @@ bool mmvis_static::StructureEventsClusterVisualization::isInSameComponent(
 	return physicalDistance <= powf(depthDistance * (2 * particle.radius) + 2 * particle.radius, 2);
 }
 
-
+/*
 mmvis_static::StructureEventsClusterVisualization::Particle
 mmvis_static::StructureEventsClusterVisualization::_getParticle (const uint64_t particleID) const {
 	auto time_getParticle = std::chrono::system_clock::now();
@@ -1548,7 +1654,7 @@ mmvis_static::StructureEventsClusterVisualization::_getParticle (const uint64_t 
 	}
 	// Missing return statement!
 }
-/*
+
 mmvis_static::StructureEventsClusterVisualization::Cluster*
 mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const {
 	auto time_getCluster = std::chrono::system_clock::now();

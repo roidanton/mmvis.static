@@ -64,11 +64,12 @@ namespace megamol {
 
 				// Store a pointer to the cluster. Bad when cluster is moved in memory.
 				//Cluster* clusterPtr = NULL;
-				// Stores the cluster ID. Should replace the ptr in future so list can be moved in memory!
+				// Store the cluster id. Save when cluster list is moved in memory.
 				int clusterID = -1;
 
 				// Store pointer to the neighbours. Bad when they are moved in memory.
 				//std::vector<Particle*> neighbourPtrs;
+				// Store ids of the neighbours. Save when particle list is moved in memory.
 				std::vector<uint64_t> neighbourIDs;
 
 				// Copy & store neighbour directly to avoid costly
@@ -97,16 +98,17 @@ namespace megamol {
 				struct PartnerCluster {
 					Cluster cluster;
 					int commonParticles = 0;
+					bool isGasCluster = false;
 
 					//PartnerClusters &parent;  // Reference to parent
 					//PartnerCluster(PartnerClusters &ccs) : parent(ccs) {}  // Initialise reference in constructor
 
-					float getCommonPercentage() {
-						return (static_cast<float> (this->commonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100.f;
+					double getCommonPercentage() {
+						return (static_cast<float> (this->commonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100;
 					}
 
-					float getClusterCommonPercentage(const Cluster& c) {
-						return (static_cast<float> (this->commonParticles) / static_cast<float> (c.numberOfParticles)) * 100.f;
+					double getClusterCommonPercentage(const Cluster& c) {
+						return (static_cast<float> (this->commonParticles) / static_cast<float> (c.numberOfParticles)) * 100;
 					}
 					/*
 					PartnerCluster operator=(const PartnerCluster& rhs) {
@@ -132,11 +134,7 @@ namespace megamol {
 				int totalCommonParticles = 0;
 				double minCommonPercentage = -1.f;
 				double maxCommonPercentage = -1.f;
-
-				// Amount of partner clusters with ClusterCommonPercentage / TotalCommonPercentage > 25%.
-				// Previous->current: Can be a split.
-				// Current->previous: Can be a merge.
-				int biggestPartnerAmount = 0;
+				double totalCommonPercentage = -1.f;
 
 			public:
 				Cluster cluster;
@@ -161,25 +159,89 @@ namespace megamol {
 						maxCommonPercentage = PartnerCluster.getClusterCommonPercentage(this->cluster);
 				}
 
+				void addPartner(Cluster newCluster, int commonParticles, bool gasCluster) {
+					if (gasCluster) {
+						PartnerCluster PartnerCluster;
+						PartnerCluster.cluster = newCluster;
+						PartnerCluster.commonParticles = commonParticles;
+						PartnerCluster.isGasCluster = true;
+					}
+					else
+						this->addPartner(newCluster, commonParticles);
+				}
+
 				void sortPartners() {
 					std::sort(this->partners.begin(), this->partners.end(), [](const PartnerCluster& lhs, const PartnerCluster& rhs) {
 						return (lhs.commonParticles > rhs.commonParticles);
 					});
 				}
 
-				PartnerCluster getPartner(int partnerPosition) {
+				PartnerCluster getPartner(const int partnerPosition) const {
 					return this->partners[partnerPosition];
 				}
 
-				/// Currently ratio clusterCommonPercentage / TotalCommonPercentage > 25 % .
-				int getBiggestPartnerAmount() {
-					if (biggestPartnerAmount > 0)
-						return biggestPartnerAmount;
+				/// Amount of partner clusters with ClusterCommonPercentage / TotalCommonPercentage >= percentage %.
+				/// Previous->current: For possible split detection, not optimal for big clusters.
+				/// Current->previous: For possible merge detection, not optimal for big clusters.
+				int getBigPartnerAmount(const double percentage) const {
+					if (this->getTotalCommonPercentage() == 0)
+						return -1; // It's so 90s.
+
+					int count = 0;
+					double ratio = percentage / 100;
 					for (auto partner : this->partners) {
-						if (partner.getClusterCommonPercentage(this->cluster) / this->getTotalCommonPercentage() >= .25)
-							biggestPartnerAmount++;
+						if (partner.getClusterCommonPercentage(this->cluster) / this->getTotalCommonPercentage() >= ratio)
+							count++;
 					}
-					return biggestPartnerAmount;
+					return count;
+				}
+
+				/// Amount of partner clusters with ClusterCommonPercentage / TotalCommonPercentage <= percentage %.
+				/// For noise detection.
+				int getSmallPartnerAmount(const double percentage) const {
+					if (this->getTotalCommonPercentage() == 0)
+						return -1; // It's so 90s.
+
+					int count = 0;
+					double ratio = percentage / 100;
+					for (auto partner : this->partners) {
+						if (partner.getClusterCommonPercentage(this->cluster) / this->getTotalCommonPercentage() <= ratio)
+							count++;
+					}
+					return count;
+				}
+
+				/// Average number of common particles. 
+				/// For similar cluster detection.
+				/// For noise detection.
+				double getAveragePartnerCommonPercentage() const {
+					return this->getTotalCommonPercentage() / static_cast<double>(this->partners.size());
+				}
+
+				/// Common particle to cluster size ratio.
+				/// Previous->current: For shrink detection. For death detection.
+				/// Current->previous: For growth detection. For birth detection.
+				double getTotalCommonPercentage() const {
+					if (this->totalCommonPercentage < 0)
+						return (static_cast<float> (this->totalCommonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100;
+					return this->totalCommonPercentage;
+				}
+
+				/// Ratio of common particles of the biggest partner to common particle ratio of this cluster.
+				/// For similar cluster detection.
+				double getLocalMaxTotalPercentage() const { // Name props to Andreas.
+					if (this->getTotalCommonPercentage() == 0)
+						return -1; // It's so 90s.
+
+					return (this->maxCommonPercentage / this->getTotalCommonPercentage()) * 100;
+				}
+
+				/// For similar cluster detection.
+				/// For noise detection.
+				/// For birth detection (backwards).
+				/// For death detection (forward).
+				int getNumberOfPartners() const {
+					return static_cast<int> (partners.size());
 				}
 
 				int getMinCommonParticles() const {
@@ -200,18 +262,6 @@ namespace megamol {
 
 				double getMaxCommonPercentage() const {
 					return this->maxCommonPercentage;
-				}
-
-				double getTotalCommonPercentage() const {
-					return (static_cast<float> (this->totalCommonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100;
-				}
-
-				double getLocalMaxTotalRatio() const { // Name props to Andreas.
-					return (this->maxCommonPercentage / this->getTotalCommonPercentage()) * 100;
-				}
-
-				int getNumberOfPartners() const {
-					return static_cast<int> (partners.size());
 				}
 			};
 
@@ -345,6 +395,7 @@ namespace megamol {
 			/// Only sets ids, cluster id and numberOfParticles.
 			void setDummyLists();
 
+			/// Mean value and standard deviation of values: http ://stackoverflow.com/a/7616783/4566599
 			MeanStdDev meanStdDeviation(std::vector<double> v);
 
 			/// Iterate through whole list (exhaustive search), only check distance when signed distance is similar.
