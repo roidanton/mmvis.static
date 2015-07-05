@@ -27,6 +27,7 @@ using namespace megamol::core;
 mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisualization() : Module(),
 	inDataSlot("in data", "Connects to the data source. Expects signed distance particles"),
 	outDataSlot("out data", "Slot to request data from this calculation."),
+	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
 	activateCalculationSlot("activateCalculation", "Triggers the calculation"),
 	periodicBoundaryConditionSlot("periodicBoundary", "Periodic boundary condition for dataset."),
 	minClusterSize(10), dataHash(0), frameId(0), treeSize(0) {
@@ -37,6 +38,10 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	this->outDataSlot.SetCallback("MultiParticleDataCall", "GetData", &StructureEventsClusterVisualization::getDataCallback);
 	this->outDataSlot.SetCallback("MultiParticleDataCall", "GetExtent", &StructureEventsClusterVisualization::getExtentCallback);
 	this->MakeSlotAvailable(&this->outDataSlot);
+
+	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetData", &StructureEventsClusterVisualization::getSEDataCallback);
+	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetExtent", &StructureEventsClusterVisualization::getSEExtentCallback);
+	this->MakeSlotAvailable(&this->outSEDataSlot);
 
 	this->activateCalculationSlot << new param::BoolParam(false);
 	this->MakeSlotAvailable(&this->activateCalculationSlot);
@@ -81,9 +86,16 @@ bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& ca
 	MultiParticleDataCall *inMpdc = this->inDataSlot.CallAs<MultiParticleDataCall>();
 	if (inMpdc == NULL) return false;
 
+	/// Doesnt work like that, no CallAs.
+	//StructureEventsDataCall *outSedc = this->outSEDataSlot.CallAs<StructureEventsDataCall>();
+	//if (outSedc == NULL) {
+	//	this->debugFile << "No StructureEventsDataCall connected.\n";
+	//}
+
 	*inMpdc = *outMpdc; // Get the correct request time.
 	if (!(*inMpdc)(0)) return false;
 
+	//if (!this->manipulateData(*outMpdc, *inMpdc, *outSedc)) {
 	if (!this->manipulateData(*outMpdc, *inMpdc)) {
 		inMpdc->Unlock();
 		return false;
@@ -94,6 +106,27 @@ bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& ca
 	return true;
 }
 
+bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& caller) {
+	using megamol::core::moldyn::MultiParticleDataCall;
+
+	StructureEventsDataCall *outSedc = dynamic_cast<StructureEventsDataCall*>(&caller);
+	if (outSedc == NULL) return false;
+
+	MultiParticleDataCall *inMpdc = this->inDataSlot.CallAs<MultiParticleDataCall>();
+	if (inMpdc == NULL) return false;
+
+	//*inMpdc = *outMpdc; // Get the correct request time.
+	if (!(*inMpdc)(0)) return false;
+
+	//if (!this->manipulateData(*outSedc, *inMpdc)) {
+	//	inMpdc->Unlock();
+	//	return false;
+	//}
+
+	inMpdc->Unlock();
+
+	return true;
+}
 
 /**
  * mmvis_static::StructureEventsClusterVisualization::getExtentCallback
@@ -121,11 +154,18 @@ bool mmvis_static::StructureEventsClusterVisualization::getExtentCallback(Call& 
 }
 
 
+bool mmvis_static::StructureEventsClusterVisualization::getSEExtentCallback(Call& callee) {
+	//TODO or delete
+	return true;
+}
+
+
 /**
  * mmvis_static::StructureEventsClusterVisualization::manipulateData
  */
 bool mmvis_static::StructureEventsClusterVisualization::manipulateData (
 	megamol::core::moldyn::MultiParticleDataCall& outData,
+	//mmvis_static::StructureEventsDataCall& outSEData,
 	megamol::core::moldyn::MultiParticleDataCall& inData) {
 
 	//printf("Calculator: FrameIDs in: %d, out: %d, stored: %d.\n", inData.FrameID(), outData.FrameID(), this->frameId); // Debug.

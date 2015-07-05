@@ -23,6 +23,7 @@
 #include "mmcore/param/ParamSlot.h"
 #include "mmcore/Module.h"
 #include "mmcore/moldyn/MultiParticleDataCall.h"
+#include "StructureEventsDataCall.h"
 #include "glm/glm/glm.hpp"
 
 #include <map>
@@ -333,6 +334,7 @@ namespace megamol {
 			 * @return 'true' on success, 'false' on failure.
 			 */
 			bool getDataCallback(core::Call& caller);
+			bool getSEDataCallback(core::Call& caller);
 
 			/**
 			 * Called when the extend information is requested by this module.
@@ -342,9 +344,10 @@ namespace megamol {
 			 * @return 'true' on success, 'false' on failure.
 			 */
 			bool getExtentCallback(core::Call& caller);
+			bool getSEExtentCallback(core::Call& caller);
 
 			/**
-			 * Manipulates the particle data. Currently just one frame!
+			 * Manipulates the particle data.
 			 *
 			 * @param outData The call receiving the manipulated data
 			 * @param inData The call holding the original data
@@ -353,6 +356,7 @@ namespace megamol {
 			 */
 			bool manipulateData(
 				core::moldyn::MultiParticleDataCall& outData,
+				//mmvis_static::StructureEventsDataCall& outSEData,
 				core::moldyn::MultiParticleDataCall& inData);
 
 			/**
@@ -367,9 +371,7 @@ namespace megamol {
 				core::moldyn::MultiParticleDataCall& outData,
 				core::moldyn::MultiParticleDataCall& inData);
 
-			/**
-			 * Writes the data from a single MultiParticleDataCall frame into particleList.			 
-			 */
+			/// Writes the data from a single MultiParticleDataCall frame into particleList.			 
 			void setData(core::moldyn::MultiParticleDataCall& data);
 
 			/// Set neighbours in particleList.
@@ -398,24 +400,6 @@ namespace megamol {
 			/// Mean value and standard deviation of values: http ://stackoverflow.com/a/7616783/4566599
 			MeanStdDev meanStdDeviation(std::vector<double> v);
 
-			/// Iterate through whole list (exhaustive search), only check distance when signed distance is similar.
-			/// Must happen after list sorting by signed distance!
-			/// Takes forever! OBSOLETE.
-			void findNeighboursBySignedDistance();
-
-			/// First, naiv implementation. OBSOLETE.
-			void createClustersSignedDistanceOnly();
-			/// Returns true if the particle is in signed distance range of the reference. OBSOLETE.
-			bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
-
-			/// Get a particle from particleList with particle ID.
-			mmvis_static::StructureEventsClusterVisualization::Particle
-				mmvis_static::StructureEventsClusterVisualization::_getParticle(const uint64_t particleID) const;
-
-			/// Get a cluster from clusterList with particle ID.
-			mmvis_static::StructureEventsClusterVisualization::Cluster*
-				mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const;
-
 			/// Files.
 			std::ofstream logFile;
 			std::ofstream debugFile;
@@ -425,6 +409,9 @@ namespace megamol {
 
 			/// The call for outgoing data.
 			core::CalleeSlot outDataSlot;
+
+			/// The call for outgoing StructureEvent data.
+			core::CalleeSlot outSEDataSlot;
 
 			/// The knob to manually start the calculation.
 			core::param::ParamSlot activateCalculationSlot;
@@ -454,6 +441,24 @@ namespace megamol {
 
 			/// Cache container of a single MMPLD particle list.
 			core::moldyn::MultiParticleDataCall::Particles particles;
+
+			/// Iterate through whole list (exhaustive search), only check distance when signed distance is similar.
+			/// Must happen after list sorting by signed distance!
+			/// Takes forever! OBSOLETE.
+			void findNeighboursBySignedDistance();
+
+			/// First, naiv implementation. OBSOLETE.
+			void createClustersSignedDistanceOnly();
+			/// Returns true if the particle is in signed distance range of the reference. OBSOLETE.
+			bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
+
+			/// Get a particle from particleList with particle ID. UNUSED.
+			mmvis_static::StructureEventsClusterVisualization::Particle
+				mmvis_static::StructureEventsClusterVisualization::_getParticle(const uint64_t particleID) const;
+
+			/// Get a cluster from clusterList with particle ID. UNUSED.
+			mmvis_static::StructureEventsClusterVisualization::Cluster*
+				mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const;
 		};
 
 	} /* namespace mmvis_static */
