@@ -1481,7 +1481,7 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 			deathAmount++;
 		
 		// Detect split.
-		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::IntParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
+		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
 			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
@@ -1492,7 +1492,7 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		}
 
 		// Detect death.
-		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::IntParam>()->Value()) {
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
 			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
@@ -1524,7 +1524,7 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 			birthAmount++;
 
 		// Detect merge.
-		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::IntParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
+		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
 			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
@@ -1535,7 +1535,7 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		}
 
 		// Detect birth.
-		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::IntParam>()->Value()) {
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
 			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
