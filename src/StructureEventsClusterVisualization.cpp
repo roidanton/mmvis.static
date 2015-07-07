@@ -9,6 +9,7 @@
 #include "stdafx.h"
 #include "StructureEventsClusterVisualization.h"
 #include "mmcore/param/IntParam.h"
+#include "mmcore/param/FloatParam.h"
 #include "mmcore/param/BoolParam.h"
 #include "ANN/ANN.h"
 #include "vislib/math/Vector.h"
@@ -30,7 +31,11 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
 	activateCalculationSlot("activateCalculation", "Triggers the calculation"),
 	periodicBoundaryConditionSlot("periodicBoundary", "Periodic boundary condition for dataset."),
-	minClusterSize(10), dataHash(0), frameId(0), treeSize(0) {
+	minMergeSplitPercentageSlot("minMergeSplitPercentage", "Minimal ratio of common particles for merge/split event detection."),
+	minMergeSplitAmountSlot("minMergeSplitAmount", "Minimal number of cluster for merge/split event detection."),
+	maxBirthDeathPercentageSlot("maxBirthDeathPercentage", "Maximal ratio of common particles for birth/death event detection."),
+	minClusterSizeSlot("minClusterSize", "Minimal allowed cluster size, clusters smaller than that will be merged."),
+	dataHash(0), frameId(0), treeSize(0) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
 	this->MakeSlotAvailable(&this->inDataSlot);
@@ -43,11 +48,23 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetExtent", &StructureEventsClusterVisualization::getSEExtentCallback);
 	this->MakeSlotAvailable(&this->outSEDataSlot);
 
-	this->activateCalculationSlot << new param::BoolParam(false);
+	this->activateCalculationSlot.SetParameter(new param::BoolParam(false));
 	this->MakeSlotAvailable(&this->activateCalculationSlot);
 
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
+
+	this->minMergeSplitPercentageSlot.SetParameter(new core::param::FloatParam(35, 20, 45));
+	this->MakeSlotAvailable(&this->minMergeSplitPercentageSlot);
+
+	this->minMergeSplitAmountSlot.SetParameter(new core::param::IntParam(2, 2));
+	this->MakeSlotAvailable(&this->minMergeSplitAmountSlot);
+
+	this->maxBirthDeathPercentageSlot.SetParameter(new core::param::FloatParam(2, 2, 10));
+	this->MakeSlotAvailable(&this->maxBirthDeathPercentageSlot);
+
+	this->minClusterSizeSlot.SetParameter(new core::param::IntParam(10, 8));
+	this->MakeSlotAvailable(&this->minClusterSizeSlot);
 }
 
 
@@ -106,6 +123,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& ca
 	return true;
 }
 
+
 bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& caller) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
@@ -115,6 +133,8 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& 
 	MultiParticleDataCall *inMpdc = this->inDataSlot.CallAs<MultiParticleDataCall>();
 	if (inMpdc == NULL) return false;
 
+	// ToDo: get StructureEvents from object attribute.
+
 	//*inMpdc = *outMpdc; // Get the correct request time.
 	if (!(*inMpdc)(0)) return false;
 
@@ -123,10 +143,20 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& 
 	//	return false;
 	//}
 
+	if (this->structureEvents.size() > 0) {
+		// Send data to the call.
+		StructureEvents* events = &outSedc->getEvents();
+		events->setEvents(this->structureEvents.front().location,
+			&this->structureEvents.front().time,
+			&this->structureEvents.front().type,
+			this->structureEvents.size());
+	}
+
 	inMpdc->Unlock();
 
 	return true;
 }
+
 
 /**
  * mmvis_static::StructureEventsClusterVisualization::getExtentCallback
@@ -156,6 +186,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getExtentCallback(Call& 
 
 bool mmvis_static::StructureEventsClusterVisualization::getSEExtentCallback(Call& callee) {
 	//TODO or delete
+	// getExtend from MPDC
 	return true;
 }
 
@@ -394,6 +425,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 
 	if (this->previousClusterList.size() > 0 && this->previousParticleList.size() > 0) {
 		compareClusters();
+		setStructureEvents();
 		setClusterColor(false);
 	}
 	else {
@@ -436,6 +468,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	this->debugFile.close();
 	this->logFile.close();
 }
+
 
 void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data) {
 
@@ -777,6 +810,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	this->logFile << debugNoNeighbourCounter << " liquid p w/o neighbour; ";
 }
 
+
 void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 	auto time_mergeClusters = std::chrono::system_clock::now();
 
@@ -804,7 +838,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 			this->debugFile << "Error: Particle ID and position in particleList don't match: " << this->clusterList[particle.clusterID].rootParticleID << " != " << this->particleList[this->clusterList[particle.clusterID].rootParticleID].id << "!\n";
 
 		//if (particle.clusterPtr->numberOfParticles >= this->minClusterSize)
-		if (this->clusterList[particle.clusterID].numberOfParticles >= this->minClusterSize) // Requires untouched (i.e. sorting forbidden) clusterList!
+		if (this->clusterList[particle.clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value()) // Requires untouched (i.e. sorting forbidden) clusterList!
 			continue; // Skip particles of bigger clusters.
 
 		// Add clusters in range which are bigger than this->minClusterSize.
@@ -820,7 +854,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 			//	&& neighbour->clusterPtr->numberOfParticles >= this->minClusterSize)
 			//	neighbourClusters.push_back(neighbour->clusterPtr);
 			if (this->clusterList[neighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-				&& this->clusterList[neighbour->clusterID].numberOfParticles >= this->minClusterSize)
+				&& this->clusterList[neighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value())
 				//neighbourClusters.push_back(&this->clusterList[neighbour->clusterID]);
 				neighbourClusterIDs.push_back(this->clusterList[neighbour->clusterID].id);
 		}
@@ -848,7 +882,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 					//	&& secondaryNeighbour->clusterPtr->numberOfParticles >= this->minClusterSize)
 					//	neighbourClusters.push_back(secondaryNeighbour->clusterPtr);
 					if (this->clusterList[secondaryNeighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-						&& this->clusterList[secondaryNeighbour->clusterID].numberOfParticles >= this->minClusterSize)
+						&& this->clusterList[secondaryNeighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value())
 						//neighbourClusters.push_back(&this->clusterList[secondaryNeighbour->clusterID]);
 						neighbourClusterIDs.push_back(this->clusterList[secondaryNeighbour->clusterID].id);
 				}
@@ -871,7 +905,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 							continue; // Skip particles w/o pointers, mandatory for test runs.
 
 						if (this->clusterList[tertiaryNeighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-							&& this->clusterList[tertiaryNeighbour->clusterID].numberOfParticles >= this->minClusterSize)
+							&& this->clusterList[tertiaryNeighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value())
 							//neighbourClusters.push_back(&this->clusterList[tertiaryNeighbour->clusterID]);
 							neighbourClusterIDs.push_back(this->clusterList[tertiaryNeighbour->clusterID].id);
 					}
@@ -1126,9 +1160,6 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	/// then vice versa (backwards).
 	///
 
-	std::vector<PartnerClusters> partnerClusterListForward;
-	std::vector<PartnerClusters> partnerClusterListBackwards;
-
 	///
 	/// Forward check.
 	///
@@ -1193,7 +1224,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 				<< "\n";
 		}
 		compareAllFile << "\n";
-		partnerClusterListForward.push_back(partnerClusters);
+		this->partnerClustersList.forwardList.push_back(partnerClusters);
 	}
 
 
@@ -1262,8 +1293,8 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 				<< "\n";
 		}
 		compareAllFile << "\n";
-
-		partnerClusterListBackwards.push_back(partnerClusters);
+		
+		this->partnerClustersList.backwardsList.push_back(partnerClusters);
 	}
 
 	///
@@ -1273,8 +1304,11 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	///
 	std::vector<double> vTotalCommonPercentage;
 	forwardListFile << "Cluster id; Cluster size [#]; Common particles [#]; Common particles [%]; Partners [#]; Average partner common particles [%]; "
-		<< "LocalMaxTotal [%]; 75 % partners; 50 % partners; 25 % partners; below 10 % partners; below 1 % partners\n";
-	for (auto partnerClusters : partnerClusterListForward) {
+		<< "LocalMaxTotal [%]; "
+		<< "75 % bp; 50 % bp; 45 % bp; 40 % bp; 35 % bp; 30 % bp; 25 % bp; 20 % bp; 10 % sp; 1 % sp; "
+		<< "bp = big partners, sp = small partners"
+		<< "\n";
+	for (auto partnerClusters : this->partnerClustersList.forwardList) {
 		forwardListFile << partnerClusters.cluster.id << ";"
 			<< partnerClusters.cluster.numberOfParticles << ";"
 			<< partnerClusters.getTotalCommonParticles() << ";"
@@ -1284,7 +1318,12 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 			<< partnerClusters.getLocalMaxTotalPercentage() << ";"
 			<< partnerClusters.getBigPartnerAmount(75) << ";"
 			<< partnerClusters.getBigPartnerAmount(50) << ";"
+			<< partnerClusters.getBigPartnerAmount(45) << ";"
+			<< partnerClusters.getBigPartnerAmount(40) << ";"
+			<< partnerClusters.getBigPartnerAmount(35) << ";"
+			<< partnerClusters.getBigPartnerAmount(30) << ";"
 			<< partnerClusters.getBigPartnerAmount(25) << ";"
+			<< partnerClusters.getBigPartnerAmount(20) << ";"
 			<< partnerClusters.getSmallPartnerAmount(10) << ";"
 			<< partnerClusters.getSmallPartnerAmount(1)
 			<< "\n";
@@ -1295,8 +1334,11 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	vTotalCommonPercentage.clear();
 
 	backwardsListFile << "Cluster id; Cluster size [#]; Common particles [#]; Common particles [%]; Partners [#]; Average partner common particles [%]; "
-		<< "LocalMaxTotal [%]; 75 % partners; 50 % partners; 25 % partners; below 10 % partners; below 1 % partners\n";
-	for (auto partnerClusters : partnerClusterListBackwards) {
+		<< "LocalMaxTotal [%]; "
+		<< "75 % bp; 50 % bp; 45 % bp; 40 % bp; 35 % bp; 30 % bp; 25 % bp; 20 % bp; 10 % sp; 1 % sp; "
+		<< "bp = big partners, sp = small partners"
+		<< "\n";
+	for (auto partnerClusters : this->partnerClustersList.backwardsList) {
 		backwardsListFile << partnerClusters.cluster.id << ";"
 			<< partnerClusters.cluster.numberOfParticles << ";"
 			<< partnerClusters.getTotalCommonParticles() << ";"
@@ -1306,7 +1348,12 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 			<< partnerClusters.getLocalMaxTotalPercentage() << ";"
 			<< partnerClusters.getBigPartnerAmount(75) << ";"
 			<< partnerClusters.getBigPartnerAmount(50) << ";"
+			<< partnerClusters.getBigPartnerAmount(45) << ";"
+			<< partnerClusters.getBigPartnerAmount(40) << ";"
+			<< partnerClusters.getBigPartnerAmount(35) << ";"
+			<< partnerClusters.getBigPartnerAmount(30) << ";"
 			<< partnerClusters.getBigPartnerAmount(25) << ";"
+			<< partnerClusters.getBigPartnerAmount(20) << ";"
 			<< partnerClusters.getSmallPartnerAmount(10) << ";"
 			<< partnerClusters.getSmallPartnerAmount(1)
 			<< "\n";
@@ -1318,30 +1365,22 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	///
 	/// Frame to frame evaluation: Min/Max/Mean/StdDev.
 	///
-	auto maxPercentageFwdIT = std::max_element(partnerClusterListForward.begin(), partnerClusterListForward.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
-		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
-	});
-	auto minPercentageFwdIT = std::min_element(partnerClusterListForward.begin(), partnerClusterListForward.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
-		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
-	});
-	auto maxPercentageBwIT = std::max_element(partnerClusterListBackwards.begin(), partnerClusterListBackwards.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
-		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
-	});
-	auto minPercentageBwIT = std::min_element(partnerClusterListBackwards.begin(), partnerClusterListBackwards.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
-		return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
-	});
+	PartnerClusters maxPercentageFwd = partnerClustersList.getMaxPercentage();
+	PartnerClusters minPercentageFwd = partnerClustersList.getMinPercentage();
+	PartnerClusters maxPercentageBw = partnerClustersList.getMaxPercentage(PartnerClustersList::Direction::backwards);
+	PartnerClusters minPercentageBw = partnerClustersList.getMinPercentage(PartnerClustersList::Direction::backwards);
 
 	compareSummaryFile << "Gas ratio: previous frame " << gasPercentagePrevious << "% (" << gasCountPrevious << "), "
 		<< "current frame (" << this->frameId << ") " << gasPercentageCurrent << "% (" << gasCountCurrent << ").\n\n"
 		<< "Ratio of common particles.\n"
 		<< "Forward direction (previous -> current):\n"
-		<< "Max " << maxPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageFwdIT->getLocalMaxTotalPercentage() << "%)\n"
+		<< "Max " << maxPercentageFwd.getTotalCommonPercentage() << "% (cluster " << maxPercentageFwd.cluster.id << " with LocalMaxTotalRatio " << maxPercentageFwd.getLocalMaxTotalPercentage() << "%)\n"
 		<< "Mean " << mdTotalCommonPercentageFwd.mean << "%, std deviation " << mdTotalCommonPercentageFwd.deviation << "%\n"
-		<< "Min " << minPercentageFwdIT->getTotalCommonPercentage() << "% (cluster " << minPercentageFwdIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageFwdIT->getLocalMaxTotalPercentage() << "%)\n"
+		<< "Min " << minPercentageFwd.getTotalCommonPercentage() << "% (cluster " << minPercentageFwd.cluster.id << " with LocalMaxTotalRatio " << minPercentageFwd.getLocalMaxTotalPercentage() << "%)\n"
 		<< "Backward direction (current -> previous):\n"
-		<< "Max " << maxPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << maxPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << maxPercentageBwIT->getLocalMaxTotalPercentage() << "%)\n"
+		<< "Max " << maxPercentageBw.getTotalCommonPercentage() << "% (cluster " << maxPercentageBw.cluster.id << " with LocalMaxTotalRatio " << maxPercentageBw.getLocalMaxTotalPercentage() << "%)\n"
 		<< "Mean " << mdTotalCommonPercentageBw.mean << "%, std deviation " << mdTotalCommonPercentageBw.deviation << "%\n"
-		<< "Min " << minPercentageBwIT->getTotalCommonPercentage() << "% (cluster " << minPercentageBwIT->cluster.id << " with LocalMaxTotalRatio " << minPercentageBwIT->getLocalMaxTotalPercentage() << "%)\n";
+		<< "Min " << minPercentageBw.getTotalCommonPercentage() << "% (cluster " << minPercentageBw.cluster.id << " with LocalMaxTotalRatio " << minPercentageBw.getLocalMaxTotalPercentage() << "%)\n";
 
 	///
 	/// Summary evaluation: Most common/uncommon clusters, critical values have to be evaluated depending on:
@@ -1358,6 +1397,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	///
 	/// Naive coloring by comparing clusterIDs.
 	///
+	/*
 	#pragma omp parallel for
 	for (int i = 0; i < this->clusterList.size(); ++i) {
 		if (i < this->previousClusterList.size()) {
@@ -1375,6 +1415,38 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 			clusterList[i].b = distribution(mt);
 		}
 	}
+	*/
+
+	///
+	/// Coloring of descendant clusters by using their biggest ancestor.
+	///
+#pragma omp parallel for
+	for (int cli = 0; cli < this->clusterList.size(); ++cli) {
+		bool colored = false;
+		if (this->clusterList[cli].numberOfParticles > 0) {
+			PartnerClusters pcs = this->partnerClustersList.getPartnerClusters(this->clusterList[cli].id, PartnerClustersList::Direction::backwards);
+			for (int pci = 0; pci < pcs.getNumberOfPartners(); ++pci) {
+				PartnerClusters::PartnerCluster pc = pcs.getPartner(pci);
+				// Get partner with most common particles.
+				if (pcs.getMaxCommonParticles() == pc.commonParticles) {
+					clusterList[cli].r = pc.cluster.r;
+					clusterList[cli].g = pc.cluster.g;
+					clusterList[cli].b = pc.cluster.b;
+					colored = true;
+					break;
+				}
+			}
+		}
+		if (colored == false) {
+			// Set random color.
+			std::random_device rd;
+			std::mt19937_64 mt(rd());
+			std::uniform_real_distribution<float> distribution(0, 1);
+			clusterList[cli].r = distribution(mt);
+			clusterList[cli].g = distribution(mt);
+			clusterList[cli].b = distribution(mt);
+		}
+	}
 
 	// Time measurement.
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_compareClusters);
@@ -1382,6 +1454,106 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 
 	compareAllFile.close();
 	compareSummaryFile.close();
+}
+
+
+void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
+	std::ofstream debugEventsFile;
+
+	// SECC == Structure Events Cluster Compare.
+	std::string filenameEnd = " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
+	std::string filename = "SECC Events Container" + filenameEnd + ".log";
+	debugEventsFile.open(filename.c_str());
+	
+	// Test output.
+	int partnerAmount30p2, partnerAmount30p3, partnerAmount35p2, partnerAmount40p2, deathAmount, birthAmount;
+	partnerAmount30p2 = partnerAmount30p3 = partnerAmount35p2 = partnerAmount40p2 = deathAmount = birthAmount = 0;
+	for (auto partnerClusters : this->partnerClustersList.forwardList) {
+		if (partnerClusters.getBigPartnerAmount(30) > 1)
+			partnerAmount30p2++;
+		if (partnerClusters.getBigPartnerAmount(30) > 2)
+			partnerAmount30p2++;
+		if (partnerClusters.getBigPartnerAmount(35) > 1)
+			partnerAmount35p2++;
+		if (partnerClusters.getBigPartnerAmount(40) > 1)
+			partnerAmount40p2++;
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= 1)
+			deathAmount++;
+		
+		// Detect split.
+		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::IntParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
+			StructureEvents::StructureEvent se;
+			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
+			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
+			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.time = static_cast<float>(this->frameId);
+			se.type = StructureEvents::SPLIT;
+			this->structureEvents.push_back(se);
+		}
+
+		// Detect death.
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::IntParam>()->Value()) {
+			StructureEvents::StructureEvent se;
+			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
+			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
+			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.time = static_cast<float>(this->frameId);
+			se.type = StructureEvents::DEATH;
+			this->structureEvents.push_back(se);
+		}
+	}
+	debugEventsFile << "Big partners (split):\n"
+		<< "30%, 2+: " << partnerAmount30p2 << "\n"
+		<< "30%, 3+: " << partnerAmount30p3 << "\n"
+		<< "35%, 2+: " << partnerAmount35p2 << "\n"
+		<< "40%, 2+: " << partnerAmount40p2 << "\n"
+		<< "Death: " << deathAmount << "\n"
+		<< "\n";
+	
+	partnerAmount30p2 = partnerAmount30p3 = partnerAmount35p2 = partnerAmount40p2 = deathAmount = birthAmount = 0;
+	for (auto partnerClusters : this->partnerClustersList.backwardsList) {
+		if (partnerClusters.getBigPartnerAmount(30) > 1)
+			partnerAmount30p2++;
+		if (partnerClusters.getBigPartnerAmount(30) > 2)
+			partnerAmount30p2++;
+		if (partnerClusters.getBigPartnerAmount(35) > 1)
+			partnerAmount35p2++;
+		if (partnerClusters.getBigPartnerAmount(40) > 1)
+			partnerAmount40p2++;
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= 1)
+			birthAmount++;
+
+		// Detect merge.
+		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::IntParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
+			StructureEvents::StructureEvent se;
+			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
+			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
+			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.time = static_cast<float>(this->frameId);
+			se.type = StructureEvents::SPLIT;
+			this->structureEvents.push_back(se);
+		}
+
+		// Detect birth.
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::IntParam>()->Value()) {
+			StructureEvents::StructureEvent se;
+			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
+			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
+			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.time = static_cast<float>(this->frameId);
+			se.type = StructureEvents::DEATH;
+			this->structureEvents.push_back(se);
+		}
+	}
+	debugEventsFile << "Big partners (merge):\n"
+		<< "30%, 2+: " << partnerAmount30p2 << "\n"
+		<< "30%, 3+: " << partnerAmount30p3 << "\n"
+		<< "35%, 2+: " << partnerAmount35p2 << "\n"
+		<< "40%, 2+: " << partnerAmount40p2 << "\n"
+		<< "Birth: " << birthAmount << "\n"
+		<< "\n";
+	
+	debugEventsFile.close();
 }
 
 
@@ -1676,6 +1848,7 @@ bool mmvis_static::StructureEventsClusterVisualization::isInSameComponent(
 
 	return physicalDistance <= powf(depthDistance * (2 * particle.radius) + 2 * particle.radius, 2);
 }
+
 
 /*
 mmvis_static::StructureEventsClusterVisualization::Particle

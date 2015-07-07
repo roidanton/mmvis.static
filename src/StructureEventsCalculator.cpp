@@ -149,11 +149,12 @@ bool mmvis_static::StructureEventsCalculator::manipulateData (
 	// Test.
 	const float *location = reinterpret_cast<const float*>(&particleList[0].position);
 	const float *time = reinterpret_cast<const float*>(&particleList[0].position);
-	const uint8_t *type = reinterpret_cast<const uint8_t*>(&particleList[0].position);
+	//const uint8_t *type = reinterpret_cast<const uint8_t*>(&particleList[0].position);
+	const StructureEvents::EventType type = StructureEvents::EventType::BIRTH;
 
 	// Send data to the call.
 	StructureEvents events = outData.getEvents();
-	events.setEvents(location, time, type, events.getCalculatedStride(), particleList.size());
+	events.setEvents(location, time, &type, particleList.size());
 
 	// Debug.
 	printf("Calculator: Location: %f, Listsize: %d, Max Listsize: %lu\n", *location, particleList.size(), particleList.max_size());

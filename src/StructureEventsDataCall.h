@@ -37,15 +37,29 @@ namespace megamol {
 		 * per event but instead four lists of events could be used,
 		 * one for each event type.
 		 */
+
 		class StructureEvents {
 		public:
 
-			/** Possible values for the event type */
+			/// Possible values for the event type.
 			enum EventType {
 				BIRTH,
 				DEATH,
 				MERGE,
 				SPLIT
+			};
+
+			///
+			/// Dichtgepacktes struct.
+			/// It is important that no automatic padding is inserted by compiler
+			/// therefore all datatypes have sizes of 4 or 8.
+			///
+			/// Stride = (4 byte * (3 + 1)) + 4 byte.
+			///
+			struct StructureEvent {
+				float location[3];
+				float time;
+				StructureEvents::EventType type;
 			};
 
 			/// Ctor.
@@ -74,7 +88,10 @@ namespace megamol {
 			/**
 			 * @return The type pointer
 			 */
-			inline const uint8_t * getType(void) const {
+			//inline const uint8_t * getType(void) const {
+			//	return this->typePtr;
+			//}
+			inline const EventType * getType(void) const {
 				return this->typePtr;
 			}
 
@@ -82,6 +99,8 @@ namespace megamol {
 			 * @return The stride
 			 */
 			inline unsigned int getStride(void) const {
+				if (this->stride == 0)
+					return getCalculatedStride();
 				return this->stride;
 			}
 
@@ -89,7 +108,7 @@ namespace megamol {
 			 * @return The calculated stride.
 			 */
 			inline unsigned int getCalculatedStride(void) const {
-				return 4 * sizeof(float) + sizeof(uint8_t);
+				return sizeof(StructureEvent);
 			}
 
 			inline void setStride(unsigned int stride) {
@@ -97,16 +116,18 @@ namespace megamol {
 				this->stride = stride;
 			}
 
+			/// Only use an array of struct StructureEvent.
+			/// Stride is added automatically.
 			inline void setEvents(
 				const float *location,
 				const float *time,
-				const uint8_t *type,
-				unsigned int stride,
+				//const uint8_t *type,
+				const EventType *type,
 				uint64_t count) {
 				this->locationPtr = location;
 				this->timePtr = time;
 				this->typePtr = type;
-				this->stride = stride;
+				this->stride = getCalculatedStride();
 				this->count = count;
 			}
 
@@ -156,10 +177,11 @@ namespace megamol {
 			const float *timePtr;
 
 			// The type pointer, 1 byte. 0 := Birth, 1 := Death, 2 := Merge, 3 := Split as in shader.
-			const uint8_t *typePtr;
+			//const uint8_t *typePtr;
+			const EventType *typePtr;
 
 			// The stride.
-			unsigned int stride;
+			unsigned int stride = 0;
 
 			// The agglomeration.
 			glm::mat4 agglomeration;
@@ -170,6 +192,7 @@ namespace megamol {
 			float maxTime;
 
 		};
+
 
 		/**
 		 * TODO: This class is a stub!

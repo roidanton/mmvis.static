@@ -104,10 +104,12 @@ namespace megamol {
 					//PartnerClusters &parent;  // Reference to parent
 					//PartnerCluster(PartnerClusters &ccs) : parent(ccs) {}  // Initialise reference in constructor
 
+					/// Common percentage with this (partner) cluster.
 					double getCommonPercentage() {
 						return (static_cast<float> (this->commonParticles) / static_cast<float> (this->cluster.numberOfParticles)) * 100;
 					}
 
+					/// Common percentage with parent cluster.
 					double getClusterCommonPercentage(const Cluster& c) {
 						return (static_cast<float> (this->commonParticles) / static_cast<float> (c.numberOfParticles)) * 100;
 					}
@@ -264,19 +266,81 @@ namespace megamol {
 				double getMaxCommonPercentage() const {
 					return this->maxCommonPercentage;
 				}
+
+				bool hasPartnerCluster(int clusterID) const {
+					auto it = std::find_if(this->partners.begin(), this->partners.end(), [clusterID](const PartnerCluster& pc) -> bool {
+						if (pc.cluster.id == clusterID)
+							return true;
+					});
+					if (it != partners.end())
+						return true;
+					else
+						return false;
+				}
 			};
 
 			class PartnerClustersList {
 			private:
 			public:
-				std::vector<PartnerClusters> PartnerClusterListForward;
-				std::vector<PartnerClusters> PartnerClusterListBackwards;
+				std::vector<PartnerClusters> forwardList;
+				std::vector<PartnerClusters> backwardsList;
 
-				/*auto getMaxPercentage() {
-					return std::max_element(PartnerClusterListForward.begin(), PartnerClusterListForward.end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
+				enum class Direction : int {
+					forward,
+					backwards
+				};
+
+				PartnerClusters getMaxPercentage(Direction direction = Direction::forward) {
+					std::vector<PartnerClusters>* list;
+					if (direction == Direction::backwards)
+						list = &this->backwardsList;
+					else
+						list = &this->forwardList;
+					auto it = std::max_element(list->begin(), list->end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
 						return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
 					});
-				}*/
+					return *it;
+				}
+
+				PartnerClusters getMinPercentage(Direction direction = Direction::forward) {
+					std::vector<PartnerClusters>* list;
+					if (direction == Direction::backwards)
+						list = &this->backwardsList;
+					else
+						list = &this->forwardList;
+					auto it = std::min_element(list->begin(), list->end(), [](const PartnerClusters& lhs, const PartnerClusters& rhs) {
+						return lhs.getTotalCommonPercentage() < rhs.getTotalCommonPercentage();
+					});
+					return *it;
+				}
+
+				PartnerClusters getPartnerClusters(int clusterId, Direction direction = Direction::forward) {
+					std::vector<PartnerClusters>* list;
+					if (direction == Direction::backwards)
+						list = &this->backwardsList;
+					else
+						list = &this->forwardList;
+					std::vector<PartnerClusters>::iterator it = std::find_if(list->begin(), list->end(), [clusterId](const PartnerClusters& p) -> bool {
+						return p.cluster.id == clusterId;
+					});
+					return *it;
+				}
+
+				/// List of PartnerClusters who contains the clusterid as parent.
+				/// @param direction Direction of the cluster whos clusterId is given.
+				std::vector<PartnerClusters*> getParentPartnerClusters(int clusterId, Direction directionOfGivenCluster = Direction::forward) {
+					std::vector<PartnerClusters>* parentList;
+					std::vector<PartnerClusters*> returnList;
+					if (directionOfGivenCluster == Direction::backwards)
+						parentList = &this->forwardList;
+					else
+						parentList = &this->backwardsList;
+					for (auto partnerClusters : *parentList) {
+						if (partnerClusters.hasPartnerCluster(clusterId))
+							returnList.push_back(&partnerClusters);
+					}
+					return returnList;
+				}
 			};
 
 			/**
@@ -386,6 +450,9 @@ namespace megamol {
 			/// Compare clusters of two frames.
 			void compareClusters();
 
+			/// Sets the StructureEvents.
+			void setStructureEvents();
+
 			/// Set colour of particles based on cluster assignment.
 			void setClusterColor(bool renewClusterColors);
 
@@ -419,6 +486,14 @@ namespace megamol {
 			/// Switch for periodic boundary condition.
 			core::param::ParamSlot periodicBoundaryConditionSlot;
 
+			/// Limit for cluster merging.
+			core::param::ParamSlot minClusterSizeSlot;
+
+			/// Limits for event detection.
+			core::param::ParamSlot minMergeSplitPercentageSlot;
+			core::param::ParamSlot minMergeSplitAmountSlot;
+			core::param::ParamSlot maxBirthDeathPercentageSlot;
+
 			/// The hash id of the data stored
 			size_t dataHash;
 
@@ -432,6 +507,12 @@ namespace megamol {
 			/// List with all clusters.
 			std::vector<Cluster> clusterList;
 			std::vector<Cluster> previousClusterList;
+
+			/// Cluster comparison.
+			PartnerClustersList partnerClustersList;
+
+			/// Structure Events.
+			std::vector<StructureEvents::StructureEvent> structureEvents;
 
 			/// For merge and compare functions.
 			int minClusterSize;
