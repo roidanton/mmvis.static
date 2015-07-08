@@ -185,19 +185,18 @@ namespace megamol {
 			void getClipData(float *clipDat, float *clipCol);
 
 		private:
-			/**
-			 * Loads a png texture from file system and creates OGL2 texture in memory.
-			 *
-			 * Currently unused since png loader doesnt work and we have CreateOGLTexture.
-			 * However this function uses a filenameSlot which should be the way to go.
-			 */
-			void LoadPngTexture(core::param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture);
-			
-			/**
-			 * Loads a png texture from file system using lodePNG and creates OGL texture in memory.
-			 */
+
+			/// Loads a png texture from file system using lodePNG and creates OGL texture in memory.
 			void CreateOGLTextureFromFile(char* filename, GLuint &textureID);
 
+			///
+			/// Loads a png texture from file system and creates OGL2 texture in memory. Likely OBSOLETE.
+			/// 
+			/// Currently unused since png loader doesnt work and we have CreateOGLTexture.
+			/// However this function uses a filenameSlot which should be the way to go.
+			///
+			void LoadPngTexture(core::param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture);
+			
 			/// The filepathes for the textures. Currently unused!
 			core::param::ParamSlot filePathBirthTextureSlot;
 			core::param::ParamSlot filePathDeathTextureSlot;

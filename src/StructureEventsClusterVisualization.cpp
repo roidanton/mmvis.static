@@ -146,7 +146,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& 
 	if (this->structureEvents.size() > 0) {
 		// Send data to the call.
 		StructureEvents* events = &outSedc->getEvents();
-		events->setEvents(this->structureEvents.front().location,
+		events->setEvents(&this->structureEvents.front().x,
 			&this->structureEvents.front().time,
 			&this->structureEvents.front().type,
 			this->structureEvents.size());
@@ -202,11 +202,37 @@ bool mmvis_static::StructureEventsClusterVisualization::manipulateData (
 	//printf("Calculator: FrameIDs in: %d, out: %d, stored: %d.\n", inData.FrameID(), outData.FrameID(), this->frameId); // Debug.
 
 	if (this->activateCalculationSlot.Param<param::BoolParam>()->Value()) {
+
+		// Recalculate if minClusterSize changes.
+		bool reCalculate = false;
+		if (this->minClusterSizeSlot.IsDirty()) {
+			this->minClusterSizeSlot.ResetDirty();
+			reCalculate = true;
+		}
+
 		// Only calculate when inData has changed frame or hash (data has been manipulated).
-		if ((this->frameId != inData.FrameID()) || (this->dataHash != inData.DataHash()) || (inData.DataHash() == 0)) {
+		if ((this->frameId != inData.FrameID()) || (this->dataHash != inData.DataHash()) || (inData.DataHash() == 0) || reCalculate) {
 			this->frameId = inData.FrameID();
 			this->dataHash = inData.DataHash();
 			this->setData(inData);
+		}
+
+		// Recalculate StructureEvents if dirty slots.
+		bool reCalculateSE = false;
+		if (this->minMergeSplitPercentageSlot.IsDirty()) {
+			this->minMergeSplitPercentageSlot.ResetDirty();
+			reCalculateSE = true;
+		}
+		if (this->minMergeSplitAmountSlot.IsDirty()) {
+			this->minMergeSplitAmountSlot.ResetDirty();
+			reCalculateSE = true;
+		}
+		if (this->maxBirthDeathPercentageSlot.IsDirty()) {
+			this->maxBirthDeathPercentageSlot.ResetDirty();
+			reCalculateSE = true;
+		}
+		if (reCalculateSE) {
+			setStructureEvents();
 		}
 	}
 
@@ -1066,6 +1092,13 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 
 
 void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
+
+	if (this->previousClusterList.size() == 0 || this->previousParticleList.size() == 0) {
+		this->debugFile << "No previous data, quit compare.\n";
+		printf("No previous data, quit compare.\n");
+		return;
+	}
+
 	std::ofstream compareAllFile;
 	std::ofstream compareSummaryFile;
 	std::ofstream forwardListFile;
@@ -1458,6 +1491,13 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 
 
 void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
+
+	if (this->partnerClustersList.forwardList.size() == 0 || this->partnerClustersList.backwardsList.size() == 0) {
+		this->debugFile << "No compare data, quit set of StructureEvents.\n";
+		printf("No compare data, quit set of StructureEvents.\n");
+		return;
+	}
+
 	std::ofstream debugEventsFile;
 
 	// SECC == Structure Events Cluster Compare.
@@ -1465,10 +1505,15 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 	std::string filename = "SECC Events Container" + filenameEnd + ".log";
 	debugEventsFile.open(filename.c_str());
 	
-	// Test output.
+	// Tests.
 	int partnerAmount30p2, partnerAmount30p3, partnerAmount35p2, partnerAmount40p2, deathAmount, birthAmount;
 	partnerAmount30p2 = partnerAmount30p3 = partnerAmount35p2 = partnerAmount40p2 = deathAmount = birthAmount = 0;
+	
+	///
+	/// Forward direction.
+	///
 	for (auto partnerClusters : this->partnerClustersList.forwardList) {
+		// Tests.
 		if (partnerClusters.getBigPartnerAmount(30) > 1)
 			partnerAmount30p2++;
 		if (partnerClusters.getBigPartnerAmount(30) > 2)
@@ -1483,9 +1528,9 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		// Detect split.
 		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
 			StructureEvents::StructureEvent se;
-			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
-			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
-			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.x = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
+			se.y = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
+			se.z = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
 			se.time = static_cast<float>(this->frameId);
 			se.type = StructureEvents::SPLIT;
 			this->structureEvents.push_back(se);
@@ -1494,14 +1539,16 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		// Detect death.
 		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value()) {
 			StructureEvents::StructureEvent se;
-			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
-			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
-			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.x = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
+			se.y = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
+			se.z = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
 			se.time = static_cast<float>(this->frameId);
 			se.type = StructureEvents::DEATH;
 			this->structureEvents.push_back(se);
 		}
 	}
+
+	// Tests.
 	debugEventsFile << "Big partners (split):\n"
 		<< "30%, 2+: " << partnerAmount30p2 << "\n"
 		<< "30%, 3+: " << partnerAmount30p3 << "\n"
@@ -1510,8 +1557,12 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		<< "Death: " << deathAmount << "\n"
 		<< "\n";
 	
-	partnerAmount30p2 = partnerAmount30p3 = partnerAmount35p2 = partnerAmount40p2 = deathAmount = birthAmount = 0;
+	///
+	/// Backward direction.
+	///
+	partnerAmount30p2 = partnerAmount30p3 = partnerAmount35p2 = partnerAmount40p2 = deathAmount = birthAmount = 0; // Tests.
 	for (auto partnerClusters : this->partnerClustersList.backwardsList) {
+		// Tests.
 		if (partnerClusters.getBigPartnerAmount(30) > 1)
 			partnerAmount30p2++;
 		if (partnerClusters.getBigPartnerAmount(30) > 2)
@@ -1526,9 +1577,9 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		// Detect merge.
 		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value()) > this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
 			StructureEvents::StructureEvent se;
-			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
-			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
-			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.x = this->particleList[partnerClusters.cluster.rootParticleID].x;
+			se.y = this->particleList[partnerClusters.cluster.rootParticleID].y;
+			se.z = this->particleList[partnerClusters.cluster.rootParticleID].z;
 			se.time = static_cast<float>(this->frameId);
 			se.type = StructureEvents::SPLIT;
 			this->structureEvents.push_back(se);
@@ -1537,9 +1588,9 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		// Detect birth.
 		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value()) {
 			StructureEvents::StructureEvent se;
-			se.location[0] = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
-			se.location[1] = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
-			se.location[2] = this->previousParticleList[partnerClusters.cluster.rootParticleID].z;
+			se.x = this->particleList[partnerClusters.cluster.rootParticleID].x;
+			se.y = this->particleList[partnerClusters.cluster.rootParticleID].y;
+			se.z = this->particleList[partnerClusters.cluster.rootParticleID].z;
 			se.time = static_cast<float>(this->frameId);
 			se.type = StructureEvents::DEATH;
 			this->structureEvents.push_back(se);

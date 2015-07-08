@@ -278,8 +278,9 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		///
 		/// Data is time independent, so it only needs to be loaded once.
 		///
-		float scaling = 1.0f;
-		dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und Frames rauswerfen. Die Zeit ist ja im Event gespeichert.
+		//float scaling = 1.0f;
+		//dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und Frames rauswerfen. Die Zeit ist ja im Event gespeichert.
+		dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
 
 		if (dataCall == NULL) {
 			return false; // Cancel if no data is available. Avoids crash in subsequence code.
@@ -302,10 +303,9 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
 	}
 
-	StructureEvents events = dataCall->getEvents();
-
 	// Creating three test events as long as dataCall doesnt work. 
 	// Per Event parameters: Position, Time, Type, Agglomeration.
+	/*
 	vislib::Array<glm::vec3> eventPositions;
 	eventPositions.Add({ 0.0f, 0.0f, 0.0f });
 	eventPositions.Add({ -1.0f, 0.0f, 0.0f });
@@ -322,7 +322,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	vislib::Array<glm::mat4> eventAgglomeration;
 	// Global parameters: MaxTime, number of events.
 	GLfloat eventMaxTime = 120;
-
+	*/
 
 	/////////////////////////////////////////////////
 	/// Set flags for vertex recreation.
@@ -341,7 +341,6 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	}
 
 	// Reset dirty flag of slots if dirty.
-
 	if (this->eventAgglomerationVisAttrSlot.IsDirty()) {
 		this->eventAgglomerationVisAttrSlot.ResetDirty();
 		recreateVertexBuffer = true;
@@ -358,31 +357,50 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		this->eventTypeVisAttrSlot.ResetDirty();
 		recreateVertexBuffer = true;
 	}
+
+	///
+	/// Read from call and create VBO.
+	///
 	if (recreateVertexBuffer) {
 		// Container for all vertices. ToDo: Make own function for improved readability. Own class isn't meaningful (too many parameters)!
 		std::vector<Vertex> vertexList;
 
-		for (unsigned int eventCounter = 0; eventCounter < eventPositions.Count(); eventCounter++) {
+		// Get data from call.
+		StructureEvents events = dataCall->getEvents();
+		const float* locationPtr = events.getLocation();
+		const float* timePtr = events.getTime();
+		const StructureEvents::EventType* typePtr = events.getType();
+
+		for (int eventCounter = 0; eventCounter < events.getCount(); ++eventCounter, locationPtr += events.getStride(), timePtr += events.getStride(), typePtr += events.getStride()) {
 			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
-			for (unsigned int quadCounter = 0; quadCounter < 4; quadCounter++) {
+			for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
 				Vertex vertex;
 				glm::vec2 quadSpanModifier, texUV;
 				vertex.opacity = 1.0f;
 				vertex.colorHSV = { 0.0f, 1.0f, 1.0f };
 				float minValue = .4f; // Minimal value for brightness and opacity.
 				//unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
-				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position)
-					vertex.position = eventPositions[eventCounter];
-				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue)
-					vertex.colorHSV = { eventTime[eventCounter] / eventMaxTime, 1.0f, 1.0f }; // Brightness 100%.
-				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
-					vertex.colorHSV = { 0.0f, 1.0f, eventTime[eventCounter] / eventMaxTime * (1.f - minValue) + minValue };  // Color red, brightness from minValue-100%.
-				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity) {
-					vertex.opacity = eventTime[eventCounter] / eventMaxTime * (1.f - minValue) + minValue;  // From minValue-100%.
+				
+				// Position.
+				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position) {
+					vertex.position.x = locationPtr[0];
+					vertex.position.y = locationPtr[1];
+					vertex.position.z = locationPtr[2];
 				}
+				
+				// Time.
+				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue)
+					vertex.colorHSV = { *timePtr / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
+				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
+					vertex.colorHSV = { 0.0f, 1.0f, *timePtr / events.getMaxTime() * (1.f - minValue) + minValue };  // Color red, brightness from minValue-100%.
+				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity) {
+					vertex.opacity = *timePtr / events.getMaxTime() * (1.f - minValue) + minValue;  // From minValue-100%.
+				}
+
+				// Type.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
-					vertex.eventType = eventType[eventCounter]; // ToDo: Convert enum -> float.
-				//}
+					vertex.eventType = static_cast<float>(*typePtr); // ToDo: Convert enum -> float.
+				
 				// Specific properties for the quad corners.
 				switch (quadCounter) {
 				case 0:
@@ -559,6 +577,7 @@ void mmvis_static::StaticRenderer::CreateOGLTextureFromFile(char* filename, GLui
 /**
  * mmvis_static::StaticRenderer::LoadPngTexture
  */
+/*
 void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture) {
 	// Slot hat Wert: C:\Users\Roi\Bachelor\megamol\plugins\mmvis_static\Assets\GlyphenEventTypesAsterisk.png
 	const vislib::TString filename = filenameSlot->Param<param::FilePathParam>()->Value();
@@ -567,7 +586,7 @@ void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot
 
 	// Convert TString to vector for usage with lodePNG (not in this function anymore).
 	std::vector<unsigned char> filenameConverted;
-	for (unsigned int i = 0; i < filename.Length(); i++) {
+	for (int i = 0; i < filename.Length(); ++i) {
 		filenameConverted[i] = filename[i]; // Does this assignment even work? There shouldn't be an element i for the vector available?
 	}
 
@@ -601,7 +620,7 @@ void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot
 		printf("Failed texture loading.\n");
 	}
 }
-
+*/
 
 /*
  * mmvis_static::StaticRenderer::GetCapabilities
@@ -666,6 +685,7 @@ void mmvis_static::StaticRenderer::release(void) {
 /*
  * mmvis_static::StaticRenderer::getData
  */
+/*
 mmvis_static::StructureEventsDataCall *mmvis_static::StaticRenderer::getData(unsigned int t, float& outScaling) {
 	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
 	outScaling = 1.0f;
@@ -694,7 +714,7 @@ mmvis_static::StructureEventsDataCall *mmvis_static::StaticRenderer::getData(uns
 		return NULL;
 	}
 }
-
+*/
 
 /*
  * mmvis_static::StaticRenderer::getClipData

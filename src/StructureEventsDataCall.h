@@ -42,7 +42,7 @@ namespace megamol {
 		public:
 
 			/// Possible values for the event type.
-			enum EventType {
+			enum EventType : int {
 				BIRTH,
 				DEATH,
 				MERGE,
@@ -57,9 +57,9 @@ namespace megamol {
 			/// Stride = (4 byte * (3 + 1)) + 4 byte.
 			///
 			struct StructureEvent {
-				float location[3];
+				float x, y, z;
 				float time;
-				StructureEvents::EventType type;
+				StructureEvents::EventType type; // 4 byte.
 			};
 
 			/// Ctor.
@@ -129,6 +129,8 @@ namespace megamol {
 				this->typePtr = type;
 				this->stride = getCalculatedStride();
 				this->count = count;
+				if (*time > this->maxTime)
+					this->maxTime = *time;
 			}
 
 			/**
@@ -189,7 +191,8 @@ namespace megamol {
 			// The number of objects stored.
 			uint64_t count;
 
-			float maxTime;
+			// Maximum time of events.
+			float maxTime = 0;
 
 		};
 
