@@ -169,11 +169,7 @@ namespace megamol {
 			 */
 			virtual bool Render(core::Call& call);
 
-			/**
-			 * Gets the data from a call.
-			 * TODO: Write own eventDataCall to submit event data for
-			 * custom shapes, colors etc for the element.
-			 */
+			/// Gets the data from a call. Currently OBSOLETE!
 			StructureEventsDataCall *getData(unsigned int t, float& outScaling);
 
 			/**
@@ -255,7 +251,7 @@ namespace megamol {
 			GLuint textureIDs[4];
 
 			/// Container for the data call. Global since only created once in renderer.
-			StructureEventsDataCall *dataCall;
+			//StructureEventsDataCall* dataCall;
 		};
 
 	} /* namespace mmvis_static */

@@ -22,7 +22,6 @@
 
 #include "mmcore/AbstractGetData3DCall.h"
 #include "mmcore/factories/CallAutoDescription.h"
-#include "glm/glm/glm.hpp"
 #include <vector>
 
 namespace megamol {
@@ -123,7 +122,7 @@ namespace megamol {
 				const float *time,
 				//const uint8_t *type,
 				const EventType *type,
-				uint64_t count) {
+				int count) {
 				this->locationPtr = location;
 				this->timePtr = time;
 				this->typePtr = type;
@@ -138,20 +137,26 @@ namespace megamol {
 			 *
 			 * @return The event type as EventType.
 			 */
-			inline EventType getEventType(uint8_t typeCode) const {
-				switch (typeCode){
-				case 0:
-					return this->BIRTH;
-				case 1:
-					return this->DEATH;
-				case 2:
-					return this->MERGE;
-				case 3:
-					return this->SPLIT;
+			inline static EventType getEventType(int typeCode) {
+				try {
+					switch (typeCode){
+					case 0:
+						return BIRTH;
+					case 1:
+						return DEATH;
+					case 2:
+						return MERGE;
+					case 3:
+						return SPLIT;
+					}
+					throw "Invalid EventType code";
+				}
+				catch (char* error){
+					printf("mmvis_static::StructureEventsDataCall %s: %d\n", error, typeCode);
 				}
 			};
 
-			inline uint64_t getCount(void) const {
+			inline int getCount(void) const {
 				return this->count;
 			};
 
@@ -186,10 +191,10 @@ namespace megamol {
 			unsigned int stride = 0;
 
 			// The agglomeration.
-			glm::mat4 agglomeration;
+			//glm::mat4 agglomeration;
 
 			// The number of objects stored.
-			uint64_t count;
+			int count;
 
 			// Maximum time of events.
 			float maxTime = 0;

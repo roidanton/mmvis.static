@@ -133,9 +133,7 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	mergeOGL2Texture(),
 	splitOGL2Texture(),
 	*/
-	billboardShader(),
-	firstPass(true)
-	{
+	billboardShader(), firstPass(true)	{
 
 	this->getDataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
 	this->MakeSlotAvailable(&this->getDataSlot);
@@ -273,19 +271,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	/// ensures that the following is only loaded once.
 	/////////////////////////////////////////////////
 
-	if (firstPass) { // FirstPass is reset below.
-
-		///
-		/// Data is time independent, so it only needs to be loaded once.
-		///
-		//float scaling = 1.0f;
-		//dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und Frames rauswerfen. Die Zeit ist ja im Event gespeichert.
-		dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
-
-		if (dataCall == NULL) {
-			return false; // Cancel if no data is available. Avoids crash in subsequence code.
-		}
-
+	if (this->firstPass) { // FirstPass is reset below.
 		///
 		/// Generate textures.
 		///
@@ -324,6 +310,25 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	GLfloat eventMaxTime = 120;
 	*/
 
+	///
+	/// Data is time independent(, so it only needs to be loaded once.)
+	/// Data can be changed when manipulated by calculation,
+	/// so it should be reloaded.
+	///
+	//float scaling = 1.0f;
+	//dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und Frames rauswerfen. Die Zeit ist ja im Event gespeichert.
+	StructureEventsDataCall* dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
+
+	if (dataCall == NULL) {
+		return false; // Cancel if no data is available. Avoids crash in subsequence code.
+	}
+
+	// Debug.
+	printf("Renderer: SE data call, eventtype %d, fkt %d, frames %d, hash %d, unlocker %p\n", dataCall->getEvents().getEventType(1),
+		dataCall->FunctionCount(), dataCall->FrameCount(), dataCall->DataHash(), dataCall->GetUnlocker()); // Doesnt work!
+
+	StructureEvents events = dataCall->getEvents();
+
 	/////////////////////////////////////////////////
 	/// Set flags for vertex recreation.
 	/// Vertex recreation has to be done here since:
@@ -335,9 +340,9 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 
 	bool recreateVertexBuffer = false;
 
-	if (firstPass) {
+	if (this->firstPass) {
 		recreateVertexBuffer = true;
-		firstPass = false; // Reset firstPass.
+		this->firstPass = false; // Reset firstPass.
 	}
 
 	// Reset dirty flag of slots if dirty.
@@ -366,11 +371,12 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		std::vector<Vertex> vertexList;
 
 		// Get data from call.
-		StructureEvents events = dataCall->getEvents();
 		const float* locationPtr = events.getLocation();
 		const float* timePtr = events.getTime();
 		const StructureEvents::EventType* typePtr = events.getType();
 
+		printf("Events: %d, location: %p, time: %p, type: %p\n", events.getCount(), locationPtr, timePtr, typePtr);
+		
 		for (int eventCounter = 0; eventCounter < events.getCount(); ++eventCounter, locationPtr += events.getStride(), timePtr += events.getStride(), typePtr += events.getStride()) {
 			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
 			for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
@@ -426,6 +432,18 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 
 				vertexList.push_back(vertex);
 			}
+		}
+
+		// Set dummy data to avoid crash.
+		if (vertexList.size() == 0) {
+			Vertex vertex;
+			vertex.position = { 0, 0, 0 };
+			vertex.colorHSV = { 0, 0, 0 };
+			vertex.opacity = 0;
+			vertex.spanQuad = { 0, 0 };
+			vertex.texUV = { 0, 0 };
+			vertex.eventType = 0;
+			vertexList.push_back(vertex);
 		}
 
 		// Create a VBO.
@@ -645,10 +663,12 @@ bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
 	view::CallRender3D *callRender = dynamic_cast<view::CallRender3D*>(&call);
 	if (callRender == NULL) return false;
 
-	callRender->SetTimeFramesCount(1);
+	/// FrameCount and bbox has to be set in SE calculation/reader.
 
 	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
 	if ((dataCall != NULL) && ((*dataCall)(1))) {
+		//callRender->SetTimeFramesCount(1);
+		callRender->SetTimeFramesCount(dataCall->FrameCount());
 		callRender->AccessBoundingBoxes() = dataCall->AccessBoundingBoxes();
 
 		float scaling = callRender->AccessBoundingBoxes().ObjectSpaceBBox().LongestEdge();
@@ -662,6 +682,7 @@ bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
 
 	}
 	else {
+		callRender->SetTimeFramesCount(1);
 		callRender->AccessBoundingBoxes().Clear();
 	}
 

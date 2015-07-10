@@ -104,6 +104,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& ca
 	if (inMpdc == NULL) return false;
 
 	/// Doesnt work like that, no CallAs.
+	/// Using another Callback for SEDC data.
 	//StructureEventsDataCall *outSedc = this->outSEDataSlot.CallAs<StructureEventsDataCall>();
 	//if (outSedc == NULL) {
 	//	this->debugFile << "No StructureEventsDataCall connected.\n";
@@ -127,21 +128,15 @@ bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& ca
 bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& caller) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
-	StructureEventsDataCall *outSedc = dynamic_cast<StructureEventsDataCall*>(&caller);
-	if (outSedc == NULL) return false;
+	printf("Calc: SE Data Callback\n"); // Doesnt work!
 
-	MultiParticleDataCall *inMpdc = this->inDataSlot.CallAs<MultiParticleDataCall>();
-	if (inMpdc == NULL) return false;
+	StructureEventsDataCall* outSedc = dynamic_cast<StructureEventsDataCall*>(&caller);
+	if (outSedc == NULL) return false;
 
 	// ToDo: get StructureEvents from object attribute.
 
-	//*inMpdc = *outMpdc; // Get the correct request time.
-	if (!(*inMpdc)(0)) return false;
-
-	//if (!this->manipulateData(*outSedc, *inMpdc)) {
-	//	inMpdc->Unlock();
-	//	return false;
-	//}
+	printf("Calc: Structure Events: %d, location: %p, time: %p, type: %p\n",
+		this->structureEvents.size(), &this->structureEvents.front().x, &this->structureEvents.front().time, &this->structureEvents.front().type);
 
 	if (this->structureEvents.size() > 0) {
 		// Send data to the call.
@@ -151,8 +146,6 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& 
 			&this->structureEvents.front().type,
 			this->structureEvents.size());
 	}
-
-	inMpdc->Unlock();
 
 	return true;
 }
@@ -184,9 +177,30 @@ bool mmvis_static::StructureEventsClusterVisualization::getExtentCallback(Call& 
 }
 
 
-bool mmvis_static::StructureEventsClusterVisualization::getSEExtentCallback(Call& callee) {
-	//TODO or delete
-	// getExtend from MPDC
+bool mmvis_static::StructureEventsClusterVisualization::getSEExtentCallback(Call& caller) {
+	using megamol::core::moldyn::MultiParticleDataCall;
+
+	//Works. printf("Calc: SE Extend Callback\n");
+
+	StructureEventsDataCall *outSedc = dynamic_cast<StructureEventsDataCall*>(&caller);
+	if (outSedc == NULL) return false;
+
+	MultiParticleDataCall *inMpdc = this->inDataSlot.CallAs<MultiParticleDataCall>();
+	if (inMpdc == NULL) return false;
+
+	/// Frame has to be set by MPDC data call, so using MPDC outData is mandatory!
+
+	outSedc->SetExtent(inMpdc->FrameCount(), inMpdc->AccessBoundingBoxes());
+	outSedc->SetDataHash(this->dataHash); // W/o particularly reason.
+
+	//printf("%d\n", inMpdc->FrameCount());
+	
+	if (inMpdc->FrameCount() == 0) // No mpdc out is set.
+		outSedc->SetFrameCount(1);
+	else
+		outSedc->SetFrameCount(inMpdc->FrameCount());
+	inMpdc->Unlock();
+
 	return true;
 }
 
@@ -270,12 +284,75 @@ bool mmvis_static::StructureEventsClusterVisualization::manipulateExtent(
 void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::moldyn::MultiParticleDataCall& data) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
+	this->logFile.open("SEClusterVis.log", std::ios_base::app | std::ios_base::out);
+	this->debugFile.open("SEClusterVisDebug.log");
+	
 	uint64_t globalParticleIndex = 0;
 	float globalRadius;
 	uint8_t globalColor[4];
 	float globalColorIndexMin, globalColorIndexMax;
-
 	//float signedDistanceMin = 0, signedDistanceMax = 0;
+
+	//buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
+
+	//findNeighboursWithKDTree(data);
+
+	//createClustersFastDepth();
+
+	//mergeSmallClusters();
+	
+	setDummyLists(10000, 100, 50);
+
+	if (this->previousClusterList.size() > 0 && this->previousParticleList.size() > 0) {
+		compareClusters();
+		setStructureEvents();
+		setClusterColor(false);
+	}
+	else {
+		setClusterColor(true);
+	}
+
+	///
+	/// Fill MultiParticleDataCall::Particles with data of the local container.
+	///
+
+	unsigned int particleStride = sizeof(Particle);
+
+	this->particles.SetCount(globalParticleIndex);
+	this->particles.SetGlobalRadius(globalRadius);
+	this->particles.SetGlobalColour(globalColor[0], globalColor[1], globalColor[2]);
+	this->particles.SetColourMapIndexValues(globalColorIndexMin, globalColorIndexMax);
+
+	this->particles.SetVertexData(MultiParticleDataCall::Particles::VERTDATA_FLOAT_XYZR, &this->particleList[0], particleStride);
+	this->particles.SetColourData(MultiParticleDataCall::Particles::COLDATA_FLOAT_RGB, &this->particleList[0].r, particleStride);
+
+	// Log output.
+	printf("Calculator: ParticleStride: %d, ParticleCount: %d, RandomParticleColor: (%f, %f, %f)\n",
+		particleStride, globalParticleIndex, particleList[0].r, particleList[0].g, particleList[0].b);
+	// For testing if sorting works.
+	//printf("Calculator: ParticleList SignedDistance max: %f, min: %f\n",
+	//	this->particleList.front().signedDistance, this->particleList.back().signedDistance);
+	//printf("Calculator: Particle SignedDistance max: %f, min: %f\n",
+	//	signedDistanceMax, signedDistanceMin);
+	
+	// Data structure sizes.
+	int unitConversion = 1024;
+	size_t particleBytes = this->particleList.size() * sizeof(Particle) / unitConversion;
+	size_t previousParticleBytes = this->previousParticleList.size() * sizeof(Particle) / unitConversion;
+	size_t clusterBytes = this->clusterList.size() * sizeof(Cluster) / unitConversion;
+
+	this->logFile << " - Sizes p/pp/cl/kd (kiB): ";
+	this->logFile << particleBytes << "/" << previousParticleBytes << "/" << clusterBytes << "/" << this->treeSize / unitConversion;
+
+	this->logFile << " - Frame " << this->frameId << "\n"; // For MMPLDs with single frame it is 0 of course. Alternatively data.FrameID() (returns same).
+	this->debugFile.close();
+	this->logFile.close();
+}
+
+
+void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamol::core::moldyn::MultiParticleDataCall& data,
+	uint64_t& globalParticleIndex, float& globalRadius, uint8_t(&globalColor)[4], float& globalColorIndexMin, float& globalColorIndexMax) {
+	using megamol::core::moldyn::MultiParticleDataCall;
 
 	///
 	/// Copy old lists.
@@ -323,13 +400,13 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		MultiParticleDataCall::Particles& particles = data.AccessParticles(particleListIndex);
 
 		// Check for existing data.
-		
+
 		//if (particles.GetVertexDataType() == MultiParticleDataCall::Particles::VERTDATA_NONE
 		//		|| particles.GetCount() == 0) {
 		//	printf("Particlelist %d skipped, no vertex data.\n", particleListIndex); // Debug.
 		//	continue; // Skip this particle list.
 		//}
-		
+
 
 		// Check for existing data.
 		if (particles.GetCount() == 0) {
@@ -370,10 +447,10 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		case MultiParticleDataCall::Particles::VERTDATA_FLOAT_XYZ:
 			vertexStride = std::max<unsigned int>(vertexStride, 12);
 			break;
-		//case MultiParticleDataCall::Particles::VERTDATA_SHORT_XYZ:
-		//	vertexIsFloat = false;
-		//	vertexStride = std::max<unsigned int>(vertexStride, 6);
-		//	break;
+			//case MultiParticleDataCall::Particles::VERTDATA_SHORT_XYZ:
+			//	vertexIsFloat = false;
+			//	vertexStride = std::max<unsigned int>(vertexStride, 6);
+			//	break;
 		default: throw std::exception();
 		}
 
@@ -397,11 +474,11 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 
 			// Vertex.
 			//if (vertexIsFloat) { // Performance is lower with if-else in loop, however readability is higher.
-				const float *vertexPtrf = reinterpret_cast<const float*>(vertexPtr);
-				particle.x = vertexPtrf[0];
-				particle.y = vertexPtrf[1];
-				particle.z = vertexPtrf[2];
-				particle.radius = hasRadius ? vertexPtrf[3] : globalRadius;
+			const float *vertexPtrf = reinterpret_cast<const float*>(vertexPtr);
+			particle.x = vertexPtrf[0];
+			particle.y = vertexPtrf[1];
+			particle.z = vertexPtrf[2];
+			particle.radius = hasRadius ? vertexPtrf[3] : globalRadius;
 			//}
 			//else {
 			//	const uint16_t *vertexPtr16 = reinterpret_cast<const uint16_t*>(vertexPtr);
@@ -427,76 +504,21 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 			particle.id = globalParticleIndex + particleIndex;
 
 			// Add particle to list.
-			particleList.push_back(particle);
+			this->particleList.push_back(particle);
 		}
 		globalParticleIndex += static_cast<size_t>(particles.GetCount());
-		
 	}
-	
-	this->logFile.open("SEClusterVis.log", std::ios_base::app | std::ios_base::out);
-	this->debugFile.open("SEClusterVisDebug.log");
 	
 	{ // Time measurement. 4s
-			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_buildList);
-			printf("Calculator: Created list with size %d after %lld ms\n", particleList.size(), duration.count());
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_buildList);
+		printf("Calculator: Created list with size %d after %lld ms\n", particleList.size(), duration.count());
 	}
-	
-	findNeighboursWithKDTree(data);
-
-	createClustersFastDepth();
-
-	mergeSmallClusters();
-	
-	//setDummyLists();
-
-	if (this->previousClusterList.size() > 0 && this->previousParticleList.size() > 0) {
-		compareClusters();
-		setStructureEvents();
-		setClusterColor(false);
-	}
-	else {
-		setClusterColor(true);
-	}
-
-	///
-	/// Fill MultiParticleDataCall::Particles with data of the local container.
-	///
-
-	unsigned int particleStride = sizeof(Particle);
-
-	// Debug.
-	printf("Calculator: ParticleStride: %d, ParticleCount: %d, RandomParticleColor: (%f, %f, %f)\n",
-		particleStride, globalParticleIndex, particleList[0].r, particleList[0].g, particleList[0].b);
-	// For testing if sorting works.
-	//printf("Calculator: ParticleList SignedDistance max: %f, min: %f\n",
-	//	this->particleList.front().signedDistance, this->particleList.back().signedDistance);
-	//printf("Calculator: Particle SignedDistance max: %f, min: %f\n",
-	//	signedDistanceMax, signedDistanceMin);
-
-	this->particles.SetCount(globalParticleIndex);
-	this->particles.SetGlobalRadius(globalRadius);
-	this->particles.SetGlobalColour(globalColor[0], globalColor[1], globalColor[2]);
-	this->particles.SetColourMapIndexValues(globalColorIndexMin, globalColorIndexMax);
-
-	this->particles.SetVertexData(MultiParticleDataCall::Particles::VERTDATA_FLOAT_XYZR, &this->particleList[0], particleStride);
-	this->particles.SetColourData(MultiParticleDataCall::Particles::COLDATA_FLOAT_RGB, &this->particleList[0].r, particleStride);
-	
-	// Data structure sizes.
-	int unitConversion = 1024;
-	size_t particleBytes = this->particleList.size() * sizeof(Particle) / unitConversion;
-	size_t previousParticleBytes = this->previousParticleList.size() * sizeof(Particle) / unitConversion;
-	size_t clusterBytes = this->clusterList.size() * sizeof(Cluster) / unitConversion;
-
-	this->logFile << " - Sizes p/pp/cl/kd (kiB): ";
-	this->logFile << particleBytes << "/" << previousParticleBytes << "/" << clusterBytes << "/" << this->treeSize / unitConversion;
-
-	this->logFile << " - Frame " << this->frameId << "\n"; // For MMPLDs with single frame it is 0 of course. Alternatively data.FrameID() (returns same).
-	this->debugFile.close();
-	this->logFile.close();
 }
 
 
 void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data) {
+
+	auto time_buildTree = std::chrono::system_clock::now();
 
 	///
 	/// Create k-d-Tree.
@@ -505,7 +527,6 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	/// which matches the particle ID in particleList as long as particleList
 	/// is not resorted!
 	///
-	auto time_buildTree = std::chrono::system_clock::now();
 
 	ANNpoint annPtsData = new ANNcoord[3 * this->particleList.size()]; // Container for pointdata. Can be deleted at the end of the function.
 	ANNpointArray annPts = new ANNpoint[this->particleList.size()];
@@ -1711,14 +1732,12 @@ void mmvis_static::StructureEventsClusterVisualization::sortBySignedDistance() {
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::setDummyLists() {
-	int particleAmount = 1000;
-	int clusterAmount = 10;
-	
+void mmvis_static::StructureEventsClusterVisualization::setDummyLists(int particleAmount, int clusterAmount, int eventAmount) {
 	this->particleList.resize(particleAmount);
 	this->previousParticleList.resize(particleAmount);
 	this->clusterList.resize(clusterAmount);
 	this->previousClusterList.resize(clusterAmount);
+	this->structureEvents.resize(eventAmount);
 
 	uint64_t numberOfParticlesInCluster = 0;
 
@@ -1752,10 +1771,33 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists() {
 		this->particleList[i].clusterID = distribution(mt);
 
 		int streuung = 1;
-		std::uniform_int_distribution<int> distribution2(std::max(0, this->particleList[i].clusterID - streuung), std::min(9, this->particleList[i].clusterID + streuung));
+		std::uniform_int_distribution<int> distribution2(std::max(0, this->particleList[i].clusterID - streuung), std::min(clusterAmount - 1, this->particleList[i].clusterID + streuung));
 		this->previousParticleList[i].clusterID = distribution2(mt);
+
+		// Set position.
+		std::uniform_real_distribution<float> disPos(-100, 100);
+		this->particleList[i].x = disPos(mt);
+		this->particleList[i].y = disPos(mt);
+		this->particleList[i].z = disPos(mt);
 	}
-	printf("Dummy lists set: %d, %d.\n", particleAmount, clusterAmount);
+	
+	#pragma omp parallel for
+	for (int i = 0; i < eventAmount; ++i) {
+		std::random_device rd;
+		std::mt19937_64 mt(rd());
+		std::uniform_real_distribution<float> disPos(-100, 100);
+		this->structureEvents[i].x = disPos(mt);
+		this->structureEvents[i].y = disPos(mt);
+		this->structureEvents[i].z = disPos(mt);
+
+		std::uniform_int_distribution<int> disTime(0, 140);
+		this->structureEvents[i].time = static_cast<float> (disTime(mt));
+
+		std::uniform_int_distribution<int> disType(0, 3);
+		this->structureEvents[i].type = StructureEvents::getEventType(disType(mt));
+	}
+
+	printf("Dummy lists set: %d, %d, %d.\n", particleAmount, clusterAmount, eventAmount);
 }
 
 

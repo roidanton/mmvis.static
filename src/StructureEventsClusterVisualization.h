@@ -438,6 +438,9 @@ namespace megamol {
 			/// Writes the data from a single MultiParticleDataCall frame into particleList.			 
 			void setData(core::moldyn::MultiParticleDataCall& data);
 
+			void buildParticleList(core::moldyn::MultiParticleDataCall& data,
+				uint64_t& globalParticleIndex, float& globalRadius, uint8_t (&globalColor)[4], float& globalColorIndexMin, float& globalColorIndexMax);
+
 			/// Set neighbours in particleList.
 			void findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data);
 
@@ -462,7 +465,7 @@ namespace megamol {
 			void sortBySignedDistance();
 
 			/// Only sets ids, cluster id and numberOfParticles.
-			void setDummyLists();
+			void setDummyLists(int particleAmount, int clusterAmount, int structureEvents);
 
 			/// Mean value and standard deviation of values: http ://stackoverflow.com/a/7616783/4566599
 			MeanStdDev meanStdDeviation(std::vector<double> v);

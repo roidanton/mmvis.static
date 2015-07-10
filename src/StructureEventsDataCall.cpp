@@ -45,7 +45,7 @@ mmvis_static::StructureEvents::StructureEvents(const mmvis_static::StructureEven
 mmvis_static::StructureEvents&
 mmvis_static::StructureEvents::operator=(
 	const mmvis_static::StructureEvents& rhs) {
-	this->agglomeration = rhs.agglomeration;
+	//this->agglomeration = rhs.agglomeration;
 	this->count = rhs.count;
 	this->locationPtr = rhs.locationPtr;
 	this->maxTime = rhs.maxTime;
@@ -74,7 +74,7 @@ mmvis_static::StructureEventsDataCall::~StructureEventsDataCall(void) {
 
 
 /**
- * moldyn::MultiParticleDataCall::operator=
+ * moldyn::StructureEventsDataCall::operator=
  */
 mmvis_static::StructureEventsDataCall& mmvis_static::StructureEventsDataCall::operator=(
 	const mmvis_static::StructureEventsDataCall& rhs) {
