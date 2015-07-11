@@ -500,6 +500,9 @@ namespace megamol {
 			/// The hash id of the data stored
 			size_t dataHash;
 
+			/// The hash id of the outgoing SEDC.
+			size_t sedcHash;
+
 			/// The frame id of the data stored
 			unsigned int frameId;
 

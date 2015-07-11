@@ -35,7 +35,7 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	minMergeSplitAmountSlot("minMergeSplitAmount", "Minimal number of cluster for merge/split event detection."),
 	maxBirthDeathPercentageSlot("maxBirthDeathPercentage", "Maximal ratio of common particles for birth/death event detection."),
 	minClusterSizeSlot("minClusterSize", "Minimal allowed cluster size, clusters smaller than that will be merged."),
-	dataHash(0), frameId(0), treeSize(0) {
+	dataHash(0), sedcHash(0), frameId(0), treeSize(0) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
 	this->MakeSlotAvailable(&this->inDataSlot);
@@ -128,15 +128,11 @@ bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& ca
 bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& caller) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
-	printf("Calc: SE Data Callback\n"); // Doesnt work!
-
 	StructureEventsDataCall* outSedc = dynamic_cast<StructureEventsDataCall*>(&caller);
 	if (outSedc == NULL) return false;
 
-	// ToDo: get StructureEvents from object attribute.
-
-	printf("Calc: Structure Events: %d, location: %p, time: %p, type: %p\n",
-		this->structureEvents.size(), &this->structureEvents.front().x, &this->structureEvents.front().time, &this->structureEvents.front().type);
+	//printf("Calc: Structure Events: %d, location: %p, time: %p, type: %p\n",
+	//	this->structureEvents.size(), &this->structureEvents.front().x, &this->structureEvents.front().time, &this->structureEvents.front().type);
 
 	if (this->structureEvents.size() > 0) {
 		// Send data to the call.
@@ -191,7 +187,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEExtentCallback(Call
 	/// Frame has to be set by MPDC data call, so using MPDC outData is mandatory!
 
 	outSedc->SetExtent(inMpdc->FrameCount(), inMpdc->AccessBoundingBoxes());
-	outSedc->SetDataHash(this->dataHash); // W/o particularly reason.
+	outSedc->SetDataHash(this->sedcHash); // To track changes in Renderer.
 
 	//printf("%d\n", inMpdc->FrameCount());
 	
@@ -288,12 +284,12 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	this->debugFile.open("SEClusterVisDebug.log");
 	
 	uint64_t globalParticleIndex = 0;
-	float globalRadius;
-	uint8_t globalColor[4];
-	float globalColorIndexMin, globalColorIndexMax;
+	float globalRadius = 0;
+	uint8_t globalColor[4] = { 0, 0, 0, 0 };
+	float globalColorIndexMin = 0, globalColorIndexMax = 0;
 	//float signedDistanceMin = 0, signedDistanceMax = 0;
 
-	//buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
+	buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
 
 	//findNeighboursWithKDTree(data);
 
@@ -391,7 +387,7 @@ void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamo
 	///
 	auto time_buildList = std::chrono::system_clock::now();
 
-	for (unsigned int particleListIndex = 0; particleListIndex < data.GetParticleListCount(); particleListIndex++) {
+	for (unsigned int particleListIndex = 0; particleListIndex < data.GetParticleListCount(); ++particleListIndex) {
 
 		///
 		/// Get meta information of data.
@@ -1617,6 +1613,10 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 			this->structureEvents.push_back(se);
 		}
 	}
+
+	// Change hash to mark that something has changed.
+	this->sedcHash = this->sedcHash != 1 ? 1 : 2;
+
 	debugEventsFile << "Big partners (merge):\n"
 		<< "30%, 2+: " << partnerAmount30p2 << "\n"
 		<< "30%, 3+: " << partnerAmount30p3 << "\n"
@@ -1757,6 +1757,11 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists(int partic
 		uint64_t streuung = this->clusterList[i].numberOfParticles / 10;
 		std::uniform_int_distribution<uint64_t> distribution2(this->clusterList[i].numberOfParticles - streuung, this->clusterList[i].numberOfParticles + streuung);
 		this->previousClusterList[i].numberOfParticles = distribution2(mt);
+
+		// Set root particle.
+		std::uniform_int_distribution<uint64_t> distRoot(0, particleAmount - 1);
+		this->previousClusterList[i].rootParticleID = distRoot(mt);
+		this->clusterList[i].rootParticleID = distRoot(mt);
 	}
 
 	#pragma omp parallel for
@@ -1775,12 +1780,13 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists(int partic
 		this->previousParticleList[i].clusterID = distribution2(mt);
 
 		// Set position.
-		std::uniform_real_distribution<float> disPos(-100, 100);
+		std::uniform_real_distribution<float> disPos(0, 500);
 		this->particleList[i].x = disPos(mt);
 		this->particleList[i].y = disPos(mt);
 		this->particleList[i].z = disPos(mt);
 	}
 	
+	// Cluster event.
 	#pragma omp parallel for
 	for (int i = 0; i < eventAmount; ++i) {
 		std::random_device rd;

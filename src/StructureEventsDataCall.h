@@ -73,14 +73,14 @@ namespace megamol {
 			/**
 			 * @return The location pointer
 			 */
-			inline const float * getLocation(void) const {
+			inline const void * getLocation(void) const {
 				return this->locationPtr;
 			}
 
 			/**
 			 * @return The time pointer
 			 */
-			inline const float * getTime(void) const {
+			inline const void * getTime(void) const {
 				return this->timePtr;
 			}
 
@@ -90,7 +90,7 @@ namespace megamol {
 			//inline const uint8_t * getType(void) const {
 			//	return this->typePtr;
 			//}
-			inline const EventType * getType(void) const {
+			inline const void * getType(void) const {
 				return this->typePtr;
 			}
 
@@ -141,13 +141,13 @@ namespace megamol {
 				try {
 					switch (typeCode){
 					case 0:
-						return BIRTH;
+						return EventType::BIRTH;
 					case 1:
-						return DEATH;
+						return EventType::DEATH;
 					case 2:
-						return MERGE;
+						return EventType::MERGE;
 					case 3:
-						return SPLIT;
+						return EventType::SPLIT;
 					}
 					throw "Invalid EventType code";
 				}

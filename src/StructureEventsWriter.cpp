@@ -203,7 +203,7 @@ bool mmvis_static::StructureEventsWriter::writeData(vislib::sys::File& file, Str
 
 	// Daten.
 	unsigned int eventStride = events.getStride();
-	const float *pointer = events.getLocation(); // Start of the eventdata.
+	const float* pointer = static_cast<const float*>(events.getLocation()); // Start of the eventdata.
 
 	// Write each event and not all at once since file.Write() needs to know the buffer size.
 	// Alternative?

@@ -7,7 +7,6 @@
  * TODO:
  * - Fix billboard ratio (always quadratic and not dependent on window ratio as it is currently)
  * - Add parameter agglomeration.
- * - Embed own StructureEventDataCall.
  * - Enable orthographic mode?
  * - Make size of billboards also dependent on camera
  */
@@ -24,8 +23,10 @@
 #include "vislib/assert.h"
 #include "lodepng/lodepng.h"
 
+
 using namespace megamol;
 using namespace megamol::core;
+
 
 void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *attributes, mmvis_static::VisualAttributes::ParameterType parameterType) {
 	switch (parameterType) {
@@ -45,6 +46,7 @@ void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *
 		break;
 	}
 }
+
 
 mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::getAttributeType(wchar_t* attribute) {
 	try {
@@ -75,6 +77,7 @@ mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::ge
 	//attributeType = mmvis_static::VisualAttributes::AttributeType::Brightness;
 	// The missing return is intentionally as the cpp compiler doesn't check.
 }
+
 
 mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::getAttributeType(core::param::ParamSlot *attributeSlot) {
 	vislib::TString activeValue;
@@ -133,7 +136,7 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	mergeOGL2Texture(),
 	splitOGL2Texture(),
 	*/
-	billboardShader(), firstPass(true)	{
+	billboardShader(), firstPass(true), dataHash(0) {
 
 	this->getDataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
 	this->MakeSlotAvailable(&this->getDataSlot);
@@ -165,12 +168,14 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	this->MakeSlotAvailable(&this->eventTypeVisAttrSlot);
 }
 
+
 /**
  * mmvis_static::StaticRenderer::~StaticRenderer
  */
 mmvis_static::StaticRenderer::~StaticRenderer(void) {
 	this->Release();
 }
+
 
 /**
  * mmvis_static::StaticRenderer::create
@@ -265,7 +270,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	if (callRender == NULL) return false;
 
 	/////////////////////////////////////////////////
-	/// The data and texture loading should be in
+	/// The texture loading should be in
 	/// ::create(), however no access to data slots
 	/// is available there. Therefore firstPass
 	/// ensures that the following is only loaded once.
@@ -282,8 +287,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		CreateOGLTextureFromFile(filenameChar2, this->textureIDs[1]);
 		char filenameChar3[] = "GlyphenEventTypesMerge.png"; // Copy file to bin folder.
 		CreateOGLTextureFromFile(filenameChar3, this->textureIDs[2]);
-		//char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
-		//CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
+		char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
+		CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
 
 		// Set Texture. This method is likely obsolete!
 		//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
@@ -313,21 +318,17 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	///
 	/// Data is time independent(, so it only needs to be loaded once.)
 	/// Data can be changed when manipulated by calculation,
-	/// so it should be reloaded.
+	/// so it has to be reloaded and is outside of firstPass.
 	///
-	//float scaling = 1.0f;
-	//dataCall = getData(1, scaling); // Frame = 1. Wahrscheinlich dataCall komplett überarbeiten und Frames rauswerfen. Die Zeit ist ja im Event gespeichert.
-	StructureEventsDataCall* dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
+	StructureEventsDataCall* dataCall = GetData();
 
 	if (dataCall == NULL) {
 		return false; // Cancel if no data is available. Avoids crash in subsequence code.
 	}
 
 	// Debug.
-	printf("Renderer: SE data call, eventtype %d, fkt %d, frames %d, hash %d, unlocker %p\n", dataCall->getEvents().getEventType(1),
-		dataCall->FunctionCount(), dataCall->FrameCount(), dataCall->DataHash(), dataCall->GetUnlocker()); // Doesnt work!
-
-	StructureEvents events = dataCall->getEvents();
+	//printf("Renderer: SE data call, eventtype %d, fkt %d, frames %d, hash %d, unlocker %p\n", dataCall->getEvents().getEventType(1),
+	//	dataCall->FunctionCount(), dataCall->FrameCount(), dataCall->DataHash(), dataCall->GetUnlocker()); // Doesnt work!
 
 	/////////////////////////////////////////////////
 	/// Set flags for vertex recreation.
@@ -363,21 +364,44 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		recreateVertexBuffer = true;
 	}
 
+	if (this->dataHash != dataCall->DataHash()) {
+		this->dataHash = dataCall->DataHash();
+		recreateVertexBuffer = true;
+	}
+
 	///
 	/// Read from call and create VBO.
 	///
 	if (recreateVertexBuffer) {
-		// Container for all vertices. ToDo: Make own function for improved readability. Own class isn't meaningful (too many parameters)!
+		StructureEvents events = dataCall->getEvents();
+
+		// Causes wrong stride calculation: stride*sizeof(ptr). In tests is was not 20 but 80 (20 * 4 byte)!
+		//const float* locationPtr = events.getLocation();
+		//const float* timePtr = events.getTime();
+		//const StructureEvents::EventType* typePtr = events.getType();
+
+		// Cast to uint8 (= 1 byte) for correct stride calculation in for-loop. Mandatory!
+		const uint8_t *locationPtr = static_cast<const uint8_t*>(events.getLocation());
+		const uint8_t *timePtr = static_cast<const uint8_t*>(events.getTime());
+		const uint8_t *typePtr = static_cast<const uint8_t*>(events.getType());
+
+		// Container for all vertices. Could be in own function for improved readability.
 		std::vector<Vertex> vertexList;
 
-		// Get data from call.
-		const float* locationPtr = events.getLocation();
-		const float* timePtr = events.getTime();
-		const StructureEvents::EventType* typePtr = events.getType();
-
-		printf("Events: %d, location: %p, time: %p, type: %p\n", events.getCount(), locationPtr, timePtr, typePtr);
+		// Debug.
+		//printf("Events: %d, stride: %d, location: %p, time: %p, type: %p\n", events.getCount(), events.getStride(), locationPtr, timePtr, typePtr);
 		
 		for (int eventCounter = 0; eventCounter < events.getCount(); ++eventCounter, locationPtr += events.getStride(), timePtr += events.getStride(), typePtr += events.getStride()) {
+			
+			// Use correct pointer types.
+			const float *locationPtrf = reinterpret_cast<const float*>(locationPtr);
+			const float *timePtrf = reinterpret_cast<const float*>(timePtr);
+			const StructureEvents::EventType *timePtrET = reinterpret_cast<const StructureEvents::EventType*>(typePtr);
+
+			// Debug.
+			//printf("Event %d: location (%f, %f, %f), time %f, type %d / %f\n",
+			//	eventCounter, locationPtrf[0], locationPtrf[1], locationPtrf[2], *timePtrf, *timePtrET, static_cast<float>(*timePtrET));
+
 			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
 			for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
 				Vertex vertex;
@@ -386,26 +410,26 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				vertex.colorHSV = { 0.0f, 1.0f, 1.0f };
 				float minValue = .4f; // Minimal value for brightness and opacity.
 				//unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
-				
+
 				// Position.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position) {
-					vertex.position.x = locationPtr[0];
-					vertex.position.y = locationPtr[1];
-					vertex.position.z = locationPtr[2];
+					vertex.position.x = locationPtrf[0];
+					vertex.position.y = locationPtrf[1];
+					vertex.position.z = locationPtrf[2];
 				}
 				
 				// Time.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue)
-					vertex.colorHSV = { *timePtr / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
+					vertex.colorHSV = { *timePtrf / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
-					vertex.colorHSV = { 0.0f, 1.0f, *timePtr / events.getMaxTime() * (1.f - minValue) + minValue };  // Color red, brightness from minValue-100%.
+					vertex.colorHSV = { 0.0f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue };  // Color red, brightness from minValue-100%.
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity) {
-					vertex.opacity = *timePtr / events.getMaxTime() * (1.f - minValue) + minValue;  // From minValue-100%.
+					vertex.opacity = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue;  // From minValue-100%.
 				}
 
 				// Type.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
-					vertex.eventType = static_cast<float>(*typePtr); // ToDo: Convert enum -> float.
+					vertex.eventType = static_cast<float>(*timePtrET); // ToDo: Convert enum -> float.
 				
 				// Specific properties for the quad corners.
 				switch (quadCounter) {
@@ -446,6 +470,10 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 			vertexList.push_back(vertex);
 		}
 
+		// Debug.
+		//printf("Vertex %d: location (%f, %f, %f)\n",
+		//	0, vertexList[0].position.x, vertexList[0].position.y, vertexList[0].position.z);
+
 		// Create a VBO.
 		// Generate 1 (generic) buffer, put the resulting identifier in the vertex buffer object
 		glGenBuffers(1, &vbo);
@@ -460,7 +488,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	this->billboardShader.Enable();
 
 	// Creating test data as long as dependence on camera doesnt work.
-	GLfloat quadSizeModificator = 1.0f;
+	GLfloat quadSizeModificator = 15.0f;
 
 	// Set sizeModificator of all billboards.
 	glUniform1f(this->billboardShader.ParameterLocation("quadSizeModificator"), quadSizeModificator);
@@ -475,6 +503,9 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, this->textureIDs[2]);
 	glUniform1i(this->billboardShader.ParameterLocation("tex2DMerge"), 2);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, this->textureIDs[3]);
+	glUniform1i(this->billboardShader.ParameterLocation("tex2DSplit"), 3);
 	//this->birthOGL2Texture.Bind();
 	
 	// Set the ID for the shader variable (attribute).
@@ -640,6 +671,7 @@ void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot
 }
 */
 
+
 /*
  * mmvis_static::StaticRenderer::GetCapabilities
  */
@@ -655,6 +687,51 @@ bool mmvis_static::StaticRenderer::GetCapabilities(Call& call) {
 
 	return true;
 }
+
+
+/*
+ * mmvis_static::StaticRenderer::getClipData
+ */
+void mmvis_static::StaticRenderer::getClipData(float *clipDat, float *clipCol) {
+	view::CallClipPlane *ccp = this->getClipPlaneSlot.CallAs<view::CallClipPlane>();
+	if ((ccp != NULL) && (*ccp)()) {
+		clipDat[0] = ccp->GetPlane().Normal().X();
+		clipDat[1] = ccp->GetPlane().Normal().Y();
+		clipDat[2] = ccp->GetPlane().Normal().Z();
+		vislib::math::Vector<float, 3> grr(ccp->GetPlane().Point().PeekCoordinates());
+		clipDat[3] = grr.Dot(ccp->GetPlane().Normal());
+		clipCol[0] = static_cast<float>(ccp->GetColour()[0]) / 255.0f;
+		clipCol[1] = static_cast<float>(ccp->GetColour()[1]) / 255.0f;
+		clipCol[2] = static_cast<float>(ccp->GetColour()[2]) / 255.0f;
+		clipCol[3] = static_cast<float>(ccp->GetColour()[3]) / 255.0f;
+
+	}
+	else {
+		clipDat[0] = clipDat[1] = clipDat[2] = clipDat[3] = 0.0f;
+		clipCol[0] = clipCol[1] = clipCol[2] = 0.75f;
+		clipCol[3] = 1.0f;
+	}
+}
+
+
+/*
+ * mmvis_static::StaticRenderer::GetData
+ */
+mmvis_static::StructureEventsDataCall* mmvis_static::StaticRenderer::GetData() {
+	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
+
+	if (dataCall != NULL) {
+		//dataCall->SetFrameID(t);
+		if (!(*dataCall)(0)) return NULL;
+
+		return dataCall;
+	}
+	else {
+		printf("Datacall not available!\n");
+		return NULL;
+	}
+}
+
 
 /*
  * mmvis_static::StaticRenderer::GetExtents
@@ -703,60 +780,3 @@ void mmvis_static::StaticRenderer::release(void) {
 }
 
 
-/*
- * mmvis_static::StaticRenderer::getData
- */
-/*
-mmvis_static::StructureEventsDataCall *mmvis_static::StaticRenderer::getData(unsigned int t, float& outScaling) {
-	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
-	outScaling = 1.0f;
-
-	// TODO: Remove frames.
-	if (dataCall != NULL) {
-		dataCall->SetFrameID(t);
-		if (!(*dataCall)(1)) return NULL;
-
-		// calculate scaling
-		outScaling = dataCall->AccessBoundingBoxes().ObjectSpaceBBox().LongestEdge();
-		if (outScaling > 0.0000001) {
-			outScaling = 10.0f / outScaling;
-		}
-		else {
-			outScaling = 1.0f;
-		}
-
-		dataCall->SetFrameID(t);
-		if (!(*dataCall)(0)) return NULL;
-
-		return dataCall;
-	}
-	else {
-		printf("Datacall not available!\n");
-		return NULL;
-	}
-}
-*/
-
-/*
- * mmvis_static::StaticRenderer::getClipData
- */
-void mmvis_static::StaticRenderer::getClipData(float *clipDat, float *clipCol) {
-	view::CallClipPlane *ccp = this->getClipPlaneSlot.CallAs<view::CallClipPlane>();
-	if ((ccp != NULL) && (*ccp)()) {
-		clipDat[0] = ccp->GetPlane().Normal().X();
-		clipDat[1] = ccp->GetPlane().Normal().Y();
-		clipDat[2] = ccp->GetPlane().Normal().Z();
-		vislib::math::Vector<float, 3> grr(ccp->GetPlane().Point().PeekCoordinates());
-		clipDat[3] = grr.Dot(ccp->GetPlane().Normal());
-		clipCol[0] = static_cast<float>(ccp->GetColour()[0]) / 255.0f;
-		clipCol[1] = static_cast<float>(ccp->GetColour()[1]) / 255.0f;
-		clipCol[2] = static_cast<float>(ccp->GetColour()[2]) / 255.0f;
-		clipCol[3] = static_cast<float>(ccp->GetColour()[3]) / 255.0f;
-
-	}
-	else {
-		clipDat[0] = clipDat[1] = clipDat[2] = clipDat[3] = 0.0f;
-		clipCol[0] = clipCol[1] = clipCol[2] = 0.75f;
-		clipCol[3] = 1.0f;
-	}
-}

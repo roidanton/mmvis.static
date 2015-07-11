@@ -2,6 +2,7 @@
  * StaticRenderer.h
  *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  */
 
@@ -145,6 +146,18 @@ namespace megamol {
 			virtual bool GetCapabilities(core::Call& call);
 
 			/**
+			 * TODO: Document
+			 *
+			 * @param clipDat points to four floats
+			 * @param clipCol points to four floats
+			 */
+			void getClipData(float *clipDat, float *clipCol);
+			
+			/// Gets the data from a call.
+			StructureEventsDataCall *GetData();
+			//StructureEventsDataCall *GetData(unsigned int t, float& outScaling);
+
+			/**
 			 * The get extents callback. The module should set the members of
 			 * 'call' to tell the caller the extents of its data (bounding boxes
 			 * and times).
@@ -168,17 +181,6 @@ namespace megamol {
 			 * @return The return value of the function.
 			 */
 			virtual bool Render(core::Call& call);
-
-			/// Gets the data from a call. Currently OBSOLETE!
-			StructureEventsDataCall *getData(unsigned int t, float& outScaling);
-
-			/**
-			 * TODO: Document
-			 *
-			 * @param clipDat points to four floats
-			 * @param clipCol points to four floats
-			 */
-			void getClipData(float *clipDat, float *clipCol);
 
 		private:
 
@@ -240,6 +242,9 @@ namespace megamol {
 
 			/// The call for clipping plane
 			core::CallerSlot getClipPlaneSlot;
+
+			/// The hash id of the incoming data.
+			size_t dataHash;
 
 			/// Detection of the first pass of the renderer.
 			/// Required for initial vertex buffer creation and data retrieving.
