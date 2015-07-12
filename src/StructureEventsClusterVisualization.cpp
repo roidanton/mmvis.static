@@ -289,7 +289,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	float globalColorIndexMin = 0, globalColorIndexMax = 0;
 	//float signedDistanceMin = 0, signedDistanceMax = 0;
 
-	buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
+	//buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
 
 	//findNeighboursWithKDTree(data);
 
@@ -1791,7 +1791,7 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists(int partic
 	for (int i = 0; i < eventAmount; ++i) {
 		std::random_device rd;
 		std::mt19937_64 mt(rd());
-		std::uniform_real_distribution<float> disPos(-100, 100);
+		std::uniform_real_distribution<float> disPos(0, 100);
 		this->structureEvents[i].x = disPos(mt);
 		this->structureEvents[i].y = disPos(mt);
 		this->structureEvents[i].z = disPos(mt);

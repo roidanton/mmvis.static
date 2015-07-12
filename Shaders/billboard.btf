@@ -50,11 +50,13 @@ void main(void) {
 
     // Set position.
     // gl_Position.w = 1.0f; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
-    vec4 projectedEventPosition = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4(eventPosition, 1.0f);
+    vec4 projectedEventPosition = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4(eventPosition, 0.0f); // w = 1 is in subsequent addition.
+    //vec4 modelviewEventPosition = gl_ModelViewMatrix * vec4(eventPosition, 0.0f); // w = 1 is in subsequent addition.
     
     // Reposition the vertice to create a quad.
     // TODO: Make translated position independent from window ratio (quad should be quadratic and not stretched!)
-    gl_Position = vec4(spanQuad, 0.0f, 1.0f) * quadSizeModificator + projectedEventPosition;
+    gl_Position = vec4(spanQuad, 0.0f, 1.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 1.0f) + projectedEventPosition;
+    //gl_Position = gl_ProjectionMatrix * (modelviewEventPosition + vec4(spanQuad, 0.0f, 1.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 1.0f));
 }
             ]]>
         </snippet>
@@ -150,9 +152,9 @@ void main() {
     /// since it doesn't allow Alpha transparency but much less work
     /// than reodering vertices (draw from back to front) or Alphatest.
     ///
-    if (tex2D.a < .1) {
-      discard;
-    }
+   // if (tex2D.a < .1) {
+    //  discard;
+    //}
     
     gl_FragColor = tex2D * vec4(HSV2RGB(f_colorHSV), 1.0f);
 }

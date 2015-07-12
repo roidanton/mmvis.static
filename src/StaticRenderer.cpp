@@ -488,7 +488,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	this->billboardShader.Enable();
 
 	// Creating test data as long as dependence on camera doesnt work.
-	GLfloat quadSizeModificator = 15.0f;
+	GLfloat quadSizeModificator = 10.0f;
 
 	// Set sizeModificator of all billboards.
 	glUniform1f(this->billboardShader.ParameterLocation("quadSizeModificator"), quadSizeModificator);
