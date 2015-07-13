@@ -20,6 +20,7 @@
 #include "mmcore/view/CallRender3D.h"
 #include "mmcore/param/FilePathParam.h"
 #include "mmcore/misc/PngBitmapCodec.h"
+#include "mmcore/param/FloatParam.h"
 #include "vislib/assert.h"
 #include "lodepng/lodepng.h"
 
@@ -39,7 +40,8 @@ void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *
 	case mmvis_static::VisualAttributes::ParameterType::Time:
 		attributes->SetTypePair(0, "Brightness");
 		attributes->SetTypePair(1, "Hue");
-		attributes->SetTypePair(2, "Opacity");
+		//attributes->SetTypePair(2, "Opacity"); // Usage as time would be stupid.
+		attributes->SetTypePair(2, "Texture");
 		break;
 	case mmvis_static::VisualAttributes::ParameterType::Type:
 		attributes->SetTypePair(0, "Texture");
@@ -126,17 +128,18 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	filePathDeathTextureSlot("filePathDeathTextureSlot", "The image file for death events"),
 	filePathMergeTextureSlot("filePathMergeTextureSlot", "The image file for merge events"),
 	filePathSplitTextureSlot("filePathSplitTextureSlot", "The image file for split events"),
-	eventAgglomerationVisAttrSlot("eventAgglomerationVisAttrSlot", "The visual attribute for the event agglomeration."),
-	eventLocationVisAttrSlot("eventLocationVisAttrSlot", "The visual attribute for the event location."),
-	eventTypeVisAttrSlot("eventTypeVisAttrSlot", "The visual attribute for the event type."),
-	eventTimeVisAttrSlot("eventTimeVisAttrSlot", "The visual attribute for the event time."),
+	eventAgglomerationVisAttrSlot("eventAgglomerationVisAttr", "The visual attribute for the event agglomeration."),
+	eventLocationVisAttrSlot("eventLocationVisAttr", "The visual attribute for the event location."),
+	eventTypeVisAttrSlot("eventTypeVisAttr", "The visual attribute for the event type."),
+	eventTimeVisAttrSlot("eventTimeVisAttr", "The visual attribute for the event time."),
+	glyphSizeSlot("glyphSize", "Size of event glyphs."),
 	/* MegaMol configurator doesn't like those (mmvis_static::StaticRenderer is invalid then).
 	birthOGL2Texture(vislib::graphics::gl::OpenGLTexture2D()),
 	deathOGL2Texture(),
 	mergeOGL2Texture(),
 	splitOGL2Texture(),
 	*/
-	billboardShader(), firstPass(true), dataHash(0) {
+	billboardShader(), firstPass(true), dataHash(0), numberOfVertices(0) {
 
 	this->getDataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
 	this->MakeSlotAvailable(&this->getDataSlot);
@@ -144,8 +147,8 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	this->getClipPlaneSlot.SetCompatibleCall<view::CallClipPlaneDescription>();
 	this->MakeSlotAvailable(&this->getClipPlaneSlot);
 
-	this->filePathBirthTextureSlot << new param::FilePathParam("");
-	this->MakeSlotAvailable(&this->filePathBirthTextureSlot);
+	//this->filePathBirthTextureSlot << new param::FilePathParam("");
+	//this->MakeSlotAvailable(&this->filePathBirthTextureSlot);
 	
 	core::param::EnumParam *visAttrAgglomeration = new core::param::EnumParam(0);
 	mmvis_static::VisualAttributes::getValidAttributes(visAttrAgglomeration, mmvis_static::VisualAttributes::ParameterType::Agglomeration);
@@ -157,7 +160,7 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	this->eventLocationVisAttrSlot << visAttrLocation;
 	this->MakeSlotAvailable(&this->eventLocationVisAttrSlot);
 
-	core::param::EnumParam *visAttrTime = new core::param::EnumParam(1);
+	core::param::EnumParam *visAttrTime = new core::param::EnumParam(2);
 	mmvis_static::VisualAttributes::getValidAttributes(visAttrTime, mmvis_static::VisualAttributes::ParameterType::Time);
 	this->eventTimeVisAttrSlot << visAttrTime;
 	this->MakeSlotAvailable(&this->eventTimeVisAttrSlot);
@@ -166,6 +169,9 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	mmvis_static::VisualAttributes::getValidAttributes(visAttrType, mmvis_static::VisualAttributes::ParameterType::Type);
 	this->eventTypeVisAttrSlot << visAttrType;
 	this->MakeSlotAvailable(&this->eventTypeVisAttrSlot);
+
+	this->glyphSizeSlot.SetParameter(new core::param::FloatParam(0.004f, 0.001f, 0.5f));
+	this->MakeSlotAvailable(&this->glyphSizeSlot);
 }
 
 
@@ -280,15 +286,17 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		///
 		/// Generate textures.
 		///
-		glGenTextures(4, this->textureIDs); // Creates 4 texture object, set array pointer.
-		char filenameChar[] = "GlyphenEventTypesAsterisk.png"; // Copy file to bin folder.
+		glGenTextures(5, this->textureIDs); // Creates texture objects, set array pointer.
+		char filenameChar[] = "GlyphEventTypeBirth.png"; // Copy file to bin folder.
 		CreateOGLTextureFromFile(filenameChar, this->textureIDs[0]);
-		char filenameChar2[] = "GlyphenEventTypesCross.png"; // Copy file to bin folder.
+		char filenameChar2[] = "GlyphEventTypeDeath.png"; // Copy file to bin folder.
 		CreateOGLTextureFromFile(filenameChar2, this->textureIDs[1]);
-		char filenameChar3[] = "GlyphenEventTypesMerge.png"; // Copy file to bin folder.
+		char filenameChar3[] = "GlyphEventTypeMerge.png"; // Copy file to bin folder.
 		CreateOGLTextureFromFile(filenameChar3, this->textureIDs[2]);
-		char filenameChar4[] = "GlyphenEventTypesSplit.png"; // Copy file to bin folder.
+		char filenameChar4[] = "GlyphEventTypeSplit.png"; // Copy file to bin folder.
 		CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
+		char filenameChar5[] = "GlyphEventTimeBackground.png"; // Copy file to bin folder.
+		CreateOGLTextureFromFile(filenameChar5, this->textureIDs[4]);
 
 		// Set Texture. This method is likely obsolete!
 		//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);
@@ -310,7 +318,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	eventTime.Add(40);
 	eventTime.Add(100);
 	// Number of additional events in certain defined ranges (good for zoom levels) or better dynamically loaded? Needs testing!
-	vislib::Array<glm::mat4> eventAgglomeration;
+	//vislib::Array<glm::mat4> eventAgglomeration;
 	// Global parameters: MaxTime, number of events.
 	GLfloat eventMaxTime = 120;
 	*/
@@ -320,7 +328,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	/// Data can be changed when manipulated by calculation,
 	/// so it has to be reloaded and is outside of firstPass.
 	///
-	StructureEventsDataCall* dataCall = GetData();
+	float scaling = 1.0f;
+	StructureEventsDataCall* dataCall = GetData(scaling);
 
 	if (dataCall == NULL) {
 		return false; // Cancel if no data is available. Avoids crash in subsequence code.
@@ -385,12 +394,12 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		const uint8_t *timePtr = static_cast<const uint8_t*>(events.getTime());
 		const uint8_t *typePtr = static_cast<const uint8_t*>(events.getType());
 
-		// Container for all vertices. Could be in own function for improved readability.
-		std::vector<Vertex> vertexList;
-
 		// Debug.
 		//printf("Events: %d, stride: %d, location: %p, time: %p, type: %p\n", events.getCount(), events.getStride(), locationPtr, timePtr, typePtr);
 		
+		// Container for all vertices.
+		std::vector<Vertex> vertexList;
+
 		for (int eventCounter = 0; eventCounter < events.getCount(); ++eventCounter, locationPtr += events.getStride(), timePtr += events.getStride(), typePtr += events.getStride()) {
 			
 			// Use correct pointer types.
@@ -405,7 +414,6 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
 			for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
 				Vertex vertex;
-				glm::vec2 quadSpanModifier, texUV;
 				vertex.opacity = 1.0f;
 				vertex.colorHSV = { 0.0f, 1.0f, 1.0f };
 				float minValue = .4f; // Minimal value for brightness and opacity.
@@ -423,15 +431,21 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 					vertex.colorHSV = { *timePtrf / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
 					vertex.colorHSV = { 0.0f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue };  // Color red, brightness from minValue-100%.
-				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity) {
-					vertex.opacity = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue;  // From minValue-100%.
+				// Opacity for time is stupid and deactivated in User Interface anyway.
+				//else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity)
+				//	vertex.opacity = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue;  // From minValue-100%.
+				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture) {
+					// Will create second quad for time below, set white for color.
+					vertex.colorHSV = { 0.0f, 0.0f, 1.0f };
 				}
+
 
 				// Type.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
-					vertex.eventType = static_cast<float>(*timePtrET); // ToDo: Convert enum -> float.
+					vertex.eventType = static_cast<float>(*timePtrET);
 				
 				// Specific properties for the quad corners.
+				glm::vec2 quadSpanModifier, texUV;
 				switch (quadCounter) {
 				case 0:
 					quadSpanModifier = { -1.0f, -1.0f };
@@ -456,18 +470,112 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 
 				vertexList.push_back(vertex);
 			}
+
+			// Create second quad for time with slightly off z-position.
+			if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture) {
+				for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
+					Vertex vertex;
+					vertex.opacity = 1.0f;
+					vertex.colorHSV = { 0.0f, 0.0f, 1.0f }; // White.
+					float minValue = .1f; // Minimal value for quad size.
+
+					// Position (it gets pushed back a little in the shader).
+					if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position) {
+						vertex.position.x = locationPtrf[0];
+						vertex.position.y = locationPtrf[1];
+						vertex.position.z = locationPtrf[2];
+					}
+
+					// Type misuse.
+					if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
+						vertex.eventType = 4; // It's a misuse of this parameter to tell the shader that this is a time quad.
+
+					// Specific properties for the quad corners. Defines size dependent upon time.
+					float quadSpanHeight = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue; // Range 0 to +1.
+					float quadSpanHeightScaled = quadSpanHeight * 2 - 1; // Since quad ranges from -1 to +1 instead of 0 to +1.
+					glm::vec2 quadSpanModifier, texUV;
+					switch (quadCounter) {
+					case 0:
+						quadSpanModifier = { -1.0f, -1.0f };
+						texUV = { 0.0f, 0.0f };
+						break;
+					case 1:
+						quadSpanModifier = { 1.0f, -1.0f };
+						texUV = { 1.0f, 0.0f };
+						break;
+					case 2:
+						quadSpanModifier = { 1.0f, quadSpanHeightScaled };
+						texUV = { 1.0f, quadSpanHeight };
+						break;
+					case 3:
+						quadSpanModifier = { -1.0f, quadSpanHeightScaled };
+						texUV = { 0.0f, quadSpanHeight };
+						break;
+					}
+					vertex.spanQuad = quadSpanModifier;
+					//vertex.position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
+					vertex.texUV = texUV;
+
+					vertexList.push_back(vertex);
+				}
+			}
 		}
 
 		// Set dummy data to avoid crash.
 		if (vertexList.size() == 0) {
-			Vertex vertex;
-			vertex.position = { 0, 0, 0 };
-			vertex.colorHSV = { 0, 0, 0 };
-			vertex.opacity = 0;
-			vertex.spanQuad = { 0, 0 };
-			vertex.texUV = { 0, 0 };
-			vertex.eventType = 0;
-			vertexList.push_back(vertex);
+			bool testData = false;
+			
+			if (!testData) {
+				Vertex vertex;
+				vertex.position = { 0, 0, 0 };
+				vertex.colorHSV = { 0, 0, 0 };
+				vertex.opacity = 0;
+				vertex.spanQuad = { 0, 0 };
+				vertex.texUV = { 0, 0 };
+				vertex.eventType = 0;
+				vertexList.push_back(vertex);
+			}
+			else {
+				// Set test data
+				int eventMax = 4;
+				for (int i = 0; i < eventMax; ++i) {
+					for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
+						Vertex vertex;
+						vertex.position = { i, i, i };
+						vertex.colorHSV = { (float) i / (float) eventMax, (float) i / (float) eventMax, 1 };
+						vertex.opacity = 1.0f;
+						vertex.eventType = static_cast<float> (i % 4);
+
+						// Specific properties for the quad corners.
+						glm::vec2 quadSpanModifier, texUV;
+						switch (quadCounter) {
+						case 0:
+							quadSpanModifier = { -1.0f, -1.0f };
+							texUV = { 0.0f, 0.0f };
+							break;
+						case 1:
+							quadSpanModifier = { 1.0f, -1.0f };
+							texUV = { 1.0f, 0.0f };
+							break;
+						case 2:
+							quadSpanModifier = { 1.0f, 1.0f };
+							texUV = { 1.0f, 1.0f };
+							break;
+						case 3:
+							quadSpanModifier = { -1.0f, 1.0f };
+							texUV = { 0.0f, 1.0f };
+							break;
+						}
+						vertex.spanQuad = quadSpanModifier;
+						vertex.texUV = texUV;
+
+						printf("Dummy event: %d, %f, color %f, type %f\n", i, vertex.position.x, vertex.colorHSV.x, vertex.eventType);
+
+						vertexList.push_back(vertex);
+					}
+				}
+				printf("Renderer: Dummy vertex data set: %d vertices, %f, %f\n", vertexList.size(), vertexList[10].position.x, vertexList[5].eventType);
+			}
 		}
 
 		// Debug.
@@ -481,16 +589,22 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		// Give our vertices to OpenGL (fill the buffer with data). Heed total size parameter! (I needed hours to track this down)
 		glBufferData(GL_ARRAY_BUFFER, vertexList.size() * sizeof(Vertex), &vertexList.front(), GL_STATIC_DRAW);
+
+		// This is needed for glDrawArrays() below.
+		this->numberOfVertices = vertexList.size();
 	}
 
 	glEnable(GL_DEPTH_TEST);
 
+	// Scale the positions according to the bounding box (see GetData).
+	glScalef(scaling, scaling, scaling);
+
+	//glDisable(GL_CULL_FACE);
+
 	this->billboardShader.Enable();
 
-	// Creating test data as long as dependence on camera doesnt work.
-	GLfloat quadSizeModificator = 10.0f;
-
-	// Set sizeModificator of all billboards.
+	// Set sizeModificator of all billboards. Scales the billboards in shader.
+	GLfloat quadSizeModificator = this->glyphSizeSlot.Param<param::FloatParam>()->Value();
 	glUniform1f(this->billboardShader.ParameterLocation("quadSizeModificator"), quadSizeModificator);
 
 	// Bind texture.
@@ -506,6 +620,9 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, this->textureIDs[3]);
 	glUniform1i(this->billboardShader.ParameterLocation("tex2DSplit"), 3);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, this->textureIDs[4]);
+	glUniform1i(this->billboardShader.ParameterLocation("tex2DTimeBackground"), 4);
 	//this->birthOGL2Texture.Bind();
 	
 	// Set the ID for the shader variable (attribute).
@@ -574,7 +691,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		);
 
 	// Push each element in buffer_vertices to the vertex shader. Thx to OGL 2 we can use quads. :-)
-	glDrawArrays(GL_QUADS, 0, 12); // Starting from vertex 0; 12 vertices total. Will depend on size of dataCall.
+	glDrawArrays(GL_QUADS, 0, static_cast<GLsizei> (this->numberOfVertices)); // Starting from vertex 0; total vertices. Will depend on size of dataCall.
 	
 	// Disable each vertex attribute when it is not immediately used!
 	glDisableVertexAttribArray(shaderAttributeIndex_position);
@@ -717,11 +834,21 @@ void mmvis_static::StaticRenderer::getClipData(float *clipDat, float *clipCol) {
 /*
  * mmvis_static::StaticRenderer::GetData
  */
-mmvis_static::StructureEventsDataCall* mmvis_static::StaticRenderer::GetData() {
+mmvis_static::StructureEventsDataCall* mmvis_static::StaticRenderer::GetData(float& outScaling) {
 	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
 
 	if (dataCall != NULL) {
 		//dataCall->SetFrameID(t);
+		
+		// calculate scaling
+		outScaling = dataCall->AccessBoundingBoxes().ObjectSpaceBBox().LongestEdge();
+		if (outScaling > 0.0000001) {
+			outScaling = 10.0f / outScaling;
+		}
+		else {
+			outScaling = 1.0f;
+		}
+
 		if (!(*dataCall)(0)) return NULL;
 
 		return dataCall;
@@ -772,7 +899,7 @@ bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
  */
 void mmvis_static::StaticRenderer::release(void) {
 	this->billboardShader.Release();
-	glDeleteTextures(4, this->textureIDs);
+	glDeleteTextures(5, this->textureIDs);
 	/*birthOGL2Texture.Release();
 	deathOGL2Texture.Release();
 	mergeOGL2Texture.Release();

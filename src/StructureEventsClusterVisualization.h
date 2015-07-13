@@ -519,12 +519,13 @@ namespace megamol {
 
 			/// Structure Events.
 			std::vector<StructureEvents::StructureEvent> structureEvents;
+			float seMaxTimeCache; // Cache for maximum time of all structure events.
 
 			/// For merge and compare functions.
 			int minClusterSize;
 
-			/// The size of the kdTree, global for output purpose.
-			unsigned int treeSize;
+			/// The size of the kdTree, for output purpose.
+			unsigned int treeSizeOutputCache;
 
 			/// Cache container of a single MMPLD particle list.
 			core::moldyn::MultiParticleDataCall::Particles particles;

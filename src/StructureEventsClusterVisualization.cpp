@@ -35,7 +35,7 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	minMergeSplitAmountSlot("minMergeSplitAmount", "Minimal number of cluster for merge/split event detection."),
 	maxBirthDeathPercentageSlot("maxBirthDeathPercentage", "Maximal ratio of common particles for birth/death event detection."),
 	minClusterSizeSlot("minClusterSize", "Minimal allowed cluster size, clusters smaller than that will be merged."),
-	dataHash(0), sedcHash(0), frameId(0), treeSize(0) {
+	dataHash(0), sedcHash(0), seMaxTimeCache(0), frameId(0), treeSizeOutputCache(0) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
 	this->MakeSlotAvailable(&this->inDataSlot);
@@ -140,6 +140,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& 
 		events->setEvents(&this->structureEvents.front().x,
 			&this->structureEvents.front().time,
 			&this->structureEvents.front().type,
+			this->seMaxTimeCache,
 			this->structureEvents.size());
 	}
 
@@ -338,7 +339,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	size_t clusterBytes = this->clusterList.size() * sizeof(Cluster) / unitConversion;
 
 	this->logFile << " - Sizes p/pp/cl/kd (kiB): ";
-	this->logFile << particleBytes << "/" << previousParticleBytes << "/" << clusterBytes << "/" << this->treeSize / unitConversion;
+	this->logFile << particleBytes << "/" << previousParticleBytes << "/" << clusterBytes << "/" << this->treeSizeOutputCache / unitConversion;
 
 	this->logFile << " - Frame " << this->frameId << "\n"; // For MMPLDs with single frame it is 0 of course. Alternatively data.FrameID() (returns same).
 	this->debugFile.close();
@@ -547,7 +548,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 
 	ANNkd_tree* tree = new ANNkd_tree(annPts, static_cast<int>(this->particleList.size()), 3);
 
-	this->treeSize = tree->nPoints() * sizeof(ANNcoord) * 3; // One ANNPoint consists of 3 ANNcoords here.
+	this->treeSizeOutputCache = tree->nPoints() * sizeof(ANNcoord) * 3; // One ANNPoint consists of 3 ANNcoords here.
 
 	{ // Time measurement. 7s
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_buildTree);
@@ -1613,6 +1614,12 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 			this->structureEvents.push_back(se);
 		}
 	}
+	
+	// Set maximum time.
+	this->seMaxTimeCache = std::max_element(
+		this->structureEvents.begin(), this->structureEvents.end(), [](const StructureEvents::StructureEvent& lhs, const StructureEvents::StructureEvent& rhs) {
+		return lhs.time < rhs.time;
+	})->time;
 
 	// Change hash to mark that something has changed.
 	this->sedcHash = this->sedcHash != 1 ? 1 : 2;

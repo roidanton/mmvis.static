@@ -45,18 +45,42 @@ void main(void) {
     f_eventType = eventType;
     // Pass color to fragment shader.
     f_colorHSV = colorHSV;
-  // Pass opacity to fragment shader.
+    // Pass opacity to fragment shader.
     f_opacity = opacity;
 
-    // Set position.
     // gl_Position.w = 1.0f; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
-    vec4 projectedEventPosition = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4(eventPosition, 0.0f); // w = 1 is in subsequent addition.
-    //vec4 modelviewEventPosition = gl_ModelViewMatrix * vec4(eventPosition, 0.0f); // w = 1 is in subsequent addition.
+
+    ///
+    /// Create quad in projected space. Not needed anymore.
+    ///
+    /*
+    // Set position.
+    vec4 position = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4(eventPosition, 1.0f); // w = 1 since its a point
     
     // Reposition the vertice to create a quad.
-    // TODO: Make translated position independent from window ratio (quad should be quadratic and not stretched!)
-    gl_Position = vec4(spanQuad, 0.0f, 1.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 1.0f) + projectedEventPosition;
-    //gl_Position = gl_ProjectionMatrix * (modelviewEventPosition + vec4(spanQuad, 0.0f, 1.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 1.0f));
+    // @TODO: Make translated position independent from window ratio (quad should be quadratic and not stretched!)
+    position += vec4(spanQuad, 0.0f, 0.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 0.0f); // w = 0, since spanQuad is a direction.
+    
+    // Finalize.
+    gl_Position = position;
+    */
+    
+    ///
+    /// Create quad in view space.
+    ///
+    
+    // Set position.
+    vec4 position = gl_ModelViewMatrix * vec4(eventPosition, 1.0f); // w = 1 since its a point
+    
+    // Reposition the vertice to create a quad.
+    position += vec4(spanQuad, 0.0f, 0.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 0.0f); // w = 0, since spanQuad is a direction.    
+    
+    // If this is the time quad, move it a little back so it is behind the textured event quad.
+    if (eventType < 4.9f)
+      position -= vec4(0.0f, 0.0f, 0.01f, 0.0f);
+
+    // Finalize.
+    gl_Position = gl_ProjectionMatrix * position;
 }
             ]]>
         </snippet>
@@ -72,6 +96,7 @@ uniform sampler2D tex2DBirth;
 uniform sampler2D tex2DDeath;
 uniform sampler2D tex2DMerge;
 uniform sampler2D tex2DSplit;
+uniform sampler2D tex2DTimeBackground;
 varying vec2 f_texUV;
 varying float f_eventType;
 varying vec3 f_colorHSV;
@@ -124,12 +149,15 @@ vec3 HSV2RGB( vec3 hsv ) {
       <snippet name="main" type="string">
         <![CDATA[
 void main() {
+
     vec4 tex2D;
     
     // Revert to "normal" UV handling (known from Blender etc).
     vec2 f_texUV_inverse = vec2(f_texUV.s, 1.0f - f_texUV.t);
     
-    // Set texture. 0 := Birth, 1 := Death, 2 := Merge, 3 := Split
+    /// Set texture.
+    /// 0 := Birth, 1 := Death, 2 := Merge, 3 := Split
+    /// Event type 4 := no event quad but time quad
     if (f_eventType < 0.9f) {
       tex2D = texture2D(tex2DBirth, f_texUV_inverse).rgba;
     }
@@ -142,20 +170,27 @@ void main() {
     else if (f_eventType < 3.9f) {
       tex2D = texture2D(tex2DSplit, f_texUV_inverse).rgba;
     }
+    else if (f_eventType < 4.9f) { // Event quad.
+      tex2D = texture2D(tex2DTimeBackground, f_texUV_inverse).rgba;
+    }
     
     // Set opacity.
     if (f_opacity > 0.0f)
       tex2D = vec4(tex2D.rgb, tex2D.a * f_opacity);
+    
+    // Multitexturing for second time texture. Not implemented, instead second quad is used.
+    //vec4 t1 = texture(top_tex, tex_coord), t2 = texture(bottom_tex, tex_coord); gl_FragColor = mix(t2, t1, t1.a);
     
     ///
     /// Don't draw if the pixel is transparent. This is kinda a hack
     /// since it doesn't allow Alpha transparency but much less work
     /// than reodering vertices (draw from back to front) or Alphatest.
     ///
-   // if (tex2D.a < .1) {
-    //  discard;
-    //}
-    
+    if (tex2D.a < .1) {
+      discard;
+    }
+         
+    /// Finalize.
     gl_FragColor = tex2D * vec4(HSV2RGB(f_colorHSV), 1.0f);
 }
             ]]>

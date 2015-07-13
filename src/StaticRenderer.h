@@ -154,7 +154,7 @@ namespace megamol {
 			void getClipData(float *clipDat, float *clipCol);
 			
 			/// Gets the data from a call.
-			StructureEventsDataCall *GetData();
+			StructureEventsDataCall *GetData(float& outScaling);
 			//StructureEventsDataCall *GetData(unsigned int t, float& outScaling);
 
 			/**
@@ -207,6 +207,9 @@ namespace megamol {
 			core::param::ParamSlot eventTypeVisAttrSlot;
 			core::param::ParamSlot eventTimeVisAttrSlot;
 
+			/// Size of event glyphs.
+			core::param::ParamSlot glyphSizeSlot;
+
 			/// The eventtype textures. Obsolete, replaced by IDs. MegaMol configurator doesn't like them anyways.
 			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
 			vislib::graphics::gl::OpenGLTexture2D deathOGL2Texture;
@@ -246,14 +249,17 @@ namespace megamol {
 			/// The hash id of the incoming data.
 			size_t dataHash;
 
+			/// Stores the number of vertices since a new vbo is not recreated every frame. Required for glDrawArrays().
+			size_t numberOfVertices;
+
 			/// Detection of the first pass of the renderer.
 			/// Required for initial vertex buffer creation and data retrieving.
 			/// Both has to happen in Renderer since the slots are only available
 			/// there.
 			bool firstPass;
 
-			/// The texture IDs. Global since only loaded once in renderer.
-			GLuint textureIDs[4];
+			/// The texture IDs. Global since only loaded once in renderer. 1-4 for events, 5 for time background.
+			GLuint textureIDs[5];
 
 			/// Container for the data call. Global since only created once in renderer.
 			//StructureEventsDataCall* dataCall;

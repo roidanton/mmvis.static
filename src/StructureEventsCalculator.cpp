@@ -154,7 +154,7 @@ bool mmvis_static::StructureEventsCalculator::manipulateData (
 
 	// Send data to the call.
 	StructureEvents events = outData.getEvents();
-	events.setEvents(location, time, &type, static_cast<int>(particleList.size()));
+	//events.setEvents(location, time, &type, static_cast<int>(particleList.size()));
 
 	// Debug.
 	printf("Calculator: Location: %f, Listsize: %d, Max Listsize: %lu\n", *location, particleList.size(), particleList.max_size());

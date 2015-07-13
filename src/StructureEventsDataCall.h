@@ -122,14 +122,14 @@ namespace megamol {
 				const float *time,
 				//const uint8_t *type,
 				const EventType *type,
-				int count) {
+				const float maxTime,
+				const size_t count) {
 				this->locationPtr = location;
 				this->timePtr = time;
 				this->typePtr = type;
 				this->stride = getCalculatedStride();
+				this->maxTime = maxTime;
 				this->count = count;
-				if (*time > this->maxTime)
-					this->maxTime = *time;
 			}
 
 			/**
@@ -156,7 +156,7 @@ namespace megamol {
 				}
 			};
 
-			inline int getCount(void) const {
+			inline size_t getCount(void) const {
 				return this->count;
 			};
 
@@ -188,16 +188,16 @@ namespace megamol {
 			const EventType *typePtr;
 
 			// The stride.
-			unsigned int stride = 0;
+			unsigned int stride = 0; // Bad style, too lazy for constructor.
 
 			// The agglomeration.
 			//glm::mat4 agglomeration;
 
 			// The number of objects stored.
-			int count;
+			size_t count;
 
 			// Maximum time of events.
-			float maxTime = 0;
+			float maxTime = 0; // Bad style, too lazy for constructor.
 
 		};
 
