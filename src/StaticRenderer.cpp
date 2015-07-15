@@ -31,9 +31,9 @@ using namespace megamol::core;
 
 void mmvis_static::VisualAttributes::getValidAttributes(core::param::EnumParam *attributes, mmvis_static::VisualAttributes::ParameterType parameterType) {
 	switch (parameterType) {
-	case mmvis_static::VisualAttributes::ParameterType::Agglomeration:
-		attributes->SetTypePair(0, "Size");
-		break;
+	//case mmvis_static::VisualAttributes::ParameterType::Agglomeration:
+	//	attributes->SetTypePair(0, "Size");
+	//	break;
 	case mmvis_static::VisualAttributes::ParameterType::Location:
 		attributes->SetTypePair(0, "Position");
 		break;
@@ -124,14 +124,15 @@ mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::ge
 mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	getDataSlot("getdata", "Connects to the data source"),
 	getClipPlaneSlot("getclipplane", "Connects to a clipping plane module"),
-	filePathBirthTextureSlot("filePathBirthTextureSlot", "The image file for birth events"),
-	filePathDeathTextureSlot("filePathDeathTextureSlot", "The image file for death events"),
-	filePathMergeTextureSlot("filePathMergeTextureSlot", "The image file for merge events"),
-	filePathSplitTextureSlot("filePathSplitTextureSlot", "The image file for split events"),
-	eventAgglomerationVisAttrSlot("eventAgglomerationVisAttr", "The visual attribute for the event agglomeration."),
+	filePathBirthTextureSlot("filePathBirthTexture", "The image file for birth events"),
+	filePathDeathTextureSlot("filePathDeathTexture", "The image file for death events"),
+	filePathMergeTextureSlot("filePathMergeTexture", "The image file for merge events"),
+	filePathSplitTextureSlot("filePathSplitTexture", "The image file for split events"),
+	//eventAgglomerationVisAttrSlot("eventAgglomerationVisAttr", "The visual attribute for the event agglomeration."),
 	eventLocationVisAttrSlot("eventLocationVisAttr", "The visual attribute for the event location."),
 	eventTypeVisAttrSlot("eventTypeVisAttr", "The visual attribute for the event type."),
 	eventTimeVisAttrSlot("eventTimeVisAttr", "The visual attribute for the event time."),
+	showModeSlot("showMode", "Mode which Structure Events frames to show."),
 	glyphSizeSlot("glyphSize", "Size of event glyphs."),
 	/* MegaMol configurator doesn't like those (mmvis_static::StaticRenderer is invalid then).
 	birthOGL2Texture(vislib::graphics::gl::OpenGLTexture2D()),
@@ -150,10 +151,10 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	//this->filePathBirthTextureSlot << new param::FilePathParam("");
 	//this->MakeSlotAvailable(&this->filePathBirthTextureSlot);
 	
-	core::param::EnumParam *visAttrAgglomeration = new core::param::EnumParam(0);
-	mmvis_static::VisualAttributes::getValidAttributes(visAttrAgglomeration, mmvis_static::VisualAttributes::ParameterType::Agglomeration);
-	this->eventAgglomerationVisAttrSlot << visAttrAgglomeration;
-	this->MakeSlotAvailable(&this->eventAgglomerationVisAttrSlot);
+	//core::param::EnumParam *visAttrAgglomeration = new core::param::EnumParam(0);
+	//mmvis_static::VisualAttributes::getValidAttributes(visAttrAgglomeration, mmvis_static::VisualAttributes::ParameterType::Agglomeration);
+	//this->eventAgglomerationVisAttrSlot << visAttrAgglomeration;
+	//this->MakeSlotAvailable(&this->eventAgglomerationVisAttrSlot);
 
 	core::param::EnumParam *visAttrLocation = new core::param::EnumParam(0);
 	mmvis_static::VisualAttributes::getValidAttributes(visAttrLocation, mmvis_static::VisualAttributes::ParameterType::Location);
@@ -169,6 +170,13 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	mmvis_static::VisualAttributes::getValidAttributes(visAttrType, mmvis_static::VisualAttributes::ParameterType::Type);
 	this->eventTypeVisAttrSlot << visAttrType;
 	this->MakeSlotAvailable(&this->eventTypeVisAttrSlot);
+
+	core::param::EnumParam *showModeParam = new core::param::EnumParam(1);
+	showModeParam->SetTypePair(0, "All");
+	showModeParam->SetTypePair(1, "Current");
+	showModeParam->SetTypePair(2, "Previous");
+	this->showModeSlot << showModeParam;
+	this->MakeSlotAvailable(&this->showModeSlot);
 
 	this->glyphSizeSlot.SetParameter(new core::param::FloatParam(0.004f, 0.001f, 0.5f));
 	this->MakeSlotAvailable(&this->glyphSizeSlot);
@@ -356,10 +364,10 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	}
 
 	// Reset dirty flag of slots if dirty.
-	if (this->eventAgglomerationVisAttrSlot.IsDirty()) {
-		this->eventAgglomerationVisAttrSlot.ResetDirty();
-		recreateVertexBuffer = true;
-	}
+	//if (this->eventAgglomerationVisAttrSlot.IsDirty()) {
+	//	this->eventAgglomerationVisAttrSlot.ResetDirty();
+	//	recreateVertexBuffer = true;
+	//}
 	if (this->eventLocationVisAttrSlot.IsDirty()) {
 		this->eventLocationVisAttrSlot.ResetDirty();
 		recreateVertexBuffer = true;
@@ -370,6 +378,11 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	}
 	if (this->eventTypeVisAttrSlot.IsDirty()) {
 		this->eventTypeVisAttrSlot.ResetDirty();
+		recreateVertexBuffer = true;
+	}
+
+	if (this->showModeSlot.IsDirty()) {
+		this->showModeSlot.ResetDirty();
 		recreateVertexBuffer = true;
 	}
 
@@ -395,7 +408,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		const uint8_t *typePtr = static_cast<const uint8_t*>(events.getType());
 
 		// Debug.
-		//printf("Events: %d, stride: %d, location: %p, time: %p, type: %p\n", events.getCount(), events.getStride(), locationPtr, timePtr, typePtr);
+		//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "Events: %d, stride: %d, location: %p, time: %p, type: %p",
+		//	events.getCount(), events.getStride(), locationPtr, timePtr, typePtr);
 		
 		// Container for all vertices.
 		std::vector<Vertex> vertexList;
@@ -407,8 +421,20 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 			const float *timePtrf = reinterpret_cast<const float*>(timePtr);
 			const StructureEvents::EventType *timePtrET = reinterpret_cast<const StructureEvents::EventType*>(typePtr);
 
+			// @todo filter frame
+			switch (this->showModeSlot.Param<param::EnumParam>()->Value()) {
+				case 0: // All.
+					break;
+				case 1: // Current.
+					if (*timePtrf != callRender->Time())
+						continue;
+				case 2: // Previous.
+					if (*timePtrf > callRender->Time())
+						continue;
+			}
+
 			// Debug.
-			//printf("Event %d: location (%f, %f, %f), time %f, type %d / %f\n",
+			//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "Event %d: location (%f, %f, %f), time %f, type %d / %f",
 			//	eventCounter, locationPtrf[0], locationPtrf[1], locationPtrf[2], *timePtrf, *timePtrET, static_cast<float>(*timePtrET));
 
 			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
@@ -438,7 +464,6 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 					// Will create second quad for time below, set white for color.
 					vertex.colorHSV = { 0.0f, 0.0f, 1.0f };
 				}
-
 
 				// Type.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
@@ -569,12 +594,13 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 						vertex.spanQuad = quadSpanModifier;
 						vertex.texUV = texUV;
 
-						printf("Dummy event: %d, %f, color %f, type %f\n", i, vertex.position.x, vertex.colorHSV.x, vertex.eventType);
+						//printf("Dummy event: %d, %f, color %f, type %f\n", i, vertex.position.x, vertex.colorHSV.x, vertex.eventType);
 
 						vertexList.push_back(vertex);
 					}
 				}
-				printf("Renderer: Dummy vertex data set: %d vertices, %f, %f\n", vertexList.size(), vertexList[10].position.x, vertexList[5].eventType);
+				vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+					"Renderer: Dummy vertex data set: %d vertices, test (%f, %f).", vertexList.size(), vertexList[10].position.x, vertexList[5].eventType);
 			}
 		}
 
@@ -854,7 +880,7 @@ mmvis_static::StructureEventsDataCall* mmvis_static::StaticRenderer::GetData(flo
 		return dataCall;
 	}
 	else {
-		printf("Datacall not available!\n");
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN, "Static Renderer: Datacall not available.");
 		return NULL;
 	}
 }
@@ -865,13 +891,13 @@ mmvis_static::StructureEventsDataCall* mmvis_static::StaticRenderer::GetData(flo
  */
 bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
 	view::CallRender3D *callRender = dynamic_cast<view::CallRender3D*>(&call);
-	if (callRender == NULL) return false;
+	if (callRender == NULL)
+		return false;
 
 	/// FrameCount and bbox has to be set in SE calculation/reader.
 
 	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
 	if ((dataCall != NULL) && ((*dataCall)(1))) {
-		//callRender->SetTimeFramesCount(1);
 		callRender->SetTimeFramesCount(dataCall->FrameCount());
 		callRender->AccessBoundingBoxes() = dataCall->AccessBoundingBoxes();
 

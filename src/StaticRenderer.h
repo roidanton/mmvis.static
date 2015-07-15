@@ -42,7 +42,7 @@ namespace megamol {
 				Texture
 			};
 			enum class ParameterType : int {
-				Agglomeration,
+				//Agglomeration,
 				Location,
 				Type,
 				Time
@@ -202,13 +202,16 @@ namespace megamol {
 			core::param::ParamSlot filePathSplitTextureSlot;
 
 			/// The visual attributes for events.
-			core::param::ParamSlot eventAgglomerationVisAttrSlot;
+			//core::param::ParamSlot eventAgglomerationVisAttrSlot;
 			core::param::ParamSlot eventLocationVisAttrSlot;
 			core::param::ParamSlot eventTypeVisAttrSlot;
 			core::param::ParamSlot eventTimeVisAttrSlot;
 
 			/// Size of event glyphs.
 			core::param::ParamSlot glyphSizeSlot;
+
+			/// Show current frame, all frames, previous frames.
+			core::param::ParamSlot showModeSlot;
 
 			/// The eventtype textures. Obsolete, replaced by IDs. MegaMol configurator doesn't like them anyways.
 			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;

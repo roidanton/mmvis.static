@@ -13,6 +13,7 @@
 #include "mmcore/param/BoolParam.h"
 #include "ANN/ANN.h"
 #include "vislib/math/Vector.h"
+#include "vislib/sys/Log.h"
 #include <chrono>
 //#include <ctime>
 #include <random>
@@ -135,6 +136,9 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& 
 	//	this->structureEvents.size(), &this->structureEvents.front().x, &this->structureEvents.front().time, &this->structureEvents.front().type);
 
 	if (this->structureEvents.size() > 0) {
+		// Debug.
+		//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "Calculator: Sent %d events.", this->structureEvents.size());
+
 		// Send data to the call.
 		StructureEvents* events = &outSedc->getEvents();
 		events->setEvents(&this->structureEvents.front().x,
@@ -465,7 +469,7 @@ void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamo
 		/// Write data into local container.
 		///
 
-		for (uint64_t particleIndex = 0; particleIndex < particles.GetCount(); particleIndex++, vertexPtr += vertexStride, colourPtr += colourStride) {
+		for (uint64_t particleIndex = 0; particleIndex < particles.GetCount(); ++particleIndex, vertexPtr += vertexStride, colourPtr += colourStride) {
 
 			Particle particle;
 
@@ -1621,7 +1625,7 @@ void mmvis_static::StructureEventsClusterVisualization::setStructureEvents() {
 		return lhs.time < rhs.time;
 	})->time;
 
-	// Change hash to mark that something has changed.
+	// Change hash to flag that sedc data has changed.
 	this->sedcHash = this->sedcHash != 1 ? 1 : 2;
 
 	debugEventsFile << "Big partners (merge):\n"

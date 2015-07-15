@@ -20,7 +20,7 @@ mmvis_static::StructureEvents::StructureEvents(void) :
 		stride(0),
 		count(0),
 		maxTime(0) {
-	printf("Structure Events alive!\n");
+	//printf("Structure Events alive!\n");
 }
 
 
@@ -60,7 +60,7 @@ mmvis_static::StructureEvents::operator=(
  * mmvis_static::StructureEventsDataCall::StructureEventsDataCall
  */
 mmvis_static::StructureEventsDataCall::StructureEventsDataCall() : AbstractGetData3DCall(), events() {
-	printf("Data call alive!\n\n\n");
+	//printf("Data call alive!\n\n\n");
 }
 
 

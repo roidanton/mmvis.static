@@ -53,7 +53,7 @@ namespace megamol {
 			/// It is important that no automatic padding is inserted by compiler
 			/// therefore all datatypes have sizes of 4 or 8.
 			///
-			/// Stride = (4 byte * (3 + 1)) + 4 byte.
+			/// Stride = (4 byte * (3 + 1)) + 4 byte = 20.
 			///
 			struct StructureEvent {
 				float x, y, z;
@@ -70,44 +70,22 @@ namespace megamol {
 			/// Ctor.
 			StructureEvents(const StructureEvents& src);
 
-			/**
-			 * @return The location pointer
-			 */
-			inline const void * getLocation(void) const {
+			inline const void* getLocation(void) const {
 				return this->locationPtr;
 			}
 
-			/**
-			 * @return The time pointer
-			 */
-			inline const void * getTime(void) const {
+			inline const void* getTime(void) const {
 				return this->timePtr;
 			}
 
-			/**
-			 * @return The type pointer
-			 */
-			//inline const uint8_t * getType(void) const {
-			//	return this->typePtr;
-			//}
-			inline const void * getType(void) const {
+			inline const void* getType(void) const {
 				return this->typePtr;
 			}
 
-			/**
-			 * @return The stride
-			 */
 			inline unsigned int getStride(void) const {
 				if (this->stride == 0)
 					return getCalculatedStride();
 				return this->stride;
-			}
-
-			/**
-			 * @return The calculated stride.
-			 */
-			inline unsigned int getCalculatedStride(void) const {
-				return sizeof(StructureEvent);
 			}
 
 			inline void setStride(unsigned int stride) {
@@ -156,11 +134,11 @@ namespace megamol {
 				}
 			};
 
-			inline size_t getCount(void) const {
+			inline const size_t getCount(void) const {
 				return this->count;
 			};
 
-			inline float getMaxTime() const {
+			inline const float getMaxTime() const {
 				return maxTime;
 			};
 
@@ -177,6 +155,10 @@ namespace megamol {
 
 		private:
 
+			inline unsigned int getCalculatedStride(void) const {
+				return sizeof(StructureEvent);
+			}
+
 			// The location pointer, 4 byte
 			const float *locationPtr;
 
@@ -184,7 +166,6 @@ namespace megamol {
 			const float *timePtr;
 
 			// The type pointer, 1 byte. 0 := Birth, 1 := Death, 2 := Merge, 3 := Split as in shader.
-			//const uint8_t *typePtr;
 			const EventType *typePtr;
 
 			// The stride.
@@ -203,7 +184,8 @@ namespace megamol {
 
 
 		/**
-		 * TODO: This class is a stub!
+		 * The call containing structure events data.
+		 * Header contains stride, count and maxTime in addition to dataExtend.
 		 */
 		class StructureEventsDataCall : public core::AbstractGetData3DCall {
 		public:
@@ -263,6 +245,10 @@ namespace megamol {
 			 */
 			StructureEventsDataCall& operator=(const StructureEventsDataCall& rhs);
 
+			StructureEvents& getEvents() {
+				return this->events;
+			};
+
 			/*inline UINT32 getEventCount(void) const {
 				return this->eventCount;
 			};
@@ -279,10 +265,6 @@ namespace megamol {
 			inline unsigned int getEventStride() const {
 				return sizeof(Event);
 			};*/
-
-			StructureEvents& getEvents() {
-				return this->events;
-			};
 
 		private:
 			StructureEvents events;

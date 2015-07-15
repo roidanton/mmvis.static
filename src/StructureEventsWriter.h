@@ -21,11 +21,27 @@
 namespace megamol {
 	namespace mmvis_static {
 		/**
-		 * TODO: This class is a stub!
 		 core::utility::xml::XMLReader
 		 #include "mmcore/utility/xml/XmlReader.h"
 		 Alternativ: https://github.com/miloyip/rapidjson
+		 Not needed, used binary data.
 		 */
+
+		///
+		/// Writes MMSE file.
+		///
+		/// File format header:
+		/// 0..5 char* MagicIdentifier
+		/// 6..29 6x float (32 bit) Data set bounding box
+		/// 30..53 6x float (32 bit) Data set clipping box
+		/// 54..61 uint64_t Number of events
+		/// 62..65 float Maximum time of all events
+		///
+		/// File format body (relative bytes):
+		/// 0..11 3x float (32bit) Event position
+		/// 12..15 float Event time
+		/// 16..19 EventType (int) Event type
+		///
 		class StructureEventsWriter : public core::AbstractDataWriter {
 		public:
 			/**

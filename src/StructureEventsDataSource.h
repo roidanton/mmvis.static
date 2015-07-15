@@ -11,19 +11,31 @@
 #pragma once
 #endif /* (defined(_MSC_VER) && (_MSC_VER > 1000)) */
 
+#include "mmcore/view/AnimDataModule.h"
 #include "mmcore/CalleeSlot.h"
 #include "mmcore/param/ParamSlot.h"
-//#include "mmcore/Module.h"
-#include "mmcore/view/AnimDataModule.h"
+#include "StructureEventsDataCall.h"
 #include "vislib/math/Cuboid.h"
 #include "vislib/sys/File.h"
 #include "vislib/RawStorage.h"
 
 namespace megamol {
 	namespace mmvis_static {
-		/**
-		 * TODO: This class is a stub!
-		 */
+		///
+		/// Reads MMSE file.
+		///
+		/// File format header:
+		/// 0..5 char* MagicIdentifier
+		/// 6..29 6x float (32 bit) Data set bounding box
+		/// 30..53 6x float (32 bit) Data set clipping box
+		/// 54..61 uint64_t Number of events
+		/// 62..65 float Maximum time of all events
+		///
+		/// File format body (relative bytes):
+		/// 0..11 3x float (32bit) Event position
+		/// 12..15 float Event time
+		/// 16..19 EventType (int) Event type
+		///
 		class StructureEventsDataSource : public core::Module {
 		//class StructureEventsDataSource : public core::view::AnimDataModule {
 		public:
@@ -101,11 +113,17 @@ namespace megamol {
 			 */
 			bool getExtentCallback(core::Call& caller);
 
+			/// Sets the data.
+			bool SetData(StructureEventsDataCall& data);
+
 			/// The file name.
 			core::param::ParamSlot filename;
 
 			/// The opened data file.
 			vislib::sys::File *file;
+
+			/// The hash id of the data stored
+			size_t sedcHash;
 
 			/// The call for data.
 			core::CalleeSlot getDataSlot;
@@ -115,6 +133,24 @@ namespace megamol {
 
 			/// The data set clipping box.
 			vislib::math::Cuboid<float> clipbox;
+
+			/// The size of the header in byte, for file->seek.
+			int headerSize;
+
+			/// The data set event count.
+			size_t eventCount;
+
+			/// The data set maximum time.
+			float maxTime;
+
+			/// The number of time frames (SE doesnt have them), required for the call.
+			unsigned int frameCount;
+
+			/// The data.
+			vislib::RawStorage eventData;
+
+			/// Flag for data changes.
+			bool reReadData;
 		};
 
 	} /* namespace mmvis_static */
