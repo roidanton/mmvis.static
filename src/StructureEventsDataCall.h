@@ -4,14 +4,6 @@
  * Copyright (C) 2009-2015 by MegaMol Team
  * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
- *
- * Uses pointer for data instead of copying into own
- * structure. Either use:
- * - one pointer for all datatypes and all events
- * - one pointer for all datatypes and each event
- * - one pointer for each datatype and all events
- * - one pointer for each datatype and each event
- * Not yet decided: Depends on Calculation output.
  */
 
 #ifndef MMVISSTATIC_StructureEventsDataCall_H_INCLUDED
@@ -22,6 +14,7 @@
 
 #include "mmcore/AbstractGetData3DCall.h"
 #include "mmcore/factories/CallAutoDescription.h"
+#include "vislib/sys/Log.h"
 #include <vector>
 
 namespace megamol {
@@ -130,7 +123,8 @@ namespace megamol {
 					throw "Invalid EventType code";
 				}
 				catch (char* error){
-					printf("mmvis_static::StructureEventsDataCall %s: %d\n", error, typeCode);
+					vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
+						"mmvis_static::StructureEventsDataCall %s: %d", error, typeCode);
 				}
 			};
 

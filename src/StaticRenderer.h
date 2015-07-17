@@ -25,9 +25,9 @@
 namespace megamol {
 	namespace mmvis_static {
 
-		/**
-		 * Cares about visual attributes.
-		 */
+		///
+		/// Cares about visual attributes.
+		///
 		class VisualAttributes {
 		public:
 			enum class AttributeType : int {
@@ -81,9 +81,9 @@ namespace megamol {
 			static void getAttributeValue(AttributeType attr, ParameterType param);
 		};
 
-		/**
-		 * The Renderer.
-		 */
+		///
+		/// Renders structure events (frameless data) and using billboards for output.
+		///
 		class StaticRenderer : public core::view::Renderer3DModule {
 		public:
 			/**
@@ -196,10 +196,10 @@ namespace megamol {
 			void LoadPngTexture(core::param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture);
 			
 			/// The filepathes for the textures. Currently unused!
-			core::param::ParamSlot filePathBirthTextureSlot;
-			core::param::ParamSlot filePathDeathTextureSlot;
-			core::param::ParamSlot filePathMergeTextureSlot;
-			core::param::ParamSlot filePathSplitTextureSlot;
+			//core::param::ParamSlot filePathBirthTextureSlot;
+			//core::param::ParamSlot filePathDeathTextureSlot;
+			//core::param::ParamSlot filePathMergeTextureSlot;
+			//core::param::ParamSlot filePathSplitTextureSlot;
 
 			/// The visual attributes for events.
 			//core::param::ParamSlot eventAgglomerationVisAttrSlot;
@@ -210,8 +210,11 @@ namespace megamol {
 			/// Size of event glyphs.
 			core::param::ParamSlot glyphSizeSlot;
 
-			/// Show current frame, all frames, previous frames.
-			core::param::ParamSlot showModeSlot;
+			/// Controls the time of the structure events that are shown. Correspondences to time set by the view.
+			core::param::ParamSlot timeModeSlot;
+
+			/// Controls the event types to show.
+			core::param::ParamSlot eventTypeModeSlot;
 
 			/// The eventtype textures. Obsolete, replaced by IDs. MegaMol configurator doesn't like them anyways.
 			/*vislib::graphics::gl::OpenGLTexture2D birthOGL2Texture;
@@ -230,6 +233,8 @@ namespace megamol {
 				GLfloat eventType; ///< Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, 3 = split
 				glm::vec3 colorHSV; ///< Color in HSV: Hue, Saturation, Value = [0,1]. Converted to rgb in shader.
 				GLfloat opacity; ///< Opacity.
+				GLfloat timeTextureType; ///< 0 := No time texture. 1 := texture type 1.
+				GLfloat relativeTime; ///< Time from 0 to 1, calculated in cpp.
 			};
 
 			/// Shader attributes.
@@ -238,7 +243,9 @@ namespace megamol {
 				shaderAttributeIndex_texUV,
 				shaderAttributeIndex_eventType,
 				shaderAttributeIndex_colorHSV,
-				shaderAttributeIndex_opacity;
+				shaderAttributeIndex_opacity,
+				shaderAttributeIndex_timeTextureType,
+				shaderAttributeIndex_relativeTime;
 				
 			/// Vertex Buffer Object index for the vertex shader.
 			GLuint vbo;
@@ -261,8 +268,8 @@ namespace megamol {
 			/// there.
 			bool firstPass;
 
-			/// The texture IDs. Global since only loaded once in renderer. 1-4 for events, 5 for time background.
-			GLuint textureIDs[5];
+			/// The texture IDs. Global since only loaded once in renderer. 1-4 for events, 5 for time background. 5 obsolete.
+			GLuint textureIDs[4];
 
 			/// Container for the data call. Global since only created once in renderer.
 			//StructureEventsDataCall* dataCall;

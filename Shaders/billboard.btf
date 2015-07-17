@@ -28,6 +28,10 @@ attribute vec3 colorHSV;
 varying vec3 f_colorHSV;
 attribute float opacity;
 varying float f_opacity;
+attribute float timeTextureType;
+varying float f_timeTextureType;
+attribute float relativeTime;
+varying float f_relativeTime;
             ]]>
         </snippet>
         <snippet name="uniformVar" type="string">
@@ -47,6 +51,10 @@ void main(void) {
     f_colorHSV = colorHSV;
     // Pass opacity to fragment shader.
     f_opacity = opacity;
+    // Pass time texture type to fragment shader.
+    f_timeTextureType = timeTextureType;
+    // Pass relative time to fragment shader.
+    f_relativeTime = relativeTime;
 
     // gl_Position.w = 1.0f; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
 
@@ -96,11 +104,13 @@ uniform sampler2D tex2DBirth;
 uniform sampler2D tex2DDeath;
 uniform sampler2D tex2DMerge;
 uniform sampler2D tex2DSplit;
-uniform sampler2D tex2DTimeBackground;
+//uniform sampler2D tex2DTimeBackground; // Obsolete.
 varying vec2 f_texUV;
 varying float f_eventType;
 varying vec3 f_colorHSV;
 varying float f_opacity;
+varying float f_timeTextureType;
+varying float f_relativeTime;
             ]]>
       </snippet>
       <snippet name="colorConversion" type="string">
@@ -170,16 +180,9 @@ void main() {
     else if (f_eventType < 3.9f) {
       tex2D = texture2D(tex2DSplit, f_texUV_inverse).rgba;
     }
-    else if (f_eventType < 4.9f) { // Event quad.
-      tex2D = texture2D(tex2DTimeBackground, f_texUV_inverse).rgba;
-    }
-    
-    // Set opacity.
-    if (f_opacity > 0.0f)
-      tex2D = vec4(tex2D.rgb, tex2D.a * f_opacity);
-    
-    // Multitexturing for second time texture. Not implemented, instead second quad is used.
-    //vec4 t1 = texture(top_tex, tex_coord), t2 = texture(bottom_tex, tex_coord); gl_FragColor = mix(t2, t1, t1.a);
+    //else if (f_eventType < 4.9f) { // Time quad. Obsolete.
+    //  tex2D = texture2D(tex2DTimeBackground, f_texUV_inverse).rgba;
+    //}
     
     ///
     /// Don't draw if the pixel is transparent. This is kinda a hack
@@ -189,9 +192,48 @@ void main() {
     if (tex2D.a < .1) {
       discard;
     }
-         
+
+    // Set opacity.
+    if (f_opacity > 0.0f)
+      tex2D = vec4(tex2D.rgb, tex2D.a * f_opacity);
+
+    // Set time.
+    if (f_timeTextureType < 0.9f) { // No time texture.
+        // Check if pixel has to be replaced.
+        if (tex2D.r > .6f
+          && tex2D.g < .4f
+          && tex2D.b > .6f) {
+            float f = 250f / 255f;
+            tex2D.rgb = vec3(f);
+        }
+        else {
+            tex2D.rgb *= HSV2RGB(f_colorHSV);
+        }
+    }
+    else if (f_timeTextureType < 1.9f) { // Filling time type.
+        // Check if pixel has to be replaced.
+        if (tex2D.r > .6f
+          && tex2D.g < .4f
+          && tex2D.b > .6f) {
+            // Check uv coordinates for time filling.
+            if (f_texUV.t > f_relativeTime) {
+                float f = 250f / 255f;
+                tex2D.rgb = vec3(f);
+            }
+            else {
+                float f = 128f / 255f;
+                tex2D.rgb = vec3(f);
+            }
+        }
+    }
+
+    // Multitexturing for second time texture. Not implemented, one texture is enough.
+    //vec4 t1 = texture(top_tex, tex_coord), t2 = texture(bottom_tex, tex_coord); gl_FragColor = mix(t2, t1, t1.a);
+    //vec4 tex2DBackground = texture2D(tex2DTimeBackground, f_texUV_inverse).rgba;
+    //tex2D = vec4(mix(tex2DBackground.rgb, tex2D.rgb, length(tex2D.rgb) / sqrt(3.0)), tex2D.a);
+
     /// Finalize.
-    gl_FragColor = tex2D * vec4(HSV2RGB(f_colorHSV), 1.0f);
+    gl_FragColor = tex2D;
 }
             ]]>
         </snippet>

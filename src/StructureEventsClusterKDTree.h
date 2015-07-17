@@ -5,11 +5,7 @@
  * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  *
- * Adds color to each cluster detected by the contour
- * tree algorithm.
- *
- * ToDo:
- *  - Contour tree algorithm
+ * Obsolete module, existed for testing purposes. Can be removed safely.
  */
 
 #ifndef MMVISSTATIC_StructureEventsClusterKDTree_H_INCLUDED

@@ -2,7 +2,10 @@
  * StructureEventsCalculator.h
  *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
+ *
+ * Obsolete module, existed for testing purposes. Can be removed safely.
  */
 
 #ifndef MMVISSTATIC_StructureEventsCalculator_H_INCLUDED

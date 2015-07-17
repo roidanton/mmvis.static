@@ -4,12 +4,6 @@
  * Copyright (C) 2009-2015 by MegaMol Team
  * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
- *
- * Adds color to each cluster detected by the contour
- * tree algorithm.
- *
- * ToDo:
- *  - Contour tree algorithm
  */
 
 #ifndef MMVISSTATIC_StructureEventsClusterVisualization_H_INCLUDED
@@ -18,17 +12,15 @@
 #pragma once
 #endif /* (defined(_MSC_VER) && (_MSC_VER > 1000)) */
 
-#include "mmcore/CallerSlot.h"
+#include "glm/glm/glm.hpp"
 #include "mmcore/CalleeSlot.h"
-#include "mmcore/param/ParamSlot.h"
+#include "mmcore/CallerSlot.h"
 #include "mmcore/Module.h"
 #include "mmcore/moldyn/MultiParticleDataCall.h"
+#include "mmcore/param/ParamSlot.h"
 #include "StructureEventsDataCall.h"
-#include "glm/glm/glm.hpp"
-
-#include <map>
+//#include <map>
 #include <functional>
-
 // File operations.
 #include <iostream>
 #include <fstream>
@@ -36,9 +28,23 @@
 
 namespace megamol {
 	namespace mmvis_static {
-		/**
-		 * TODO: This class is a stub!
-		 */
+		///
+		/// Calculates Structure Events in several steps:
+		/// 1) Getting the neighbours of each particle.
+		/// 2) Creating clusters by using these neighbours.
+		/// 3) Comparing the clusters of two following frames.
+		/// 4) Using heuristics to determine structure events from the comparison of (3).
+		///
+		/// Outputs the events to SEDC.
+		/// Outputs the clusters by coloring the particles to MPDC.
+		///
+		/// Programming comments:
+		/// - csv, text and console log should get its own class since it bloats the source code
+		/// - lack of usage of OpenMP in the many for loops:
+		///   http://stackoverflow.com/questions/17848521/using-openmp-with-c11-range-based-for-loops
+		///   OpenMP doesn't like continue, break and should have predefined size.
+		///   -> adjusting lists (predefined sizes) and rebuilding for loops takes too much time.
+		///
 		class StructureEventsClusterVisualization : public core::Module {
 		public:
 
@@ -269,8 +275,7 @@ namespace megamol {
 
 				bool hasPartnerCluster(int clusterID) const {
 					auto it = std::find_if(this->partners.begin(), this->partners.end(), [clusterID](const PartnerCluster& pc) -> bool {
-						if (pc.cluster.id == clusterID)
-							return true;
+						return pc.cluster.id == clusterID;
 					});
 					if (it != partners.end())
 						return true;
@@ -314,7 +319,7 @@ namespace megamol {
 					return *it;
 				}
 
-				PartnerClusters getPartnerClusters(int clusterId, Direction direction = Direction::forward) {
+				PartnerClusters* getPartnerClusters(int clusterId, Direction direction = Direction::forward) {
 					std::vector<PartnerClusters>* list;
 					if (direction == Direction::backwards)
 						list = &this->backwardsList;
@@ -323,7 +328,9 @@ namespace megamol {
 					std::vector<PartnerClusters>::iterator it = std::find_if(list->begin(), list->end(), [clusterId](const PartnerClusters& p) -> bool {
 						return p.cluster.id == clusterId;
 					});
-					return *it;
+					if (it == list->end())
+						return NULL;
+					return static_cast<PartnerClusters*>(&(*it));
 				}
 
 				/// List of PartnerClusters who contains the clusterid as parent.
@@ -454,7 +461,7 @@ namespace megamol {
 			void compareClusters();
 
 			/// Sets the StructureEvents.
-			void setStructureEvents();
+			void determineStructureEvents();
 
 			/// Set colour of particles based on cluster assignment.
 			void setClusterColor(bool renewClusterColors);
@@ -472,6 +479,7 @@ namespace megamol {
 
 			/// Files.
 			std::ofstream logFile;
+			std::ofstream csvLogFile;
 			std::ofstream debugFile;
 
 			/// The call for incoming data.
@@ -497,6 +505,9 @@ namespace megamol {
 			core::param::ParamSlot minMergeSplitAmountSlot;
 			core::param::ParamSlot maxBirthDeathPercentageSlot;
 
+			/// Switch for creating log files.
+			core::param::ParamSlot logFilesSlot;
+
 			/// The hash id of the data stored
 			size_t dataHash;
 
@@ -517,15 +528,18 @@ namespace megamol {
 			/// Cluster comparison.
 			PartnerClustersList partnerClustersList;
 
-			/// Structure Events.
+			/// Structure Events. The list should never be cleared/reset so that
+			/// it can contain the StructureEvents of all calculated frames.
 			std::vector<StructureEvents::StructureEvent> structureEvents;
-			float seMaxTimeCache; // Cache for maximum time of all structure events.
 
-			/// For merge and compare functions.
-			int minClusterSize;
+			/// Cache for maximum time of all structure events.
+			float seMaxTimeCache;
 
-			/// The size of the kdTree, for output purpose.
+			/// The size of the kdTree, for output.
 			unsigned int treeSizeOutputCache;
+
+			/// The time of the calculation for output.
+			char timeOutputCache[80];
 
 			/// Cache container of a single MMPLD particle list.
 			core::moldyn::MultiParticleDataCall::Particles particles;

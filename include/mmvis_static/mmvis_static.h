@@ -1,6 +1,8 @@
-/*
+/**
  * mmvis_static.h
+ *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  */
 #ifndef MMVIS_STATIC_H_INCLUDED

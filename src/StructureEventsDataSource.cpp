@@ -2,6 +2,7 @@
  * StructureEventsDataSource.cpp
  *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  */
 

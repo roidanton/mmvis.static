@@ -1,6 +1,8 @@
-/*
+/**
  * mmvis_static.cpp
+ *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  */
 
@@ -12,13 +14,16 @@
 #include "mmcore/versioninfo.h"
 #include "vislib/vislibversion.h"
 
+// Modules.
 #include "StaticRenderer.h"
-#include "StructureEventsClusterVisualization.h"
-#include "StructureEventsClusterKDTree.h"
 #include "StructureEventsCalculator.h"
-#include "StructureEventsDataCall.h"
+//#include "StructureEventsClusterKDTree.h"
+#include "StructureEventsClusterVisualization.h"
 #include "StructureEventsDataSource.h"
 #include "StructureEventsWriter.h"
+
+// Calls.
+#include "StructureEventsDataCall.h"
 
 /* anonymous namespace hides this type from any other object files */
 namespace {
@@ -46,31 +51,14 @@ namespace {
 
             // register modules here:
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StaticRenderer>();
-			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsClusterVisualization>();
-			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsClusterKDTree>();
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsCalculator>();
+			//this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsClusterKDTree>();
+			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsClusterVisualization>();
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsDataSource>();
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsWriter>();
 
-            //
-            // TODO: Register your plugin's modules here
-            // like:
-            //   this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::MyModule1>();
-            //   this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::MyModule2>();
-            //   ...
-            //
-
             // register calls here:
 			this->call_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsDataCall>();
-
-            //
-            // TODO: Register your plugin's calls here
-            // like:
-            //   this->call_descriptions.RegisterAutoDescription<megamol::mmvis_static::MyCall1>();
-            //   this->call_descriptions.RegisterAutoDescription<megamol::mmvis_static::MyCall2>();
-            //   ...
-            //
-
         }
         MEGAMOLCORE_PLUGIN200UTIL_IMPLEMENT_plugininstance_connectStatics
     };

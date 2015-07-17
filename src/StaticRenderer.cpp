@@ -2,13 +2,8 @@
  * StaticRenderer.cpp
  *
  * Copyright (C) 2009-2015 by MegaMol Team
+ * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
- *
- * TODO:
- * - Fix billboard ratio (always quadratic and not dependent on window ratio as it is currently)
- * - Add parameter agglomeration.
- * - Enable orthographic mode?
- * - Make size of billboards also dependent on camera
  */
 
 #include "stdafx.h"
@@ -124,15 +119,16 @@ mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::ge
 mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	getDataSlot("getdata", "Connects to the data source"),
 	getClipPlaneSlot("getclipplane", "Connects to a clipping plane module"),
-	filePathBirthTextureSlot("filePathBirthTexture", "The image file for birth events"),
-	filePathDeathTextureSlot("filePathDeathTexture", "The image file for death events"),
-	filePathMergeTextureSlot("filePathMergeTexture", "The image file for merge events"),
-	filePathSplitTextureSlot("filePathSplitTexture", "The image file for split events"),
+	//filePathBirthTextureSlot("filePathBirthTexture", "The image file for birth events"),
+	//filePathDeathTextureSlot("filePathDeathTexture", "The image file for death events"),
+	//filePathMergeTextureSlot("filePathMergeTexture", "The image file for merge events"),
+	//filePathSplitTextureSlot("filePathSplitTexture", "The image file for split events"),
 	//eventAgglomerationVisAttrSlot("eventAgglomerationVisAttr", "The visual attribute for the event agglomeration."),
 	eventLocationVisAttrSlot("eventLocationVisAttr", "The visual attribute for the event location."),
 	eventTypeVisAttrSlot("eventTypeVisAttr", "The visual attribute for the event type."),
 	eventTimeVisAttrSlot("eventTimeVisAttr", "The visual attribute for the event time."),
-	showModeSlot("showMode", "Mode which Structure Events frames to show."),
+	timeModeSlot("timeMode", "The time of the structure events that are shown. Correspondences to time set by the view."),
+	eventTypeModeSlot("eventTypeMode", "The event types to show."),
 	glyphSizeSlot("glyphSize", "Size of event glyphs."),
 	/* MegaMol configurator doesn't like those (mmvis_static::StaticRenderer is invalid then).
 	birthOGL2Texture(vislib::graphics::gl::OpenGLTexture2D()),
@@ -171,14 +167,23 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	this->eventTypeVisAttrSlot << visAttrType;
 	this->MakeSlotAvailable(&this->eventTypeVisAttrSlot);
 
-	core::param::EnumParam *showModeParam = new core::param::EnumParam(1);
-	showModeParam->SetTypePair(0, "All");
-	showModeParam->SetTypePair(1, "Current");
-	showModeParam->SetTypePair(2, "Previous");
-	this->showModeSlot << showModeParam;
-	this->MakeSlotAvailable(&this->showModeSlot);
+	core::param::EnumParam *timeModeParam = new core::param::EnumParam(0);
+	timeModeParam->SetTypePair(0, "All");
+	timeModeParam->SetTypePair(1, "Current");
+	timeModeParam->SetTypePair(2, "Previous");
+	this->timeModeSlot << timeModeParam;
+	this->MakeSlotAvailable(&this->timeModeSlot);
 
-	this->glyphSizeSlot.SetParameter(new core::param::FloatParam(0.004f, 0.001f, 0.5f));
+	core::param::EnumParam *eventTypeModeParam = new core::param::EnumParam(0);
+	eventTypeModeParam->SetTypePair(0, "All");
+	eventTypeModeParam->SetTypePair(1, "Birth");
+	eventTypeModeParam->SetTypePair(2, "Death");
+	eventTypeModeParam->SetTypePair(3, "Merge");
+	eventTypeModeParam->SetTypePair(4, "Split");
+	this->eventTypeModeSlot << eventTypeModeParam;
+	this->MakeSlotAvailable(&this->eventTypeModeSlot);
+
+	this->glyphSizeSlot.SetParameter(new core::param::FloatParam(0.08f, 0.001f, 1.f));
 	this->MakeSlotAvailable(&this->glyphSizeSlot);
 }
 
@@ -271,7 +276,17 @@ bool mmvis_static::StaticRenderer::create(void) {
 		fprintf(stderr, "Could not bind attribute %s\n", "opacity");
 		return false;
 	}
-
+	shaderAttributeIndex_timeTextureType = glGetAttribLocation(this->billboardShader, "timeTextureType");
+	if (shaderAttributeIndex_timeTextureType == -1) {
+		fprintf(stderr, "Could not bind attribute %s\n", "timeTextureType");
+		return false;
+	}
+	shaderAttributeIndex_relativeTime = glGetAttribLocation(this->billboardShader, "relativeTime");
+	if (shaderAttributeIndex_relativeTime == -1) {
+		fprintf(stderr, "Could not bind attribute %s\n", "relativeTime");
+		return false;
+	}
+	
 	return true;
 }
 
@@ -381,8 +396,13 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		recreateVertexBuffer = true;
 	}
 
-	if (this->showModeSlot.IsDirty()) {
-		this->showModeSlot.ResetDirty();
+	if (this->timeModeSlot.IsDirty()) {
+		this->timeModeSlot.ResetDirty();
+		recreateVertexBuffer = true;
+	}
+
+	if (this->eventTypeModeSlot.IsDirty()) {
+		this->eventTypeModeSlot.ResetDirty();
 		recreateVertexBuffer = true;
 	}
 
@@ -421,16 +441,44 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 			const float *timePtrf = reinterpret_cast<const float*>(timePtr);
 			const StructureEvents::EventType *timePtrET = reinterpret_cast<const StructureEvents::EventType*>(typePtr);
 
-			// @todo filter frame
-			switch (this->showModeSlot.Param<param::EnumParam>()->Value()) {
+			// Filter time.
+			switch (this->timeModeSlot.Param<param::EnumParam>()->Value()) {
 				case 0: // All.
 					break;
 				case 1: // Current.
 					if (*timePtrf != callRender->Time())
 						continue;
+					break;
 				case 2: // Previous.
 					if (*timePtrf > callRender->Time())
 						continue;
+					break;
+			}
+
+			// Filter event types.
+			switch (this->eventTypeModeSlot.Param<param::EnumParam>()->Value()) {
+			case 0: // All.
+				break;
+			case 1:
+				printf("Birth %d.  ", *timePtrET);
+				if (*timePtrET != StructureEvents::EventType::BIRTH)
+					continue;
+				break;
+			case 2:
+				printf("Death %d.  ", *timePtrET);
+				if (*timePtrET != StructureEvents::EventType::DEATH)
+					continue;
+				break;
+			case 3:
+				printf("Merge %d.  ", *timePtrET);
+				if (*timePtrET != StructureEvents::EventType::MERGE)
+					continue;
+				break;
+			case 4:
+				printf("Split %d.  ", *timePtrET);
+				if (*timePtrET != StructureEvents::EventType::SPLIT)
+					continue;
+				break;
 			}
 
 			// Debug.
@@ -440,8 +488,10 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
 			for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
 				Vertex vertex;
-				vertex.opacity = 1.0f;
 				vertex.colorHSV = { 0.0f, 1.0f, 1.0f };
+				vertex.opacity = 1.0f;
+				vertex.timeTextureType = 0.0f;
+				vertex.relativeTime = 0.0f;
 				float minValue = .4f; // Minimal value for brightness and opacity.
 				//unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
 
@@ -456,13 +506,15 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue)
 					vertex.colorHSV = { *timePtrf / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
-					vertex.colorHSV = { 0.0f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue };  // Color red, brightness from minValue-100%.
+					vertex.colorHSV = { 208.f / 360.f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue };  // Defined color, brightness from minValue-100%.
 				// Opacity for time is stupid and deactivated in User Interface anyway.
 				//else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity)
 				//	vertex.opacity = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue;  // From minValue-100%.
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture) {
-					// Will create second quad for time below, set white for color.
 					vertex.colorHSV = { 0.0f, 0.0f, 1.0f };
+					vertex.timeTextureType = 1.0f;
+					float minValueTex = 0.01f;
+					vertex.relativeTime = *timePtrf / events.getMaxTime() * (1.f - minValueTex) + minValueTex;
 				}
 
 				// Type.
@@ -496,7 +548,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				vertexList.push_back(vertex);
 			}
 
-			// Create second quad for time with slightly off z-position.
+			// Create second quad for time with slightly off z-position. Obsolete since done in same texture.
+			/*
 			if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture) {
 				for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
 					Vertex vertex;
@@ -544,6 +597,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 					vertexList.push_back(vertex);
 				}
 			}
+			*/
 		}
 
 		// Set dummy data to avoid crash.
@@ -558,6 +612,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				vertex.spanQuad = { 0, 0 };
 				vertex.texUV = { 0, 0 };
 				vertex.eventType = 0;
+				vertex.timeTextureType = 0;
+				vertex.relativeTime = 0;
 				vertexList.push_back(vertex);
 			}
 			else {
@@ -570,6 +626,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 						vertex.colorHSV = { (float) i / (float) eventMax, (float) i / (float) eventMax, 1 };
 						vertex.opacity = 1.0f;
 						vertex.eventType = static_cast<float> (i % 4);
+						vertex.timeTextureType = 0;
+						vertex.relativeTime = 0;
 
 						// Specific properties for the quad corners.
 						glm::vec2 quadSpanModifier, texUV;
@@ -600,7 +658,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 					}
 				}
 				vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
-					"Renderer: Dummy vertex data set: %d vertices, test (%f, %f).", vertexList.size(), vertexList[10].position.x, vertexList[5].eventType);
+					"SERenderer: Dummy vertex data set: %d vertices, test (%f, %f).", vertexList.size(), vertexList[10].position.x, vertexList[5].eventType);
 			}
 		}
 
@@ -629,8 +687,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 
 	this->billboardShader.Enable();
 
-	// Set sizeModificator of all billboards. Scales the billboards in shader.
-	GLfloat quadSizeModificator = this->glyphSizeSlot.Param<param::FloatParam>()->Value();
+	// Set sizeModificator of all billboards. Scales the billboards in shader. Additional scale to allow very small icons.
+	GLfloat quadSizeModificator = this->glyphSizeSlot.Param<param::FloatParam>()->Value() / 10;
 	glUniform1f(this->billboardShader.ParameterLocation("quadSizeModificator"), quadSizeModificator);
 
 	// Bind texture.
@@ -646,9 +704,9 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, this->textureIDs[3]);
 	glUniform1i(this->billboardShader.ParameterLocation("tex2DSplit"), 3);
-	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_2D, this->textureIDs[4]);
-	glUniform1i(this->billboardShader.ParameterLocation("tex2DTimeBackground"), 4);
+	//glActiveTexture(GL_TEXTURE4);
+	//glBindTexture(GL_TEXTURE_2D, this->textureIDs[4]);
+	//glUniform1i(this->billboardShader.ParameterLocation("tex2DTimeBackground"), 4);
 	//this->birthOGL2Texture.Bind();
 	
 	// Set the ID for the shader variable (attribute).
@@ -658,6 +716,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glEnableVertexAttribArray(shaderAttributeIndex_eventType);
 	glEnableVertexAttribArray(shaderAttributeIndex_colorHSV);
 	glEnableVertexAttribArray(shaderAttributeIndex_opacity);
+	glEnableVertexAttribArray(shaderAttributeIndex_timeTextureType);
+	glEnableVertexAttribArray(shaderAttributeIndex_relativeTime);
 
 	// Select the VBO again (bind) - required when there are several vbos available.
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -709,11 +769,29 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 
 	glVertexAttribPointer(
 		shaderAttributeIndex_opacity,      // attribute index.
-		1,                  // number of components in the attribute (here: h,s,v)
+		1,                  // number of components in the attribute
 		GL_FLOAT,           // the type of each element
 		GL_FALSE,           // should the values be normalized?
 		sizeof(Vertex),		// stride
 		(GLvoid*)(offsetof(Vertex, opacity))   // array buffer offset
+		);
+
+	glVertexAttribPointer(
+		shaderAttributeIndex_timeTextureType,      // attribute index.
+		1,                  // number of components in the attribute
+		GL_FLOAT,           // the type of each element
+		GL_FALSE,           // should the values be normalized?
+		sizeof(Vertex),		// stride
+		(GLvoid*)(offsetof(Vertex, timeTextureType))   // array buffer offset
+		);
+
+	glVertexAttribPointer(
+		shaderAttributeIndex_relativeTime,      // attribute index.
+		1,                  // number of components in the attribute
+		GL_FLOAT,           // the type of each element
+		GL_FALSE,           // should the values be normalized?
+		sizeof(Vertex),		// stride
+		(GLvoid*)(offsetof(Vertex, relativeTime))   // array buffer offset
 		);
 
 	// Push each element in buffer_vertices to the vertex shader. Thx to OGL 2 we can use quads. :-)
@@ -726,6 +804,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	glDisableVertexAttribArray(shaderAttributeIndex_eventType);
 	glDisableVertexAttribArray(shaderAttributeIndex_colorHSV);
 	glDisableVertexAttribArray(shaderAttributeIndex_opacity);
+	glDisableVertexAttribArray(shaderAttributeIndex_timeTextureType);
+	glDisableVertexAttribArray(shaderAttributeIndex_relativeTime);
 	// Deselect (bind to 0) the VBO.
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -925,7 +1005,7 @@ bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
  */
 void mmvis_static::StaticRenderer::release(void) {
 	this->billboardShader.Release();
-	glDeleteTextures(5, this->textureIDs);
+	glDeleteTextures(4, this->textureIDs);
 	/*birthOGL2Texture.Release();
 	deathOGL2Texture.Release();
 	mergeOGL2Texture.Release();
