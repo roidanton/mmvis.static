@@ -124,9 +124,9 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	//filePathMergeTextureSlot("filePathMergeTexture", "The image file for merge events"),
 	//filePathSplitTextureSlot("filePathSplitTexture", "The image file for split events"),
 	//eventAgglomerationVisAttrSlot("eventAgglomerationVisAttr", "The visual attribute for the event agglomeration."),
-	eventLocationVisAttrSlot("eventLocationVisAttr", "The visual attribute for the event location."),
-	eventTypeVisAttrSlot("eventTypeVisAttr", "The visual attribute for the event type."),
-	eventTimeVisAttrSlot("eventTimeVisAttr", "The visual attribute for the event time."),
+	eventLocationVisAttrSlot("VisAttr::eventLocation", "The visual attribute for the event location."),
+	eventTypeVisAttrSlot("VisAttr::eventType", "The visual attribute for the event type."),
+	eventTimeVisAttrSlot("VisAttr::eventTime", "The visual attribute for the event time."),
 	timeModeSlot("timeMode", "The time of the structure events that are shown. Correspondences to time set by the view."),
 	eventTypeModeSlot("eventTypeMode", "The event types to show."),
 	glyphSizeSlot("glyphSize", "Size of event glyphs."),
@@ -309,7 +309,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		///
 		/// Generate textures.
 		///
-		glGenTextures(5, this->textureIDs); // Creates texture objects, set array pointer.
+		glGenTextures(4, this->textureIDs); // Creates texture objects, set array pointer.
 		char filenameChar[] = "GlyphEventTypeBirth.png"; // Copy file to bin folder.
 		CreateOGLTextureFromFile(filenameChar, this->textureIDs[0]);
 		char filenameChar2[] = "GlyphEventTypeDeath.png"; // Copy file to bin folder.
@@ -318,8 +318,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		CreateOGLTextureFromFile(filenameChar3, this->textureIDs[2]);
 		char filenameChar4[] = "GlyphEventTypeSplit.png"; // Copy file to bin folder.
 		CreateOGLTextureFromFile(filenameChar4, this->textureIDs[3]);
-		char filenameChar5[] = "GlyphEventTimeBackground.png"; // Copy file to bin folder.
-		CreateOGLTextureFromFile(filenameChar5, this->textureIDs[4]);
+		//char filenameChar5[] = "GlyphEventTimeBackground.png"; // Copy file to bin folder.
+		//CreateOGLTextureFromFile(filenameChar5, this->textureIDs[4]);
 
 		// Set Texture. This method is likely obsolete!
 		//LoadPngTexture(&this->filePathBirthTextureSlot, this->birthOGL2Texture);

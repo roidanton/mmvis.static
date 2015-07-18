@@ -19,15 +19,16 @@
 #include "mmcore/moldyn/MultiParticleDataCall.h"
 #include "mmcore/param/ParamSlot.h"
 #include "StructureEventsDataCall.h"
-//#include <map>
-#include <functional>
+
 // File operations.
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 
 namespace megamol {
 	namespace mmvis_static {
+		///
+		/// use /EHsc for compiler, see concurrency below
 		///
 		/// Calculates Structure Events in several steps:
 		/// 1) Getting the neighbours of each particle.
@@ -38,12 +39,49 @@ namespace megamol {
 		/// Outputs the events to SEDC.
 		/// Outputs the clusters by coloring the particles to MPDC.
 		///
+		/// Detailed steps:
+		/// 1) a) Build particle list from MPDC.
+		///    b) Create kD tree for neighbour detection.
+		///    c) Use kD tree search algorithm to add neighbours to each particle.
+		/// 2) a) Create clusters using the neighbours.
+		///    b) Merge clusters of connected components who have less particles
+		///       than a user defined cluster size limit.
+		/// 3) Cluster comparison by using a common particle matrix and creating
+		///    two lists with clusters and their partners (common particles) of
+		///    the previous respectively the current frame.
+		/// 4) Applying ratio calculations on those lists and using user defined
+		///    limits to determine structure events.
+		///
 		/// Programming comments:
-		/// - csv, text and console log should get its own class since it bloats the source code
-		/// - lack of usage of OpenMP in the many for loops:
+		/// ---------------------
+		/// - time measurement with chrono: every step/part step has its distinct time
+		///   detection in addition to a measurement of the whole calculation
+		///   also see http://stackoverflow.com/a/21995693
+		///
+		/// - csv, text and console log bloat the source code, so they should get their own class
+		///
+		/// Parallel/concurrent loops: http://stackoverflow.com/questions/2547531/stl-algorithms-and-concurrent-programming
+		/// --------------------------
+		/// - ANN not parallelizeable: http://stackoverflow.com/a/2182357
+		///
+		/// - lack of usage of OpenMP in for loops:
 		///   http://stackoverflow.com/questions/17848521/using-openmp-with-c11-range-based-for-loops
-		///   OpenMP doesn't like continue, break and should have predefined size.
-		///   -> adjusting lists (predefined sizes) and rebuilding for loops takes too much time.
+		///   - OpenMP doesn't like break and should have predefined size (push_back is not thread safe)
+		///		adjusting lists (predefined sizes) and rebuilding for loops often is not valuable (see inline comments and thesis)
+		///   - lock variables like push_back: http://stackoverflow.com/questions/2396430/how-to-use-lock-in-openmp
+		///
+		/// - since the plugin is developed on Windows/VS, the usage of Parallel Patterns Library (PPL) would
+		///   work as well, however it has the same limitations like OpenMP regarding efficiency to these algorithms
+		///   advantages to OpenMP: http://stackoverflow.com/a/13377387/4566599
+		///   speed comparison to OpenMP: http://blogs.msdn.com/b/nativeconcurrency/archive/2009/11/18/concurency-parallel-for-and-concurrency-parallel-for-each.aspx
+		///
+		/// - parallel mode of libstdc++ is not available to vc++. Maybe could be a minor benifit for some std::find_if, std::max_element.
+		///   https://gcc.gnu.org/onlinedocs/libstdc++/manual/parallel_mode.html
+		///   PPL parallel_for_each can be used for that: https://msdn.microsoft.com/en-us/library/dd728079.aspx
+		///
+		/// Logfile storage
+		/// ----------------
+		/// The files should get an own element <outputFiledir> with attribut path in megamol.cfg, like <shaderdir path="" />.
 		///
 		class StructureEventsClusterVisualization : public core::Module {
 		public:
@@ -491,8 +529,11 @@ namespace megamol {
 			/// The call for outgoing StructureEvent data.
 			core::CalleeSlot outSEDataSlot;
 
-			/// The knob to manually start the calculation.
-			core::param::ParamSlot activateCalculationSlot;
+			/// Switch for creating log files and those with quantitative data.
+			core::param::ParamSlot quantitativeDataOutputSlot;
+
+			/// Switch the calculation on/off (once started it will last until finished).
+			core::param::ParamSlot calculationActiveSlot;
 
 			/// Switch for periodic boundary condition.
 			core::param::ParamSlot periodicBoundaryConditionSlot;
@@ -501,12 +542,9 @@ namespace megamol {
 			core::param::ParamSlot minClusterSizeSlot;
 
 			/// Limits for event detection.
-			core::param::ParamSlot minMergeSplitPercentageSlot;
-			core::param::ParamSlot minMergeSplitAmountSlot;
-			core::param::ParamSlot maxBirthDeathPercentageSlot;
-
-			/// Switch for creating log files.
-			core::param::ParamSlot logFilesSlot;
+			core::param::ParamSlot msMinClusterAmountSlot;
+			core::param::ParamSlot msMinCPPercentageSlot;
+			core::param::ParamSlot bdMaxCPPercentageSlot;
 
 			/// The hash id of the data stored
 			size_t dataHash;

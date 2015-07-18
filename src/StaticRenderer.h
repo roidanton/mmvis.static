@@ -84,6 +84,9 @@ namespace megamol {
 		///
 		/// Renders structure events (frameless data) and using billboards for output.
 		///
+		/// The textures should get an own element <texturedir> with attribut path in megamol.cfg,
+		/// like <shaderdir path="" />.
+		///
 		class StaticRenderer : public core::view::Renderer3DModule {
 		public:
 			/**

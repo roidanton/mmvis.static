@@ -7,18 +7,25 @@
  */
 
 #include "stdafx.h"
-#include "StructureEventsClusterVisualization.h"
-#include "mmcore/param/IntParam.h"
-#include "mmcore/param/FloatParam.h"
-#include "mmcore/param/BoolParam.h"
+
 #include "ANN/ANN.h"
+#include "mmcore/param/BoolParam.h"
+#include "mmcore/param/FloatParam.h"
+#include "mmcore/param/IntParam.h"
+#include "StructureEventsClusterVisualization.h"
 #include "vislib/math/Vector.h"
 #include "vislib/sys/Log.h"
 #include <chrono>
-#include <time.h>
+#include <functional>
+#include <numeric>
 #include <random>
 #include <string>
-#include <numeric>
+#include <time.h>
+
+// Non OpenMP concurrency
+//#include <ppl.h>
+//#include <thread>
+//#include <mutex>
 
 using namespace megamol;
 using namespace megamol::core;
@@ -30,13 +37,13 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	inDataSlot("in data", "Connects to the data source. Expects signed distance particles"),
 	outDataSlot("out data", "Slot to request data from this calculation."),
 	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
-	activateCalculationSlot("activateCalculation", "Triggers the calculation"),
-	periodicBoundaryConditionSlot("periodicBoundary", "Periodic boundary condition for dataset."),
-	minMergeSplitPercentageSlot("minMergeSplitPercentage", "Minimal ratio of common particles for merge/split event detection."),
-	minMergeSplitAmountSlot("minMergeSplitAmount", "Minimal number of cluster for merge/split event detection."),
-	maxBirthDeathPercentageSlot("maxBirthDeathPercentage", "Maximal ratio of common particles for birth/death event detection."),
-	minClusterSizeSlot("minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged if possible."),
-	logFilesSlot("logFiles", "Create log files."),
+	quantitativeDataOutputSlot("quantitativeDataOutput", "Create log files with quantitative data."),
+	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
+	periodicBoundaryConditionSlot("kDTree::periodicBoundary", "Periodic boundary condition for dataset."),
+	msMinClusterAmountSlot("DSE::msMinClusterAmount", "Minimal number of cluster for merge/split event detection."),
+	msMinCPPercentageSlot("DSE::msMinCPPercentage", "Minimal ratio of common particles for merge/split event detection."),
+	bdMaxCPPercentageSlot("DSE::bdMaxCPPercentage", "Maximal ratio of common particles for birth/death event detection."),
+	minClusterSizeSlot("Merge::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged if possible."),
 	dataHash(0), sedcHash(0), seMaxTimeCache(0), frameId(0), treeSizeOutputCache(0) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
@@ -50,26 +57,26 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetExtent", &StructureEventsClusterVisualization::getSEExtentCallback);
 	this->MakeSlotAvailable(&this->outSEDataSlot);
 
-	this->activateCalculationSlot.SetParameter(new param::BoolParam(false));
-	this->MakeSlotAvailable(&this->activateCalculationSlot);
+	this->calculationActiveSlot.SetParameter(new param::BoolParam(false));
+	this->MakeSlotAvailable(&this->calculationActiveSlot);
 
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
 
-	this->minMergeSplitPercentageSlot.SetParameter(new core::param::FloatParam(40, 20, 45));
-	this->MakeSlotAvailable(&this->minMergeSplitPercentageSlot);
+	this->msMinCPPercentageSlot.SetParameter(new core::param::FloatParam(40, 20, 45));
+	this->MakeSlotAvailable(&this->msMinCPPercentageSlot);
 
-	this->minMergeSplitAmountSlot.SetParameter(new core::param::IntParam(2, 2));
-	this->MakeSlotAvailable(&this->minMergeSplitAmountSlot);
+	this->msMinClusterAmountSlot.SetParameter(new core::param::IntParam(2, 2));
+	this->MakeSlotAvailable(&this->msMinClusterAmountSlot);
 
-	this->maxBirthDeathPercentageSlot.SetParameter(new core::param::FloatParam(2, 2, 10));
-	this->MakeSlotAvailable(&this->maxBirthDeathPercentageSlot);
+	this->bdMaxCPPercentageSlot.SetParameter(new core::param::FloatParam(2, 2, 10));
+	this->MakeSlotAvailable(&this->bdMaxCPPercentageSlot);
 
 	this->minClusterSizeSlot.SetParameter(new core::param::IntParam(10, 8));
 	this->MakeSlotAvailable(&this->minClusterSizeSlot);
 
-	this->logFilesSlot.SetParameter(new param::BoolParam(true));
-	this->MakeSlotAvailable(&this->logFilesSlot);
+	this->quantitativeDataOutputSlot.SetParameter(new param::BoolParam(true));
+	this->MakeSlotAvailable(&this->quantitativeDataOutputSlot);
 }
 
 
@@ -220,7 +227,7 @@ bool mmvis_static::StructureEventsClusterVisualization::manipulateData (
 
 	//printf("Calculator: FrameIDs in: %d, out: %d, stored: %d.\n", inData.FrameID(), outData.FrameID(), this->frameId); // Debug.
 
-	if (this->activateCalculationSlot.Param<param::BoolParam>()->Value()) {
+	if (this->calculationActiveSlot.Param<param::BoolParam>()->Value()) {
 
 		// Recalculate if minClusterSize changes.
 		bool reCalculate = false;
@@ -238,16 +245,16 @@ bool mmvis_static::StructureEventsClusterVisualization::manipulateData (
 
 		// Recalculate StructureEvents if dirty slots.
 		bool reCalculateSE = false;
-		if (this->minMergeSplitPercentageSlot.IsDirty()) {
-			this->minMergeSplitPercentageSlot.ResetDirty();
+		if (this->msMinCPPercentageSlot.IsDirty()) {
+			this->msMinCPPercentageSlot.ResetDirty();
 			reCalculateSE = true;
 		}
-		if (this->minMergeSplitAmountSlot.IsDirty()) {
-			this->minMergeSplitAmountSlot.ResetDirty();
+		if (this->msMinClusterAmountSlot.IsDirty()) {
+			this->msMinClusterAmountSlot.ResetDirty();
 			reCalculateSE = true;
 		}
-		if (this->maxBirthDeathPercentageSlot.IsDirty()) {
-			this->maxBirthDeathPercentageSlot.ResetDirty();
+		if (this->bdMaxCPPercentageSlot.IsDirty()) {
+			this->bdMaxCPPercentageSlot.ResetDirty();
 			reCalculateSE = true;
 		}
 		if (reCalculateSE) {
@@ -292,7 +299,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 	///
 	/// Log output.
 	///
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		this->logFile.open("SECalc.log", std::ios_base::app | std::ios_base::out);
 		this->csvLogFile.open("SECalc.csv", std::ios_base::app | std::ios_base::out);
 		std::ifstream csvLogFilePeekTest;
@@ -497,13 +504,13 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc: Calculation finished in %lld ms.", duration.count());
 
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile << "Calculation finished in " << duration.count() << " ms ";
 			this->csvLogFile << duration.count() << "; "; // Complete calculation (ms)
 		}
 	}
 
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 
 		// Old stuff.
 		//printf("Calculator: ParticleStride: %d, ParticleCount: %d, RandomParticleColor: (%f, %f, %f)\n",
@@ -723,7 +730,7 @@ void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamo
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc step 1: Created particle list with %d elements in %lld ms.", particleList.size(), duration.count());
 		
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile
 				<< "Step 1 (build particleList, create kdTree and find neighbours):\n"
 				<< "  a) ParticleList with " << particleList.size() << " particles (" << duration.count() << " ms)\n";
@@ -780,7 +787,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc step 1: Created kD-tree in %lld ms.", duration.count());
 
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile << "  b) kD-tree (" << duration.count() << " ms)\n";
 			this->csvLogFile << duration.count() << "; "; // kdTree (ms)
 		}
@@ -800,21 +807,18 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	///
 	auto time_findNeighbours = std::chrono::system_clock::now();
 
-	uint64_t debugSkippedNeighbours = 0;
-	uint64_t debugAddedNeighbours = 0;
-
 	/// Minimal maxNeighbours for radius so no particle in radius gets excluded (determined by experiments):
 	/// radiusMultiplier, maxNeighbours
 	/// 4, 35
-	/// 5, 60
+	/// 5, 60 <- causes zero signed distance one size clusters phenomenon 
 	/// 6, 100
 	/// 7, 155
 	/// 10, 425
 	/// 20, 3270
-	bool debugSkipParticles = false;
-	bool useFRSearch = true; // Use search with radius.
-	int radiusMultiplier = 5;
-	int maxNeighbours = 60;
+	bool debugSkipParticles = false; // Skip particles for faster tests.
+	bool useFRSearch = true; // Use kD tree search with radius.
+	int radiusMultiplier = 4;
+	int maxNeighbours = 35;
 
 	ANNdist sqrRadius = powf(radiusMultiplier * particleList[0].radius, 2);
 
@@ -828,7 +832,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc step 1: annkSearch %d max neighbours.", maxNeighbours);
 	
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		this->logFile << "  c) Neighbours";
 
 		if (useFRSearch) {
@@ -847,13 +851,28 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		}
 	}
 
-	/// @todo #pragma omp parallel for
+	uint64_t debugSkippedNeighbours = 0; // Not usable with concurrency.
+	uint64_t debugAddedNeighbours = 0; // Not usable with concurrency.
+
+	/// OpenMP. Doesnt work b/c ANN64d.dll throws exception (Zugriffsverletzung) for annkFRSearch, annkSearch:
+	/// Since parallel access by several threads to the same tree!
+	/// Furthermore ANN doesnt seem to work with parallelisation at all since it uses the same shared memory for all search structures! http://stackoverflow.com/a/2182357
+	//#pragma omp parallel for
+	//for (int i = 0; i < this->particleList.size(); ++i) {
+	//	auto particle = this->particleList[i];
+	
+	/// PPL. Doesnt work b/c ANN64d.dll throws exception (Zugriffsverletzung) for annkFRSearch, annkSearch:
+	/// Since parallel access by several threads to the same tree!
+	/// Furthermore ANN doesnt seem to work with parallelisation at all since it uses the same shared memory for all search structures! http://stackoverflow.com/a/2182357
+	//concurrency::parallel_for_each(this->particleList.begin(), this->particleList.end(),
+	//	[maxNeighbours, periodicBoundary, bbox_cntr, bbox, useFRSearch, tree, sqrRadius](Particle particle) {
+
 	for (auto & particle : this->particleList) {
-		
-		// Skip particles for faster testing.
+
+		// Skip particles for faster testing. Not usable with concurrency.
 		if (debugSkipParticles && particle.id > 1000)
 			break;
-			
+
 		ANNidxArray   nn_idx = 0;
 		ANNdistArray  dd = 0;
 		nn_idx = new ANNidx[maxNeighbours];
@@ -874,41 +893,46 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 					if (y_s > 0) q[1] = static_cast<ANNcoord>(particle.y + ((particle.y > bbox_cntr.Y()) ? -bbox.Height() : bbox.Height()));
 					if (z_s > 0) q[2] = static_cast<ANNcoord>(particle.z + ((particle.z > bbox_cntr.Z()) ? -bbox.Depth() : bbox.Depth()));
 
-					if (useFRSearch)
+					if (useFRSearch) {
 						tree->annkFRSearch(
-						q,				// the query point
-						sqrRadius,		// squared radius of query ball
-						maxNeighbours,	// number of neighbors to return
-						nn_idx,			// nearest neighbor array (modified)
-						dd				// dist to near neighbors as squared distance (modified)
-						);				// error bound (optional).
-					else
+							q,				// the query point
+							sqrRadius,		// squared radius of query ball
+							maxNeighbours,	// number of neighbors to return
+							nn_idx,			// nearest neighbor array (modified)
+							dd				// dist to near neighbors as squared distance (modified)
+							);				// error bound (optional).
+					}
+					else {
 						tree->annkSearch(
-						q,				// the query point
-						maxNeighbours,	// number of neighbors to return
-						nn_idx,			// nearest neighbor array (modified)
-						dd				// dist to near neighbors as squared distance (modified)
-						);				// error bound (optional).
+							q,				// the query point
+							maxNeighbours,	// number of neighbors to return
+							nn_idx,			// nearest neighbor array (modified)
+							dd				// dist to near neighbors as squared distance (modified)
+							);				// error bound (optional).
+					}
 
 					for (size_t i = 0; i < maxNeighbours; ++i) {
 						if (nn_idx[i] == ANN_NULL_IDX) {
-							debugSkippedNeighbours++;
+							debugSkippedNeighbours++; // Deactivate if concurrent loop.
 							continue;
 						}
 						if (dd[i] < 0.001f) // Exclude self to catch ANN_ALLOW_SELF_MATCH = true.
 							continue;
 
-						debugAddedNeighbours++;
-						//particle.neighbours.push_back(_getParticle(nn_idx[i])); // Up to 500ms/Particle + high memory consumption!
-						//particle.neighbours.push_back(this->particleList[nn_idx[i]]); // Takes a lot of memory and time! At maximum maxNeighbours = 3 and 2*r works on test machine.
+						debugAddedNeighbours++; // Deactivate if concurrent loop.
+
+						// Store whole particle in neighbour list: Takes a lot of memory and time! At maximum maxNeighbours = 3 and 2*r works on test machine.
+						//particle.neighbours.push_back(_getParticle(nn_idx[i])); // Search eates up to 500ms/Particle + high memory consumption!
+						//particle.neighbours.push_back(this->particleList[nn_idx[i]]);
 
 						// Requires untouched particleList but needs a lot less memory!
 						//particle.neighbourPtrs.push_back(&this->particleList[nn_idx[i]]);
-						// Safer method.
+						
+						// Safer method than above and still low memory consumption.
 						particle.neighbourIDs.push_back(nn_idx[i]);
 					}
 
-					// Progress.
+					// Progress. Deactivate if concurrent loop.
 					if (debugAddedNeighbours % 100000 == 0)
 						vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 							"SECalc step 1 progress: Neighbours: %d added, %d out of FRSearch radius.", debugAddedNeighbours, debugSkippedNeighbours);
@@ -920,6 +944,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		delete[] dd;
 		delete[] q;
 	}
+	//});
 
 	///
 	/// Log output.
@@ -929,7 +954,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc step 1: Neighbours set in %lld ms with %d added and %d out of FRSearch radius.\n", duration.count(), debugAddedNeighbours, debugSkippedNeighbours);
 
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile << ", added " << debugAddedNeighbours << " neighbours with " << debugSkippedNeighbours << " particles out of FRSearch radius (" << duration.count() << " ms)\n";
 			this->csvLogFile << duration.count() << "; "; // Neighbours (ms)
 		}
@@ -953,6 +978,13 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	delete tree;
 	delete[] annPts;
 	delete[] annPtsData;
+
+	/// From ANN manual v1.1, page 8: http://www.cs.umd.edu/~mount/ANN/Files/1.1/ANNmanual_1.1.pdf
+	/// The library allocates a small amount of storage, which is shared by all search structures
+	///	built during the program’s lifetime.Because the data is shared, it is not deallocated,
+	///	even when the all the individual structures are deleted.To avoid the resulting(minor) memory
+	///	leak, the following function can be called after all search structures have been destroyed.
+	annClose();
 }
 
 
@@ -965,10 +997,10 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 
 	int clusterID = 0;
 
-	// For testing Single Zero Signed Distance Clusters theory.
+	// For testing Zero signed distance one size clusters phenomenon. Only seen at 5*radius, not at 4 yet.
 	std::ofstream testCFDCSVFile;
 
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		// CFD == Cluster Fast Depth
 		std::string filename = "SECalc CFD Test.csv";
 		testCFDCSVFile.open(filename.c_str(), std::ios_base::app | std::ios_base::out);
@@ -1004,18 +1036,20 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	// Avoid reallocation of clusterList, method (1) - though it's a waste of memory it saves time (no reallocation)!
 	this->clusterList.reserve(this->particleList.size() / 10);
 
-	/// @todo #pragma omp parallel for
-	// for (auto part = this->particleList.begin(); part < this->particleList.end(); part++) {
-	//	auto particle = *part;
+	/// #pragma omp parallel for
+	/// Particle handling could be parallelized, if the traversed particles are not added to the cluster
+	/// and cluster creation/selection is thread safe. However the speedup might be negative!
+	// for (auto partIT = this->particleList.begin(); partIT < this->particleList.end(); ++partIT) {
+	//	auto particle = *partIT;
 	for (auto & particle : this->particleList) {
 		if (particle.signedDistance < 0) {
-			debugNumberOfGasParticles++;
+			debugNumberOfGasParticles++; // Not usable with concurrency.
 			continue; // Skip gas.
 		}
 
 		//if (particle.neighbourPtrs.size() == 0) {
 		if (particle.neighbourIDs.size() == 0) {
-			debugNoNeighbourCounter++;
+			debugNoNeighbourCounter++; // Not usable with concurrency.
 			continue; // Skip particles without neighbours.
 		}
 
@@ -1024,7 +1058,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 			continue; // Skip particles that already belong to a cluster.
 
 		///
-		/// Find deepest neighbour.
+		/// Traverse the neighbours to find the deepest neighbour.
 		///
 		auto time_addParticlePath = std::chrono::system_clock::now();
 
@@ -1034,7 +1068,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 		Particle deepestNeighbour = particle; // Initial condition.
 
 		for (;;) {
-			float signedDistance = 0; // For comparison.
+			float signedDistance = 0; // For comparison of neighbours.
 			Particle currentParticle = deepestNeighbour; // Set last deepest particle as new current.
 
 			//for (int i = 0; i < currentParticle.neighbourPtrs.size(); ++i) {
@@ -1044,6 +1078,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 			//	}
 			//}
 
+			// Get deepest neighbour.
 			for (int i = 0; i < currentParticle.neighbourIDs.size(); ++i) {
 				if (this->particleList[currentParticle.neighbourIDs[i]].signedDistance > signedDistance) {
 					signedDistance = this->particleList[currentParticle.neighbourIDs[i]].signedDistance;
@@ -1099,8 +1134,11 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 				}
 
 				///
-				/// Add those found deepest neighbours to the cluster
-				/// that are not already in a cluster and except the last one.
+				/// Add the deepest neighbours found within the traversion to the cluster.
+				/// Exceptions:
+				/// - those that are already in a cluster
+				/// - the last neighbour since it was added just to check
+				///   if the current particle is the deepest particle.
 				///
 				parsedParticleIDs.pop_back(); // Remove last deepest neighbour since it is not deeper than current particle.
 				for (auto & particleID : parsedParticleIDs) {
@@ -1163,12 +1201,12 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 		int debugSizeOneClusters = 0; // For testing MergeClusters produces adjacent gas particle clusters theory.
 		int debugMinSizeClusters = 0; // For testing MergeClusters produces adjacent gas particle clusters theory.
 
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			for (auto & cluster : this->clusterList) {
 				// Particles in clusters.
 				debugParticleInClustersNumber += static_cast<int>(cluster.numberOfParticles);
 
-				// Clusters smaller clusterMinSize. E.g. for testing Single Zero Signed Distance Clusters theory.
+				// Clusters smaller clusterMinSize. E.g. for testing Zero signed distance one size clusters phenomenon.
 				if (cluster.numberOfParticles < this->minClusterSizeSlot.Param<param::IntParam>()->Value()) {
 					
 					// For log.
@@ -1203,7 +1241,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 			"SECalc Step 2: %d (%d/%d) clusters created in %lld ms. %d particles used existing clusters.\nDebug: %d liquid particles w/o neighbour, %d size one clusters.",
 			this->clusterList.size(), minCluster, maxCluster, duration.count(), debugUsedExistingClusterCounter, debugNoNeighbourCounter, debugSizeOneClusters);
 
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile
 				<< "Step 2 (create and merge clusters):\n"
 				<< "  a) " << this->clusterList.size() << " clusters created with min/max sizes " << minCluster << "/" << maxCluster
@@ -1235,11 +1273,10 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 
 	int mergedParticles = 0;
 
-	//std::vector<Cluster*> neighbourClusters;
-	std::vector<int> neighbourClusterIDs;
-
-
-	for (auto particle : this->particleList) {
+	#pragma omp parallel for
+	for (int i = 0; i < this->particleList.size(); ++i) {
+		Particle particle = this->particleList[i];
+	//for (auto particle : this->particleList) {
 		if (particle.signedDistance < 0)
 			continue; // Skip gas.
 
@@ -1274,6 +1311,13 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 		/// Add clusters in neighbourhood which are bigger than this->minClusterSize.
 		///
 
+		//std::mutex neighbourClusterIDs_mutex; // Mutex for thread safety w/o OpenMP.
+
+		std::vector<int> neighbourClusterIDs;
+
+		//#pragma omp parallel for
+		//for (int i = 0; i < particle.neighbourIDs.size(); ++i) {
+		//	Particle* neighbour = &this->particleList[particle.neighbourIDs[i]];
 		//for (auto neighbour : particle.neighbourPtrs) {
 		for (auto neighbourID : particle.neighbourIDs) {
 			Particle* neighbour = &this->particleList[neighbourID];
@@ -1286,9 +1330,12 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 			//	&& neighbour->clusterPtr->numberOfParticles >= this->minClusterSize)
 			//	neighbourClusters.push_back(neighbour->clusterPtr);
 			if (this->clusterList[neighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-				&& this->clusterList[neighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value())
+				&& this->clusterList[neighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value()) {
 				//neighbourClusters.push_back(&this->clusterList[neighbour->clusterID]);
-				neighbourClusterIDs.push_back(this->clusterList[neighbour->clusterID].id);
+				//std::lock_guard<std::mutex> lk(neighbourClusterIDs_mutex); // Mutex for thread safety of push_back w/o OpenMP.
+				//#pragma omp critical // Mutex for thread safety of push_back. Inefficient.
+				neighbourClusterIDs.push_back(this->clusterList[neighbour->clusterID].id); // Not thread safe!
+			}
 		}
 
 		///
@@ -1297,10 +1344,11 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 		///
 		if (neighbourClusterIDs.size() == 0) {
 
-			/// @todo #pragma omp parallel for
-			for (auto neighbourIT = particle.neighbourIDs.begin(); neighbourIT < particle.neighbourIDs.end(); ++neighbourIT) {
-				Particle* neighbour = &this->particleList[*neighbourIT];
-			//for (auto neighbour : particle.neighbourPtrs) {
+			//#pragma omp parallel for
+			for (int i = 0; i < particle.neighbourIDs.size(); ++i) {
+				Particle* neighbour = &this->particleList[particle.neighbourIDs[i]];
+			//for (auto neighbourIT = particle.neighbourIDs.begin(); neighbourIT < particle.neighbourIDs.end(); ++neighbourIT) {
+			//	Particle* neighbour = &this->particleList[*neighbourIT];
 			//for (auto neighbourID : particle.neighbourIDs) {
 			//	Particle* neighbour = &this->particleList[neighbourID];
 
@@ -1317,9 +1365,10 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 					//	&& secondaryNeighbour->clusterPtr->numberOfParticles >= this->minClusterSize)
 					//	neighbourClusters.push_back(secondaryNeighbour->clusterPtr);
 					if (this->clusterList[secondaryNeighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-						&& this->clusterList[secondaryNeighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value())
-						//neighbourClusters.push_back(&this->clusterList[secondaryNeighbour->clusterID]);
-						neighbourClusterIDs.push_back(this->clusterList[secondaryNeighbour->clusterID].id);
+						&& this->clusterList[secondaryNeighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value()) {
+						//#pragma omp critical // Mutex for thread safety of push_back. Inefficient.
+						neighbourClusterIDs.push_back(this->clusterList[secondaryNeighbour->clusterID].id); // Not thread safe!
+					}
 				}
 			}
 		}
@@ -1329,8 +1378,11 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 		/// If no clusters in range, check neighbours of neighbour neighbours.
 		///
 		if (neighbourClusterIDs.size() == 0) {
-			for (auto neighbourIT = particle.neighbourIDs.begin(); neighbourIT < particle.neighbourIDs.end(); ++neighbourIT) {
-				Particle* neighbour = &this->particleList[*neighbourIT];
+			//#pragma omp parallel for
+			for (int i = 0; i < particle.neighbourIDs.size(); ++i) {
+				Particle* neighbour = &this->particleList[particle.neighbourIDs[i]];
+			//for (auto neighbourIT = particle.neighbourIDs.begin(); neighbourIT < particle.neighbourIDs.end(); ++neighbourIT) {
+			//	Particle* neighbour = &this->particleList[*neighbourIT];
 
 				for (auto secondaryNeighbourID : neighbour->neighbourIDs) {
 					Particle* secondaryNeighbour = &this->particleList[secondaryNeighbourID];
@@ -1343,9 +1395,10 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 							continue; // Skip particles w/o pointers, mandatory for test runs.
 
 						if (this->clusterList[tertiaryNeighbour->clusterID].rootParticleID != this->clusterList[particle.clusterID].rootParticleID
-							&& this->clusterList[tertiaryNeighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value())
-							//neighbourClusters.push_back(&this->clusterList[tertiaryNeighbour->clusterID]);
-							neighbourClusterIDs.push_back(this->clusterList[tertiaryNeighbour->clusterID].id);
+							&& this->clusterList[tertiaryNeighbour->clusterID].numberOfParticles >= this->minClusterSizeSlot.Param<param::IntParam>()->Value()) {
+							//#pragma omp critical // Mutex for thread safety of push_back. Inefficient.
+							neighbourClusterIDs.push_back(this->clusterList[tertiaryNeighbour->clusterID].id); // Not thread safe!
+						}
 					}
 				}
 			}
@@ -1361,7 +1414,6 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 		
 		//this->debugFile << "Angle: ";
 
-		//Cluster* newClusterPtr;
 		int newClusterID;
 		double M_PI = 3.14159265358979323846;
 		double smallestAngle = 2*M_PI;
@@ -1373,8 +1425,14 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 		dirParticle.SetY(particle.y - particleClusterRoot.y);
 		dirParticle.SetZ(particle.z - particleClusterRoot.z);
 
+		//std::vector<double> neighbourClustersAngle; // See below why deactivated.
+		//neighbourClustersAngle.resize(neighbourClusterIDs.size());
+
 		// Direction of particle to its neighbour clusters roots.
-		for (auto clusterID : neighbourClusterIDs) {
+		#pragma omp parallel for
+		for (int ncid = 0; ncid < neighbourClusterIDs.size(); ++ncid) {
+			int clusterID = neighbourClusterIDs[ncid];
+		//for (auto clusterID : neighbourClusterIDs) {
 			Particle clusterRoot = this->particleList[this->clusterList[clusterID].rootParticleID]; // Requires untouched (i.e. sorting forbidden) clusterList and particleList!
 			vislib::math::Vector<float, 3> dirNeighbourCluster;
 			dirNeighbourCluster.SetX(particle.x - clusterRoot.x);
@@ -1384,33 +1442,49 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 			// Get angle.
 			double angle = dirParticle.Angle(dirNeighbourCluster);
 
-			
 			if (angle > M_PI)
 				angle -= 2 * M_PI;
 
-			// Smallest angle.
-			if (angle < smallestAngle) {
-				//newClusterPtr = clusterPtr; // Requires untouched (i.e. sorting forbidden) clusterList!
-				newClusterID = clusterID;
-				smallestAngle = angle;
+			//neighbourClustersAngle[ncid] = angle; // See below why deactivated.
+
+			// Smallest angle. Doing this comparison outside of this for loop
+			// may accelerate concurrency by avoiding mutex? Nope it does not,
+			// so it stays here.
+			#pragma omp critical // Mutex for thread safety. 
+			{
+				if (angle < smallestAngle) {
+					newClusterID = clusterID;
+					smallestAngle = angle;
+				}
 			}
 			//this->debugFile << angle << ", ";
 		}
 
 		//this->debugFile << "\nSmallest Angle: " << smallestAngle << ".\n";
 
+		// Find smallest angle. Not faster than inside the angle for loop!
+		//for (int ncid = 0; ncid < neighbourClusterIDs.size(); ++ncid) {
+		//	int clusterID = neighbourClusterIDs[ncid];
+		//	double angle = neighbourClustersAngle[ncid];
+		//	if (angle < smallestAngle) {
+		//		newClusterID = clusterID;
+		//		smallestAngle = angle;
+		//	}
+		//}
+
 		// Eventually set new cluster.
 		this->clusterList[particle.clusterID].numberOfParticles--; // Remove particle from old cluster.
 		particle.clusterID = newClusterID;
 		this->clusterList[particle.clusterID].numberOfParticles++; // Add particle to new cluster.
 
+		#pragma omp critical // Mutex for thread safety. 
 		mergedParticles++;
 	}
 
 
 	///
 	/// No deletion of clusters here to not destroy
-	/// referencing by vector indices. Instead zero
+	/// referencing by vector indices. Instead zero size
 	/// particle clusters should be ignored by the
 	/// compareCluster function.
 	///
@@ -1439,7 +1513,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 			"SECalc Step 2: %d particles merged and %d clusters removed with min cluster size of %d particles (%lld ms).",
 			mergedParticles, removedClusters, this->minClusterSizeSlot.Param<param::IntParam>()->Value(), duration.count());
 
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile
 				<< "  b) " << mergedParticles << " particles merged and "
 				<< removedClusters << " clusters removed with "
@@ -1536,7 +1610,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 
 	if (this->previousClusterList.size() == 0 || this->previousParticleList.size() == 0) {
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->debugFile << "SECCalc step 3: No previous data, quit cluster comparison.\n";
 		}
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN,
@@ -1616,7 +1690,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	/// Check size of comparison matrix.
 	///
 	/*
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		this->debugFile << "Compare Matrix size: " << clusterComparisonMatrix.size() << " x " << clusterComparisonMatrix[0].size() << ".\n";
 
 		int sum = 0;
@@ -1660,11 +1734,11 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		if (this->previousClusterList[pcid].numberOfParticles == 0)
 			continue; // Skip merged clusters.
 		
-		/// Single Zero Signed Distance Clusters do _not_ produce false event, so this is not needed for that problem.
+		/// Zero signed distance one size clusters phenomenon do _not_ produce false event, so this is not needed for that problem.
 		/// MergeClusters produces adjacent gas particle clusters not occured yet, so not filtered here.
 		//if (this->previousClusterList[pcid].numberOfParticles == 1)
 			// Some 1 particles clusters are left
-			// Single Zero Signed Distance Clusters theory:
+			// Zero signed distance one size clusters phenomenon:
 			// - several particles with signedDistance = 0 build single particle clusters. Causes _no_ false event detection.
 			// MergeClusters produces adjacent gas particle clusters theory (not yet occured); would produce bad results:
 			// - kD search radius could be too high
@@ -1706,7 +1780,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		///
 		/// Log output.
 		///
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			compareAllFile << "Previous cluster " << partnerClusters.cluster.id
 				<< ", " << partnerClusters.cluster.numberOfParticles << " particles"
 				<< ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)"
@@ -1785,7 +1859,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		///
 		/// Log output.
 		///
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			compareAllFile << "Cluster " << partnerClusters.cluster.id
 				<< ", " << partnerClusters.cluster.numberOfParticles << " particles"
 				<< ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)"
@@ -1868,7 +1942,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 	///
 	/// Log output.
 	///
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 
 		///
 		/// Evaluation:
@@ -1985,7 +2059,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc step 3: Compared clusters (%lld ms).\n", duration.count());
 
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile << "  - step 3 required " << duration.count() << " ms\n";
 			this->csvLogFile << duration.count() << "; "; // Compare Clusters (ms)
 		}
@@ -1998,7 +2072,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents() {
 
 	if (this->partnerClustersList.forwardList.size() == 0 || this->partnerClustersList.backwardsList.size() == 0) {
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->debugFile << "SECalc step 4: No comparison data, quit determination of StructureEvents.\n";
 		}
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN,
@@ -2021,7 +2095,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 	const int birthDeathTestAmount = 5;
 	int deathAmount[birthDeathTestAmount] = { 0 };
 
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		// DSE == Determine Structure Events
 		//std::string filenameEnd = " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
 		std::string filename = "SECalc DSE Test.csv"; // +filenameEnd + ".log";
@@ -2072,7 +2146,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 	///
 	for (auto partnerClusters : this->partnerClustersList.forwardList) {
 		
-		if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			// For test output.
 			if (partnerClusters.getBigPartnerAmount(25) > 2)
 				partnerAmount25p3++;
@@ -2094,7 +2168,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 		}
 
 		// Detect split.
-		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value()) >= this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
+		if (partnerClusters.getBigPartnerAmount(this->msMinCPPercentageSlot.Param<param::FloatParam>()->Value()) >= this->msMinClusterAmountSlot.Param<param::IntParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.x = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
 			se.y = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
@@ -2106,7 +2180,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 		}
 
 		// Detect death.
-		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value()) {
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->bdMaxCPPercentageSlot.Param<param::FloatParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.x = this->previousParticleList[partnerClusters.cluster.rootParticleID].x;
 			se.y = this->previousParticleList[partnerClusters.cluster.rootParticleID].y;
@@ -2119,7 +2193,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 	}
 
 	// Test output.
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		testEventsCSVFile
 			<< partnerAmount25p3 << "; " // Split 25%, 3+ (#prevClusters)
 			<< partnerAmount30p2 << "; " // Split 30%, 2+ (#prevClusters)
@@ -2163,7 +2237,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 		}
 
 		// Detect merge.
-		if (partnerClusters.getBigPartnerAmount(this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value()) >= this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value()) {
+		if (partnerClusters.getBigPartnerAmount(this->msMinCPPercentageSlot.Param<param::FloatParam>()->Value()) >= this->msMinClusterAmountSlot.Param<param::IntParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.x = this->particleList[partnerClusters.cluster.rootParticleID].x;
 			se.y = this->particleList[partnerClusters.cluster.rootParticleID].y;
@@ -2175,7 +2249,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 		}
 
 		// Detect birth.
-		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value()) {
+		if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= this->bdMaxCPPercentageSlot.Param<param::FloatParam>()->Value()) {
 			StructureEvents::StructureEvent se;
 			se.x = this->particleList[partnerClusters.cluster.rootParticleID].x;
 			se.y = this->particleList[partnerClusters.cluster.rootParticleID].y;
@@ -2188,7 +2262,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 	}
 	
 	// Test output.
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		testEventsCSVFile
 			<< partnerAmount25p3 << "; " // Merge 25%, 3+ (#prevClusters)
 			<< partnerAmount30p2 << "; " // Merge 30%, 2+ (#clusters)
@@ -2224,7 +2298,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 	vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 		"SECalc step 4: Determined structure events (%lld ms).", duration.count());
 
-	if (this->logFilesSlot.Param<param::BoolParam>()->Value()) {
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		this->logFile
 			<< "Step 4 (structure events) detected " << std::accumulate(eventAmount, eventAmount + 4, 0) << " events"
 			<< " (" << duration.count() << " ms):\n"
@@ -2235,16 +2309,16 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 			<< eventAmount[3] << " splits"
 			<< "\n"
 			<< "  - limits for merge/split detection:"
-			<< " at least " << this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value() << " partner clusters"
-			<< " with " << this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value() << "% common particles ratio"
+			<< " at least " << this->msMinClusterAmountSlot.Param<param::IntParam>()->Value() << " partner clusters"
+			<< " with " << this->msMinCPPercentageSlot.Param<param::FloatParam>()->Value() << "% common particles ratio"
 			<< "\n"
 			<< "  - maximum limit of total common particles ratio for birth/death: "
-			<< this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value() << "%"
+			<< this->bdMaxCPPercentageSlot.Param<param::FloatParam>()->Value() << "%"
 			<< "\n";
 		this->csvLogFile
-			<< this->minMergeSplitAmountSlot.Param<param::IntParam>()->Value() << "; " // Minimal number of big partner clusters for merge / split (#cluster)
-			<< this->minMergeSplitPercentageSlot.Param<param::FloatParam>()->Value() << "; " // Minimal common particles ratio limit of big partners for merge / split (%)
-			<< this->maxBirthDeathPercentageSlot.Param<param::FloatParam>()->Value() << "; " // Maximum total common particles ratio limit for birth / death (%)
+			<< this->msMinClusterAmountSlot.Param<param::IntParam>()->Value() << "; " // Minimal number of big partner clusters for merge / split (#cluster)
+			<< this->msMinCPPercentageSlot.Param<param::FloatParam>()->Value() << "; " // Minimal common particles ratio limit of big partners for merge / split (%)
+			<< this->bdMaxCPPercentageSlot.Param<param::FloatParam>()->Value() << "; " // Maximum total common particles ratio limit for birth / death (%)
 			<< eventAmount[0] << "; " // Births (#events)
 			<< eventAmount[1] << "; " // Deaths (#events)
 			<< eventAmount[2] << "; " // Merges (#events)
