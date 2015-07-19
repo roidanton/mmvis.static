@@ -538,6 +538,9 @@ namespace megamol {
 			/// Switch for periodic boundary condition.
 			core::param::ParamSlot periodicBoundaryConditionSlot;
 
+			/// Limit of the radius multiplier for the kD-Tree FRsearch.
+			core::param::ParamSlot radiusMultiplierSlot;
+
 			/// Limit for cluster merging.
 			core::param::ParamSlot minClusterSizeSlot;
 

@@ -39,11 +39,12 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
 	quantitativeDataOutputSlot("quantitativeDataOutput", "Create log files with quantitative data."),
 	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
-	periodicBoundaryConditionSlot("kDTree::periodicBoundary", "Periodic boundary condition for dataset."),
-	msMinClusterAmountSlot("DSE::msMinClusterAmount", "Minimal number of cluster for merge/split event detection."),
-	msMinCPPercentageSlot("DSE::msMinCPPercentage", "Minimal ratio of common particles for merge/split event detection."),
-	bdMaxCPPercentageSlot("DSE::bdMaxCPPercentage", "Maximal ratio of common particles for birth/death event detection."),
-	minClusterSizeSlot("Merge::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged if possible."),
+	periodicBoundaryConditionSlot("NeighbourSearch::periodicBoundary", "Periodic boundary condition for dataset."),
+	radiusMultiplierSlot("NeighbourSearch::radiusMultiplier", "The multiplicator for the particle radius definining the area for the neighbours search."),
+	msMinClusterAmountSlot("StructureEvents::msMinClusterAmount", "Minimal number of cluster for merge/split event detection."),
+	msMinCPPercentageSlot("StructureEvents::msMinCPPercentage", "Minimal ratio of common particles for merge/split event detection."),
+	bdMaxCPPercentageSlot("StructureEvents::bdMaxCPPercentage", "Maximal ratio of common particles for birth/death event detection."),
+	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged if possible."),
 	dataHash(0), sedcHash(0), seMaxTimeCache(0), frameId(0), treeSizeOutputCache(0) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
@@ -62,6 +63,9 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
+
+	this->radiusMultiplierSlot.SetParameter(new core::param::IntParam(4, 2, 20));
+	this->MakeSlotAvailable(&this->radiusMultiplierSlot);
 
 	this->msMinCPPercentageSlot.SetParameter(new core::param::FloatParam(40, 20, 45));
 	this->MakeSlotAvailable(&this->msMinCPPercentageSlot);
@@ -229,10 +233,14 @@ bool mmvis_static::StructureEventsClusterVisualization::manipulateData (
 
 	if (this->calculationActiveSlot.Param<param::BoolParam>()->Value()) {
 
-		// Recalculate if minClusterSize changes.
+		// Recalculate everything if dirty slots.
 		bool reCalculate = false;
 		if (this->minClusterSizeSlot.IsDirty()) {
 			this->minClusterSizeSlot.ResetDirty();
+			reCalculate = true;
+		}
+		if (this->radiusMultiplierSlot.IsDirty()) {
+			this->radiusMultiplierSlot.ResetDirty();
 			reCalculate = true;
 		}
 
@@ -809,7 +817,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 
 	/// Minimal maxNeighbours for radius so no particle in radius gets excluded (determined by experiments):
 	/// radiusMultiplier, maxNeighbours
-	/// 4, 35
+	/// 4, 35 <- causes zero signed distance one size clusters phenomenon 
 	/// 5, 60 <- causes zero signed distance one size clusters phenomenon 
 	/// 6, 100
 	/// 7, 155
@@ -817,8 +825,29 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	/// 20, 3270
 	bool debugSkipParticles = false; // Skip particles for faster tests.
 	bool useFRSearch = true; // Use kD tree search with radius.
-	int radiusMultiplier = 4;
-	int maxNeighbours = 35;
+	int radiusMultiplier = this->radiusMultiplierSlot.Param<param::IntParam>()->Value();
+	int maxNeighbours = 0;
+	switch (radiusMultiplier){
+	case 2: // Not tested, so using safe maxNeighbours amount.
+	case 3: // Not tested, so using safe maxNeighbours amount.
+	case 4:
+		maxNeighbours = 35;
+		break;
+	case 5:
+		maxNeighbours = 60;
+		break;
+	case 6:
+		maxNeighbours = 100;
+		break;
+	case 7:
+		maxNeighbours = 155;
+		break;
+	case 8: // Not tested, so using safe maxNeighbours amount.
+	case 9: // Not tested, so using safe maxNeighbours amount.
+	case 10:
+		maxNeighbours = 425;
+		break;
+	}
 
 	ANNdist sqrRadius = powf(radiusMultiplier * particleList[0].radius, 2);
 
@@ -1234,12 +1263,12 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 			}
 		}
 		
-		// Check cluster creation.
-		assert(debugParticleInClustersNumber + debugNumberOfGasParticles == particleList.size());
-
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc Step 2: %d (%d/%d) clusters created in %lld ms. %d particles used existing clusters.\nDebug: %d liquid particles w/o neighbour, %d size one clusters.",
 			this->clusterList.size(), minCluster, maxCluster, duration.count(), debugUsedExistingClusterCounter, debugNoNeighbourCounter, debugSizeOneClusters);
+
+		// Check cluster creation.
+		assert(debugParticleInClustersNumber + debugNumberOfGasParticles + debugNoNeighbourCounter == particleList.size());
 
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile
