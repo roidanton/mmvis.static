@@ -52,6 +52,7 @@ namespace megamol {
 				float x, y, z;
 				float time;
 				StructureEvents::EventType type; // 4 byte.
+				// @TODO int triggerClusterSize; // Can give the user additional filter control, e.g. if only big clusters are important.
 			};
 
 			/// Ctor.

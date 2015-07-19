@@ -122,6 +122,15 @@ namespace megamol {
 				// Doesn't work, takes way too much memory!
 				// std::vector<Particle> neighbours;
 
+				Particle() : clusterID(-1) {}
+
+				// This constructor wastes memory and takes a lot of time.
+				Particle(int radiusModifier) : clusterID(-1) {
+					// The compiler should set vector reservation since the vector
+					// is stored at a different location in memory than the struct.
+					neighbourIDs.reserve(StructureEventsClusterVisualization::getKDTreeMaxNeighbours(radiusModifier));
+				}
+
 				bool operator==(const Particle& rhs) const {
 					return this->id == rhs.id;
 				}
@@ -507,13 +516,25 @@ namespace megamol {
 			/// Set colour of particles based on signed distance.
 			void setSignedDistanceColor(float min, float max);
 
-			void sortBySignedDistance();
-
 			/// Only sets ids, cluster id and numberOfParticles.
 			void setDummyLists(int particleAmount, int clusterAmount, int structureEvents);
 
 			/// Mean value and standard deviation of values: http ://stackoverflow.com/a/7616783/4566599
 			MeanStdDev meanStdDeviation(std::vector<double> v);
+
+			///
+			/// Returns minimal maxNeighbours for radius so no particle in radius gets excluded.
+			/// Determined by experiments:
+			///
+			/// radiusMultiplier, maxNeighbours
+			/// 4, 35 <- causes zero signed distance one size clusters phenomenon 
+			/// 5, 60 <- causes zero signed distance one size clusters phenomenon 
+			/// 6, 100
+			/// 7, 155
+			/// 10, 425
+			/// 20, 3270
+			///
+			static const int getKDTreeMaxNeighbours(const int radiusMultiplier);
 
 			/// Files.
 			std::ofstream logFile;
@@ -585,23 +606,26 @@ namespace megamol {
 			/// Cache container of a single MMPLD particle list.
 			core::moldyn::MultiParticleDataCall::Particles particles;
 
+			/// Takes long, OBSOLETE.
+			//void sortBySignedDistance();
+
 			/// Iterate through whole list (exhaustive search), only check distance when signed distance is similar.
 			/// Must happen after list sorting by signed distance!
 			/// Takes forever! OBSOLETE.
-			void findNeighboursBySignedDistance();
+			//void findNeighboursBySignedDistance();
 
 			/// First, naiv implementation. OBSOLETE.
-			void createClustersSignedDistanceOnly();
+			//void createClustersSignedDistanceOnly();
 			/// Returns true if the particle is in signed distance range of the reference. OBSOLETE.
-			bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
+			//bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
 
 			/// Get a particle from particleList with particle ID. UNUSED.
-			mmvis_static::StructureEventsClusterVisualization::Particle
-				mmvis_static::StructureEventsClusterVisualization::_getParticle(const uint64_t particleID) const;
+			//mmvis_static::StructureEventsClusterVisualization::Particle
+			//	mmvis_static::StructureEventsClusterVisualization::_getParticle(const uint64_t particleID) const;
 
 			/// Get a cluster from clusterList with particle ID. UNUSED.
-			mmvis_static::StructureEventsClusterVisualization::Cluster*
-				mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const;
+			//mmvis_static::StructureEventsClusterVisualization::Cluster*
+			//	mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const;
 		};
 
 	} /* namespace mmvis_static */

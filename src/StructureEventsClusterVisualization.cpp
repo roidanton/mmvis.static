@@ -41,10 +41,10 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
 	periodicBoundaryConditionSlot("NeighbourSearch::periodicBoundary", "Periodic boundary condition for dataset."),
 	radiusMultiplierSlot("NeighbourSearch::radiusMultiplier", "The multiplicator for the particle radius definining the area for the neighbours search."),
-	msMinClusterAmountSlot("StructureEvents::msMinClusterAmount", "Minimal number of cluster for merge/split event detection."),
-	msMinCPPercentageSlot("StructureEvents::msMinCPPercentage", "Minimal ratio of common particles for merge/split event detection."),
+	msMinClusterAmountSlot("StructureEvents::msMinClusterAmount", "Minimal number of clusters for merge/split event detection."),
+	msMinCPPercentageSlot("StructureEvents::msMinCPPercentage", "Minimal ratio of common particles of each cluster for merge/split event detection."),
 	bdMaxCPPercentageSlot("StructureEvents::bdMaxCPPercentage", "Maximal ratio of common particles for birth/death event detection."),
-	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged if possible."),
+	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged with bigger clusters if possible."),
 	dataHash(0), sedcHash(0), seMaxTimeCache(0), frameId(0), treeSizeOutputCache(0) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
@@ -64,7 +64,7 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
 
-	this->radiusMultiplierSlot.SetParameter(new core::param::IntParam(4, 2, 20));
+	this->radiusMultiplierSlot.SetParameter(new core::param::IntParam(5, 2, 10));
 	this->MakeSlotAvailable(&this->radiusMultiplierSlot);
 
 	this->msMinCPPercentageSlot.SetParameter(new core::param::FloatParam(40, 20, 45));
@@ -531,12 +531,41 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 
 		// Data structure sizes.
 		int unitConversion = 1024;
-		size_t particleBytes = this->particleList.size() * sizeof(Particle) / unitConversion;
-		size_t previousParticleBytes = this->previousParticleList.size() * sizeof(Particle) / unitConversion;
+
+		// Determine representative size of all particles including their neighbours.
+		size_t innerVectorSize = 0;
+		for (auto & particle : this->particleList)
+			innerVectorSize += particle.neighbourIDs.size() * sizeof(uint64_t);
+
+		size_t particleBytes = this->particleList.size() * sizeof(Particle) + innerVectorSize;
+		particleBytes /= unitConversion;
+
+		innerVectorSize = 0;
+		for (auto & particle : this->previousParticleList)
+			innerVectorSize += particle.neighbourIDs.size() * sizeof(uint64_t);
+
+		size_t previousParticleBytes = this->previousParticleList.size() * sizeof(Particle) + innerVectorSize;
+		previousParticleBytes /= unitConversion;
+
+		// Tree and clusters.
 		size_t kdtreeBytes = this->treeSizeOutputCache / unitConversion;
 		size_t clusterBytes = this->clusterList.size() * sizeof(Cluster) / unitConversion;
 		size_t previousClusterBytes = this->clusterList.size() * sizeof(Cluster) / unitConversion;
-		size_t partnerClustersBytes = (this->partnerClustersList.forwardList.size() + this->partnerClustersList.backwardsList.size()) * sizeof(PartnerClusters) / unitConversion;
+
+		// Comparison: Partner clusters and their partners.
+		innerVectorSize = 0;
+		for (auto & partnerClusters : this->partnerClustersList.forwardList)
+			innerVectorSize += partnerClusters.getNumberOfPartners() * sizeof(PartnerClusters::PartnerCluster);
+		size_t forwardListBytes = this->partnerClustersList.forwardList.size() * sizeof(PartnerClusters) + innerVectorSize;
+
+		innerVectorSize = 0;
+		for (auto & partnerClusters : this->partnerClustersList.backwardsList)
+			innerVectorSize += partnerClusters.getNumberOfPartners() * sizeof(PartnerClusters::PartnerCluster);
+		size_t backwardsListBytes = this->partnerClustersList.backwardsList.size() * sizeof(PartnerClusters) + innerVectorSize;
+
+		size_t partnerClustersBytes = (forwardListBytes + backwardsListBytes) / unitConversion;
+
+		// Structure events.
 		size_t seBytes = this->structureEvents.size() * sizeof(StructureEvents) / unitConversion;
 
 		size_t totalSize = particleBytes + previousParticleBytes + kdtreeBytes + clusterBytes + previousClusterBytes + partnerClustersBytes + seBytes;
@@ -605,6 +634,14 @@ void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamo
 		}
 		globalParticleCnt += static_cast<size_t>(pl.GetCount());
 	}
+
+	/// Heed size of neighbour IDs when reserving memory. A lot more than needed gets reserved,
+	/// since maxNeighbours is never reached with radius kD search and gas particles have no neighbours at all.
+	/// This is wrong (neighbour vector is stored elsewhere) and bad (way too much memory gets reserved).
+	//float perParticleNeighbourBytes = static_cast<float>(this->getKDTreeMaxNeighbours(this->radiusMultiplierSlot.Param<param::IntParam>()->Value()) * sizeof(uint64_t));
+	//size_t allParticleNeighbourIDSize = static_cast<size_t>(perParticleNeighbourBytes / (float) sizeof(Particle) * globalParticleCnt);
+	//particleList.reserve(globalParticleCnt + allParticleNeighbourIDSize);
+
 	particleList.reserve(globalParticleCnt);
 
 	///
@@ -692,6 +729,7 @@ void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamo
 		for (uint64_t particleIndex = 0; particleIndex < particles.GetCount(); ++particleIndex, vertexPtr += vertexStride, colourPtr += colourStride) {
 
 			Particle particle;
+			//Particle particle(this->radiusMultiplierSlot.Param<param::IntParam>()->Value()); // This doubles creation time! Don't do this, it is horrible (see Constructor description).
 
 			// Vertex.
 			//if (vertexIsFloat) { // Performance is lower with if-else in loop, however readability is higher.
@@ -813,41 +851,13 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	///
 	/// Find and store neighbours.
 	///
-	auto time_findNeighbours = std::chrono::system_clock::now();
+	const auto time_findNeighbours = std::chrono::system_clock::now();
 
-	/// Minimal maxNeighbours for radius so no particle in radius gets excluded (determined by experiments):
-	/// radiusMultiplier, maxNeighbours
-	/// 4, 35 <- causes zero signed distance one size clusters phenomenon 
-	/// 5, 60 <- causes zero signed distance one size clusters phenomenon 
-	/// 6, 100
-	/// 7, 155
-	/// 10, 425
-	/// 20, 3270
-	bool debugSkipParticles = false; // Skip particles for faster tests.
-	bool useFRSearch = true; // Use kD tree search with radius.
-	int radiusMultiplier = this->radiusMultiplierSlot.Param<param::IntParam>()->Value();
-	int maxNeighbours = 0;
-	switch (radiusMultiplier){
-	case 2: // Not tested, so using safe maxNeighbours amount.
-	case 3: // Not tested, so using safe maxNeighbours amount.
-	case 4:
-		maxNeighbours = 35;
-		break;
-	case 5:
-		maxNeighbours = 60;
-		break;
-	case 6:
-		maxNeighbours = 100;
-		break;
-	case 7:
-		maxNeighbours = 155;
-		break;
-	case 8: // Not tested, so using safe maxNeighbours amount.
-	case 9: // Not tested, so using safe maxNeighbours amount.
-	case 10:
-		maxNeighbours = 425;
-		break;
-	}
+	const bool debugSkipParticles = false; // Skip particles for faster tests.
+	const bool useFRSearch = true; // Use kD tree search with radius.
+	const int radiusMultiplier = this->radiusMultiplierSlot.Param<param::IntParam>()->Value();
+
+	const int maxNeighbours = this->getKDTreeMaxNeighbours(radiusMultiplier);
 
 	ANNdist sqrRadius = powf(radiusMultiplier * particleList[0].radius, 2);
 
@@ -1063,7 +1073,10 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	///
 
 	// Avoid reallocation of clusterList, method (1) - though it's a waste of memory it saves time (no reallocation)!
-	this->clusterList.reserve(this->particleList.size() / 10);
+	if (this->radiusMultiplierSlot.Param<param::IntParam>()->Value() < 3)
+		this->clusterList.reserve(this->particleList.size() / 5); // Low radius multiplier will create a lot of clusters. Only important for test runs.
+	else
+		this->clusterList.reserve(this->particleList.size() / 10);
 
 	/// #pragma omp parallel for
 	/// Particle handling could be parallelized, if the traversed particles are not added to the cluster
@@ -1119,6 +1132,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 			parsedParticleIDs.push_back(deepestNeighbour.id);
 			
 			if (currentParticle.signedDistance >= deepestNeighbour.signedDistance) { // Current particle is local maximum.
+				//Debug printf("%f >= %f\n", currentParticle.signedDistance, deepestNeighbour.signedDistance); // Works.
 
 				// Find cluster in list.
 				uint64_t rootParticleID = currentParticle.id;
@@ -1190,6 +1204,11 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 				
 				//this->debugFile << clusterPtr << " with root " << (*clusterPtr).rootParticleID << ", parsed particles " << parsedParticleIDs.size() << " , number of particles " << (*clusterPtr).numberOfParticles << ".\n"; // Debugging black particles (clusterList got reallocated during creation).
 
+				if (this->clusterList.size() % 1000 == 0) {
+					vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+						"SECalc step 2 progress: Amount of clusters %d. Particle %d. Liquid particles w/o neighbours %d.", this->clusterList.size(), particle.id, debugNoNeighbourCounter);
+				}
+
 				// Progress, to not loose patience when waiting for results.
 				if (particle.id % 100000 == 0) {
 					auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_addParticlePath);
@@ -1210,17 +1229,17 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	{ // Time measurement and Debug.
 		
 		// Min/Max Clusters.
-		uint64_t minCluster = std::min_element(
+		const uint64_t minCluster = std::min_element(
 			this->clusterList.begin(), this->clusterList.end(), [](const Cluster& lhs, const Cluster& rhs) {
 			return lhs.numberOfParticles < rhs.numberOfParticles;
 		})->numberOfParticles;
-		uint64_t maxCluster = std::max_element(
+		const uint64_t maxCluster = std::max_element(
 			this->clusterList.begin(), this->clusterList.end(), [](const Cluster& lhs, const Cluster& rhs) {
 			return lhs.numberOfParticles < rhs.numberOfParticles;
 		})->numberOfParticles;
 
 		// Time measurement.
-		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_createCluster);
+		const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_createCluster);
 
 		///
 		/// Debug values.
@@ -1229,6 +1248,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 		int debugParticleInClustersNumber = 0;
 		int debugSizeOneClusters = 0; // For testing MergeClusters produces adjacent gas particle clusters theory.
 		int debugMinSizeClusters = 0; // For testing MergeClusters produces adjacent gas particle clusters theory.
+		bool skipCFDOutput = this->clusterList.size() > 50000 ? true : false; // Output takes forever with thousands of clusters and particles.
 
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			for (auto & cluster : this->clusterList) {
@@ -1242,21 +1262,23 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 					debugMinSizeClusters++;
 					if (cluster.numberOfParticles == 1)
 						debugSizeOneClusters++;
-
-					// For testing Single Zero Signed Distance Clusters theory.
-					for (auto & particle : this->particleList) {
-						if (particle.clusterID == cluster.id) {
-							testCFDCSVFile
-								<< this->timeOutputCache << "; "
-								<< this->frameId << "; "
-								<< cluster.id << "; "
-								<< cluster.numberOfParticles << "; "
-								<< particle.id << "; "
-								<< particle.signedDistance << "; "
-								<< particle.neighbourIDs.size() << "; "
-								<< particle.x << "; "
-								<< particle.y << "; "
-								<< particle.z << "\n";
+					
+					if (!skipCFDOutput) {
+						// For testing Single Zero Signed Distance Clusters theory.
+						for (auto & particle : this->particleList) {
+							if (particle.clusterID == cluster.id) {
+								testCFDCSVFile
+									<< this->timeOutputCache << "; "
+									<< this->frameId << "; "
+									<< cluster.id << "; "
+									<< cluster.numberOfParticles << "; "
+									<< particle.id << "; "
+									<< particle.signedDistance << "; "
+									<< particle.neighbourIDs.size() << "; "
+									<< particle.x << "; "
+									<< particle.y << "; "
+									<< particle.z << "\n";
+							}
 						}
 					}
 				}
@@ -2548,6 +2570,34 @@ mmvis_static::StructureEventsClusterVisualization::meanStdDeviation(std::vector<
 }
 
 
+const int mmvis_static::StructureEventsClusterVisualization::getKDTreeMaxNeighbours(const int radiusMultiplier) {
+	int maxNeighbours = 0;
+	switch (radiusMultiplier){
+	case 2: // Not tested, so using safe maxNeighbours amount.
+	case 3: // Not tested, so using safe maxNeighbours amount.
+	case 4:
+		maxNeighbours = 35;
+		break;
+	case 5:
+		maxNeighbours = 60;
+		break;
+	case 6:
+		maxNeighbours = 100;
+		break;
+	case 7:
+		maxNeighbours = 155;
+		break;
+	case 8: // Not tested, so using safe maxNeighbours amount.
+	case 9: // Not tested, so using safe maxNeighbours amount.
+	case 10:
+		maxNeighbours = 425;
+		break;
+	}
+	return maxNeighbours;
+}
+
+
+/*
 void mmvis_static::StructureEventsClusterVisualization::sortBySignedDistance() {
 	///
 	/// Sort list from greater to lower signedDistance.
@@ -2688,7 +2738,7 @@ bool mmvis_static::StructureEventsClusterVisualization::isInSameComponent(
 }
 
 
-/*
+
 mmvis_static::StructureEventsClusterVisualization::Particle
 mmvis_static::StructureEventsClusterVisualization::_getParticle (const uint64_t particleID) const {
 	auto time_getParticle = std::chrono::system_clock::now();
