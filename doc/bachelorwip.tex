@@ -114,7 +114,7 @@ TODO Glyphdesign
 
 \chapter{Überblick über die Arbeit}
 
-Erklärung der Abschnitte, Module, Visualisierung.s
+Erklärung der Abschnitte, Module, Visualisierung.
 
 \chapter{Erkennung der Cluster und Strukturereignisse}
 
@@ -167,7 +167,8 @@ Um in der folgenden Nachbarschaftsbestimmung die Suche zu beschleunigen, wird di
 
 Auch werden die Nachbarn pro Partikel nicht als Objekte, sondern lediglich als Referenz gespeichert. Die Speicherung als Objekt ist eine enorme Speicherbelastung und erfordert auf dem Entwicklungssystem ständiges Auslagern auf die Festplatte. Der Nachteil dabei ist, dass keine Sortierung der Liste erfolgen darf, da sonst die Referenzen ungültig werden.
 
-Die Verlinkung der Partikeln zu Cluster kann nicht über Referenzen verfolgen, da nicht sichergestellt werden kann, dass die Clusterliste im Speicher verschoben wird aufgrund der dynamischen und nicht vorhersagbaren Größe. So zeigen Tests createClusters\_ptrAddress.log, dass sich während der Clustererstellung die Position der Cluster im Speicher verändert, was dadurch bedingt ist, dass die gesamte Liste verschoben wird. Das kann man daran erkennen, dass die zurückgegebenen int einen Wert von -572662307, was ein Hinweis auf memory allocator putting a value into the deallocated memory ist*. Stattdessen:
+Die Verlinkung der Partikeln zu Cluster kann nicht über Referenzen verfolgen, da nicht sichergestellt werden kann, dass die Clusterliste im Speicher verschoben wird aufgrund der dynamischen und nicht vorhersagbaren Größe. So zeigen Tests %TODO Daten von createClusters_ptrAddress.log
+, dass sich während der Clustererstellung die Position der Cluster im Speicher verändert, was dadurch bedingt ist, dass die gesamte Liste verschoben wird. Das kann man daran erkennen, dass die zurückgegebenen int einen Wert von -572662307, was ein Hinweis auf memory allocator putting a value into the deallocated memory ist*. Stattdessen:
 - ausreichend Speicherplatz für den vector reservieren (schwer zu bestimmen)
 - id's des vectors statt pointer nutzen (- clusterList darf immer noch nicht umsortiert werden, + clusterList darf im Speicher reallokiert werden)
 - id's im struct Cluster nutzen (+ Sortierung erlaubt, - im Vergleich Zugriff saulangsam)
@@ -176,6 +177,7 @@ Die Verlinkung der Partikeln zu Cluster kann nicht über Referenzen verfolgen, d
 
 
 \subsection{Bestimmung der Cluster ohne Nachbarschaftskenntnisse}
+%TODO hinten anstellen oder als Alternative Variante nach Bestimmung der nächsten Nachbarn intergrieren
 Der Abstand eines Partikels zum Rand seines Clusters wird mit einem vorzeichenbehafteten \contour{Tiefenwert} gekennzeichnet. Innerhalb von Clustern weisen Partikel eine positive \contour{Tiefe}{Tiefenwert} auf. Partikel auf dem Rand besitzen den Abstand null, Partikel in der Gasphase, d.h. außerhalb von Clustern, haben einen negativen \contour{Tiefenwert}.
 
 Partikel eines Clusters werden über eine radialbasierte Nachbarschaftsbeziehung bestimmt, wobei vom Partikel mit der größten Tiefe, dem sogenannten \contour{Saatpartikel} begonnen wird.
@@ -190,28 +192,53 @@ Jede Liste enthält einen Offset. Dort befindet sich der Listenidentifikator. Al
 
 Dieser Algorithmus ist wegen der Entfernungsbestimmung über den Radius sehr langsam. Daher wird diese Methode nicht weiter verfolgt und stattdessen werden andere Methoden zur Nachbarschaftsbestimmung untersucht und ausgehend von diesen eine Clusterbestimmung vorgenommen.
 
-\subsection{Bestimmung der nächsten Nachbarn}
+\subsection{Bestimmung der nächsten Nachbarn}\label{sec:nachbarschaftssuche}
 Beschleunigungsvarianten:
 - eine Liste (wie ohne Beschleunigung): Einschränkung der Entfernungsbestimmung bei den Partikeln auf solche mit ähnlichen Tiefenwerten $O(n^2 - k | k = n_{SignedDistance} > intervall)$
 - mehrere Listen: Einteilung des Raumes in ein Gitter, nur die Nachbarzellen (jede Zelle entspricht einer Liste) durchsuchen: voraussichtlich wesentlich weniger Partikel als mit Entfernungsbestimmung
 - k-d-Baum, da statt $O(n^2)$ nur noch $O(n \log n)$. Bibliotheken: ANN, FLANN (http://www.cs.ubc.ca/research/flann/): evtl auch so schnell wie grid
 
-\subsubsection{k-d-Baum}
-hier ANN genutzt: ANN nicht multi-threadable: http://stackoverflow.com/a/2182357
+\subsubsection{kD-Baum}
 
-FLANN Geschwindigkeit: \cite{ohara2013annAlgo}
+Speicherplatzreservierung der particleListe mit Einbeziehung der maximalen Anzahl möglicher Nachbarn.
 
-Etwa in einem gsoc'14 Projekt wurden mehrere ANN Bibliotheken verglichen (leider ohne ANN) und der Autor stellte Geschwindigkeitsunterschiede fest: http://maheshakya.github.io/gsoc/2014/05/25/performance-evaluation-of-approximate-nearest-neighbor-search-implementations---part-1.html
+Erstellung des kD-Baums.
 
-Periodische Randbedingungen werden beachtet.
+Periodische Randbedingungen werden beachtet, können aber durch den Nutzer für Datensätze ohne solche Randbedingungen deaktiviert werden.
 
-\subsection{Fast-Depth-Algorithmus zur Bestimmung der Cluster}
+Suchparameter: Radius, maxNeighbours: Setzt die Größe des Containers für die IDs der festgestellten Nachbarn.
+
+Der Suchradius ist durch den Nutzer einstellbar, da mit der Reichweite der Nachbarschaftssuche die Anzahl der Cluster beeinflusst werden kann, siehe \autoref{sec:eva:nachbarschaftssuche}.
+
+Der Wert für maxNeighbours wird abhängig von Radius automatisch gesetzt. Die passenden Werte wurden experimentell bestimmt und erfüllen die beiden Voraussetzungen, dass alle im durch den Radius definierten Volumen befindlichen Artikel in die Nachbarschaftsliste aufgenommen werden können und andererseits möglichst wenig zusätzlicher, unnötiger Speicherplatz für den bei der Suche verwendeten Container für das Aufnehmen der Nachbarn reserviert wird. %TODO Ergebnisse des Experiments anhängen & untenstehende Liste
+
+	/// Minimal maxNeighbours for radius so no particle in radius gets excluded (determined by experiments):
+	/// radiusModifier, maxNeighbours
+	/// 4, 35
+	/// 5, 60
+	/// 6, 100
+	/// 7, 155
+	/// 10, 425
+	/// 20, 3270
+
+
+\subsection{Fast-Depth-Algorithmus zur Bestimmung der Cluster}\label{sec:fast-depth}
 Begriff für diesen Algorithmus ausgehend von der Nutzung des \contours{Tiefenwertes}{Tiefenwert}, angelehnt an Depth-first
+
+Gaspartikel werden übersprungen, Flüssigkeitspartikel ohne Nachbarn werden übersprungen
+
+Sobald die umliegenden Partikel nur noch den gleichen oder einen höheren Tiefenwert aufweisen, gilt die Suche als abgeschlossen und der aktuelle Partikel ist gefunden.
 
 Bild analog zum Vortrag
 
 
-\subsection{Reduzierung der kleinen Cluster}
+Zur Beschleunigung werden alle Partikel, die beim Suchen entlang des Pfades getroffen wurden, ebenfalls zum Cluster hinzugefügt.
+
+
+\subsection{Reduzierung der kleinen Cluster}\label{sec:clusterreduktion}
+
+Sehr kleine Cluster in den Zusammenhangskomponenten können unerwünschtes Rauschen in der Ereigniserkennung verursachen, so dass deren Partikel benachbarten, größeren Clustern zugewiesen werden. Ausgenommen sind diejenigen Cluster, die alleinig eine Zusammenhangskomponente bilden, auch wenn sie die Mindestgröße unterschreiten.
+
 Variante 1: Clusterbeziehungen
 1) Zwei Mengen, eine mit den kleinen Clustern und eine mit den Übrigbleibenden.
 1) mit jedem kleinen Cluster nach den naheliegensten Übrigbleibenden suchen, z.B. in dem die Rootpartikel der Übrigbleibenden in einen kd-Baum angeordnet werden.
@@ -230,13 +257,24 @@ x: Richtung Partikel -> Wurzel benachbarter Cluster 1, ...
 
 Bei welchem x Vektor der Winkel zum 1. Vektor am Kleinsten ist: Partikel zu diesem Cluster hinzufügen.
 
-MinClusterSize von 10 oder so, mal gucken.
+MinClusterSize von 10.
 
+Begrenzung:
+Sucht maximal den drittentferntesten Nachbarn nach Clustern
 
-\subsection{Bestimmung der Clusterzusammenhänge}
+	/// No deletion of clusters here to not destroy
+	/// referencing by vector indices. Instead zero
+	/// particle clusters should be ignored by the
+	/// compareCluster function.
+
+Da die Partikel voneinander unabhängig sind, können sie parallel durchlaufen werden. Weiterhin wird die Winkelberechnung zu jedem benachbarten Partikel mit OpenMP parallelisiert.
+
+\subsection{Bestimmung der Clusterzusammenhänge}\label{sec:clusterzusammenhaenge}
 Die bestehenden Nachbarschaftsbeziehungen der Partikel können zum Vergleich der Clusterbeziehungen zwischen zwei Zeitschritten genutzt werden, so dass keine neuen Datenstrukturen zur Bestimmung erstellt werden müssen. 
 
 \gls{secc}
+
+Einfärbung der Cluster parallelisiert.
 
 \subsubsection{Nachbarschaftsgraph}
 Eine Variante ist die Erzeugung eines Graphen, der den Zusammenhang zwischen den Clustern zeigt. Dazu kann die Clusterzugehörigkeit der Nachbarn jedes Partikel untersucht werden. Sollte ein Nachbar einem anderen Cluster angehören, als der aktuelle Partikel, so sind der Cluster des aktuellen und der Cluster des benachbarten Partikels zusammengehörig.
@@ -295,9 +333,11 @@ a) 0 gemeinsame (keine Partikel in vorhergehenden Clustern): Birth
 b) Schritt (c) von (a) noch machen.
 Death so nicht feststellbar.
 
-\subsection{Erkennung von Ereignissen}
+\subsection{Erkennung von Ereignissen}\label{sec:ereigniserkennung}
 
 Es wird jeweils ein Cluster und seine \SECterm{Partnercluster} betrachtet.
+
+Heuristik
 
 \subsection{Speicherung der Daten}
 Umwandlung von framebehafteten MMPLD in frameloses MMSE.
@@ -311,6 +351,18 @@ Das \gls{mmse} enthält die berechneten Ereignisse in einem Bytecode fest. Der V
 	\end{tikzpicture}
 	\caption{Datentypen}\label{fig:mmse:format}
 \end{figure}
+
+\subsection{Programmaufbau für die Berechnung}
+%TODO evtl in Anhang
+%TODO Bild writer mmprj Aufbau
+
+Speicherung der Clustervisualisierung durch MMPDC.
+
+Auslösung der Berechnung für die unterschiedlichen Frames erfolgt durch den verbundenen SimpleSphereRenderer, da der aus der Calculation ausgehende MPDC für den Wechsel der Frames verantwortlich ist.
+
+Call zur intermodularen Kommunikation. Sämtliche Listenelemente, auf die mit Zeigern zugegriffen wird - wie Partikel, Cluster und Strukturereignisse - sind dichtgepackte Strukturen mit Datentypen der Länge vier oder acht Byte, damit der Compiler kein zusätzliches Padding einfügt und so die Strides und damit die Pointer ungültig macht.
+
+%TODO im Programm EVTL noch Automatisierung einbauen (Framesteuerung durch Calc)
 
 
 \chapter{Visualisierung}
@@ -704,7 +756,10 @@ Hier viel aus den Grundlagen Entwurfsabschnitten mit reinnehmen inkl. 3D-Prototy
 
 \section{Vorgehen}
 \subsection{Gestaltung der Glyphen}
-\subsection{Renderer}
+
+Dicke Ränder zur Vermeidung von Aliasing und Flimmern.
+
+\subsection{Renderer und Shader}
 Shader:
 common.btf für Standardlicht
 billboard.btf für Billboards in OGL 2.1
@@ -713,46 +768,142 @@ Laden der Bilder mit lodepng
 
 Nutzung der glm Bibliothek, da dadurch die Datentypen in C++ und in GLSL konsistent angelegt werden können.
 
+- Begrenzung auf Zeitpunkte.
+- Begrenzen auf Eventarten.
+
+Die Texturen haben einen festgelegten Pfad im Ordner der ausführenden Datei, da der Nutzer sie nicht ändern können soll. Dies liegt darin begründet, dass der Shader zur Darstellung des Zeitpunktes eines Ereignisses auf bestimmte Farben in der Textur angewiesen ist.
+
+
+\subsection{Visualisierung der Clusterberechnung}
+
+Um die Qualität der Clusterberechnung zu untersuchen, wird allen Partikeln desselben Clusters dieselbe Farbe zugeordnet. Im ersten berechneten Frame erfolgt diese Farbzuweisung für jeden Cluster zufällig, in den darauffolgenden Frames wird die Farbe desjenigen Partnerclusters des vorhergehenden Frames übernommen, der die meisten gemeinsamen Partikel aufweist. Sollte der Cluster keinen Partnercluster besitzen, wird eine neue zufällige Farbe zugewiesen. Dies wird parallel
+
+
 \subsection{Weiterleitung der Daten}
 
 Wie werden die Variablen im Call gefüllt bzw. die Funktionen zum Füllen aufgerufen? Gefüllt werden sie entweder durch den Calculator oder die Source. Verwendung von Zeigern, um keine Daten wiederholt zu kopieren.
+
+\subsection{Programmaufbau für die Visualisierung}
+%TODO evtl in Anhang
+%TODO Bild reader mmprj Aufbau
 
 
 \chapter{Evaluation}
 
 Diskussion: was funktioniert/nicht
 
+\section{Ermittlung der Ereignisse}
+
 keine Bestimmung der Güte der Heuristik bei der Ereigniserkennung
+
+%TODO Berechnungen durchführen
+%TODO Gespeicherte Daten anschauen, einige Durchschnittsbilder und v.a. kritische Punkte/Grenzen herauspicken
+
+\section{Einfluss der Parameter der Berechnungsschritte}
+
+\subsection{Einfluss der Nachbarschaftssuche}\label{sec:eva:nachbarschaftssuche}
+
+\subsubsection{Fehlende Flüssigkeitspartikel und erhöhtes Ereignisrauschen bei zu kleiner Nachbarschaftssuche}
+
+Bei kleinen Radien (dreifacher Radius oder kleiner) ist das Volumen für die Nachbarschaftssuche so klein %TODO nicht in Clustern befindliche Partikel der Flüssigkeitsphase!
+
+Daher ist der in der Benutzeroberfläche zugelassene Minimalwert für den Radiusmultiplikator auf vier gesetzt. Ein weiterer Grund ist, dass ein sehr kleines Suchvolumen das Aufkommen winziger Cluster stark erhöht, da die Partikel der flüssigen Phase nicht dicht gepackt sein müssen und so nebeneinanderliegende Partikel nicht als solche erkannt werden. %TODO Daten der Clusteranzahl für 3*r, 4*r, 5*r einfügen
+Damit ist es wahrscheinlicher, dass der Fast-Depth-Algorithmus \autoref{sec:fast-depth} sie unterschiedlichen Clustern zuordnet, weil räumlich benachbarte, aber bei der Nachbarschaftssuche nicht als Nachbarn erkannte Partikel bei der Suche nach dem nächsten, tiefer liegenden Partikel nicht beachtet werden. Eine erhöhte Clusteranzahl innerhalb von Zusammenhangskomponenten führt zu einer erhöhten Anzahl von detektierten Ereignissen. Wenn der Nutzer den Einfluss kleiner Cluster ignorieren möchte und sie als Rauschen statt als gewinnbringende Information betrachtet, so ist ein kleiner Radius bei der Nachbarschaftssuche von Nachteil. %TODO visueller oder Datenvergleich der Radieneinstellungen
+
+\subsubsection*{Gaspartikelcluster bei der Clusterreduktion}  %MergeClusters produces adjacent gas particle clusters theory
+
+Wenn andererseits der Radius zu groß gewählt wird (fünffacher Radius oder höher), können auch Partikel der Gasphase Nachbarn erhalten und werden im Fast-Depth-Algorithmus Clustern zugeordnet. Dies wiederrum kann dazu führen, dass beim Reduzieren der kleinen Cluster \autoref{sec:clusterreduktion} diese Partikel in Clustern mit nur diesem einen Partikel zurückbleiben. Das liegt darin begründet, dass die Clusterreduktion begrenzte Iterationsschritte aufweist. Falls der von den umliegenden Cluster am Weitesten entfernte Partikel als erstes ausgewählt wird, weisen die umliegenden Partikel noch denselben Cluster auf. Wenn die Suche nach drei Nachbarschaftsebenen abbricht und die durchsuchten Partikel alle denselben Cluster aufweisen, verbleibt der Partikel im aktuellen Cluster. Hingegen werden die umliegenden Partikel aufgrund der geringeren Entfernung zu den benachbarten, größeren Clustern in diese aufgenommen. So verbleibt der zuerst ausgewählte Partikel als einziger im Cluster. Das führt in der Ereigniserkennung \autoref{sec:ereigniserkennung} zu falschen Birth und Death Erkennungen.
+Allerdings ist dieser Fehler nicht aufgetreten, es werden keine einzelnen Partikel oder kleine Partikelgruppen durch die Clusterbildung erzeugt. %TODO Verifizieren für alle Frames
+Das kann durch den Vergleich der Einpartikel- sowie der minimalen Cluster direkt nach der Clusterbildung mit deren Anzahl nach der Clusterreduktion überprüft werden. Da die Anzahl in allen Messungen gleich oder geringer ist, %TODO Datenauswertung MinSizeClusters, SizeOneClusters
+%Umgangen wird dieser mögliche Fehler bei der Bestimmung der Clusterzusammenhänge \autoref{sec:clusterzusammenhaenge} durch das Herausfiltern von Clustern mit einer Partikelanzahl von eins.
+Das Ausbleiben dieses Fehlers lässt sich auf die verwendete minimale Clustergröße von maximal zehn Partikeln zurückführen. Somit ist die dreifache Iteration der Clusterreduktion ausreichend. Hingegen wird mit höheren Mindestclustergrößen der Fehler verstärkt auftreten. Das kann leicht vermieden werden, indem die Anzahl der durchsuchten Nachbarschaftsebenen erhöht wird.
+
+\subsubsection*{Gaspartikel in Clustern bei großen Radien}
+
+Zur Beschleunigung des Fast-Depth-Algorithmus' \autoref{sec:fast-depth} werden alle Partikel, die beim Suchen entlang des Pfades getroffen wurden, ebenfalls zum Cluster hinzugefügt. Diese Beschleunigung kann Fehler verursachen, wenn der Radius bei der Nachbarschaftssuche \autoref{sec:nachbarschaftssuche} groß gewählt wurde, da so auch Gaspartikel am Rand von Clustern mit hinzugefügt werden. Diese Fehler sind jedoch vernachlässigbar, da die Heuristik der Ereigniserkennung \autoref{sec:ereigniserkennung} Mengen betrachtet und somit einzelne Gaspartikel in der Clustergruppe einen geringen Einfluss auf das Ergebnis haben.
+
+\subsubsection*{Nulltiefenwert Einpartikelcluster Phänomen} %zero signed distance one size clusters phenomenon 
+
+Aufgrund der Abbruchbedingung der Traversierung über die Tiefenwerte kann es passieren, dass Partikel mit denselben Tiefenwerten in einzelne, separate Cluster eingeteilt werden, die alle nur diesen einen Partikel enthalten. Da Gaspartikel vom Fast-Depth-Algorithmus aussortiert werden und der Algorithmus für das Eintreten dieses Falls keine tieferen Nachbarn finden darf, müssen die Partikel einen Tiefenwert von null aufweisen. Damit nebeneinander angeordnete Partikel diesen Tiefenwert aufweisen können, muss der Cluster sehr klein sein. %TODO evtl Häufigkeit mit CFDTest bestimmen
+Die Überprüfung der Positionen der betroffenen Einpartikelcluster bestätigt diese Annahme. %TODO Daten der CFDTest einfügen
+Weiterhin tritt dieses Phänomen erst ab vierfachem Clusterradius in der Nachbarschaftssuche auf, da bei kleineren Radien die nebeneinanderliegenden Partikel mit einem Tiefenwert von null nicht als Nachbarn erkannt werden. Da diese Partikel somit nachbarlos sind, werden sie vom Fast-Depth-Algorithmus ignoriert und nicht in Cluster eingeteilt.
+ %TODO Auftreten auch mit Radiuswert 3 OneSizeCluster überprüfen
+
+\section{Auswertung der Visualisierung}
+
+\subsection{Glyphdesign}
+- qualitative Umfrage Erkennung der Symbole: Tester (Vorstellung im Bekannten- und Freundeskreis, Klavierschülerin) haben gezeigt, dass sie den Symbolen die korrekte Semantik zuordnen, bei der abstrakten Vorstellung viel die Zuordnung wesentlich ungenauer aus. %TODO Quantitative Umfrage Glyphdesign wäre schön, falls zuviel Zeit
+
+\subsection{Glyphdarstellung im Partikelraum}
+
+- schlechte Sichtbarkeit bei gleichzeitiger Ansicht von Partikeln und Events, ClipPlane bei SimpleSphereRenderer hilft etwas %TODO Beispielscreenshot
+
+%TODO Qualitativ
+%TODO Quantitative Umfrage Glyphdesign um Partikelraum ergänzen, falls zuviel Zeit
+
+\section{Ressourcenverbrauch}
 
 Zeit- und Ressourcenangaben beziehen sich auf folgendes System:
 - Intel Core i5-3210M
 - 2x4GB DDR3-1600
 - Windows 8.1
 
-Zeitmessung in C++: http://stackoverflow.com/a/21995693
+Die Zeitmessungen konnte separat für jeden Schritt durchgeführt werden, da die Berechnungsschritte sequentiell durchgeführt werden.
 
-Variablentyp um Loops zu zählen:
-mit size\_t anstatt von int:
-Die Idee von size\_t ist, (1) dass man vielleicht eine Obergrenze hat, die ein size\_t ist, und sich so den Cast im Vergleich spart, damit der Compiler nicht warnt
-[15:36:44] Max: Und (2) dass es im Allgemeinen so groß wie ein Register der CPU ist
-Nur dass (2) trotzdem nicht so clever ist, weil ich mal ohne Quelle behaupte, dass 32-Bit-Operationen auf 64-Bit-CPUs genauso schnell wie 64-Bit-Operationen, und im Zweifelsfalle sogar schneller sind
-[15:37:25] Max: (Weil die Instruktionen kürzer sind)
-[15:37:42 | Bearbeitet 15:37:43] Max: Also mit 64-Bit-CPUs meine ich x64
-Und „wie du oben sagtest“: Nein, ich meinte, weil 8-Bit-Operationen wiederum im Zweifel langsamer sind als einfache Operationen auf int
-[15:38:39] Max: Auch für int8\_t würde das gelten
-[15:38:46] Max: Bei x86 nicht, aber bei ARM bestimmt, beispielsweise
+%TODO Zeitmessungen und Speicherverbrauchsdaten
+
+Wie zu erkennen, ist die Nachbarschaftssuche sowohl der zeit- als auch der speicherintensivste Schritt, gefolgt von der Clusterbildung. Der Clustervergleich und die Erkennung der Strukturereignisse benötigen eine um fast zwei Größenordnungen geringere Zeit.
+
+%TODO Speicherverbrauch
+
+\subsection{Optimierung durch Parallelisierung}
+Die Nachbarschaftssuche ist der zeit- und speicherintensivste Schritt. Eine Parallelisierung der Schleifen für die Partikel wäre wünschenswert, da die Partikel voneinander unabhängig behandelt werden und jeder einzelne Schleifendurchgang rechenaufwändig ist, vor allem bei Beachtung der periodischen Randbedingungen und dem damit verbundenen, achtfachen Aufruf des Suchalgorithmus des kD-Baums. Allerdings haben Versuche mit OpenMP als auch mit der Parallel Patterns Library (PPL) gezeigt, dass ANN bei der Parallelisierung durch eines der beiden Verfahren trotz rein lesenden Zugriffs Zugriffsfehler aufweist, da jeder Thread auf denselben Baum und dessen Zeiger zugreift. Das Kopieren des Suchbaums für jeden Thread könnte eine mögliche Lösung sein, würde mit steigender Partikel- und Threadanzahl jedoch sehr viel Speicher verbrauchen. %TODO Link zu Speicherverbrauchsdaten
+Der Blocker für die Parallelisierung mit der ANN Bibliothek ist allerdings, dass sie während der Programmlaufzeit für alle Suchstrukturen denselben Speicherbereich nutzt und ihn dadurch auch beim Löschen einzelner Suchstrukturen nicht deallokiert \cite[S.~8]{mount2010ann}. Somit ist ANN für eine parallele Nutzung nicht geeignet und ein Wechsel zu einer anderen Bibliothek ist empfehlenswert, wie beispielsweise zu FLANN \cite{ohara2013annAlgo} \cite{wijewardena2014annPerformance}.
+
+Bei der Clusterbildung als zweitlängster Schritt kann die Verarbeitung für jeden Partikel parallelisiert werden. Allerdings wird die Beschleunigung nur gering oder sogar negativ ausfallen. Zum Einen müssen die Clustererstellung sowie die Clusterzuordnung des Wurzelpartikels threadsicher umgestaltet werden, zum Beispiel mittels Mutex-Verfahren, um eine mehrfache Clusterzuweisung auf denselben Partikel zu vermeiden. Das führt zu einer Verringerung der Parallelisierungseffizienz, da die Prozesse gegenseitig aufeinander warten müssen, bis die Erstellung und Zuordnung abgeschlossen ist. Zum Anderen müsste das Hinzufügen der traversierten Partikel zum Cluster entfernt werden, wodurch die auch in vorhergehenden Schritten getroffenen Partikel untersucht werden müssen, was vor allem bei langen Traversierungspfaden aufgrund der sequentiell ablaufenden Traversierung die Effizienz stärker senken kann, als die durch die Parallelisierung hinzugewonnene.
+
+Die Clusterreduktion ist beim Durchlaufen der Partikel parallelisiert und dadurch kann auf dem Zweikernprozessor mit vier Threads des Testsystems in Stichproben eine Geschwindigkeitsverbesserung von über 15\% festgestellt werden (Frame 75 5622 ms zu 6733 ms, Frame 76 5631 ms zu 6802 ms). Die geringe Skalierung ist damit zu erklären, dass nur ein Bruchteil der Partikel reduziert wird (in den Stichprobe der Frames 75 und 76 sind es 66 bzw. 55 Partikel, damit 0,03\% aller Partikel). Die Berechnung der Winkel zu den benachbarten Clustern geschieht in einer Schleife innerhalb des Durchlaufes eines Partikels und ist noch einmal parallelisiert, was aufgrund der geringen Clusteranzahl nur in einem minimalen Geschwindigkeitsgewinn von unter 4\% resultiert. Die Mutex in beiden Schleifen (Zählvariable und minimaler Winkel) haben keinen messbaren Einfluss auf die Geschwindigkeit.
+Die Parallelisierung der drei einzelnen Suchschritte nach den benachbarten Clustern ist nicht sinnvoll, da dort zum Ersten lediglich Vergleiche und Inkrementationen durchgeführt werden und zum Zweiten das Hinzufügen des ermittelten Wertes zum der die benachbarten Cluster enthaltenen Container nicht Threadsicher ist und durch einen Mutex geschützt sein muss. Versuche haben gezeigt, dass der bei der Parallelisierung erzeugte Verwaltungsaufwand den Vorgang sogar verlangsamt. Bei Frame 75 wird ohne Parallelisierung der Clustersuche eine Dauer von 6791 ms und mit Parallelisierung eine Dauer von 8711 ms ermittelt, respektive bei Frame 76 6688 ms zu 8394 ms.
+%TODO Verlinkung SECalc Parallelisierungseinfluss von mergeClusters.csv
+
+Beim Clustervergleich sowie der Ereigniserkennung wäre aufgrund des geringen Berechnungsaufwandes, des nötigen Mutex-Verfahren der Listen sowie der sequentiell zu erfolgenden Ausgabe eine Parallelisierung in der Geschwindigkeit kaum spürbar bzw. sogar nachteilig.
+
+Falsch: In der Implementation wird so oft wie möglich der Parallelmodus von libstdc++ genutzt, um den Zugriff auf die Listen zu beschleunigen. %TODO nicht standardmäßig durch vc++ unterstützt? url https://gcc.gnu.org/onlinedocs/libstdc++/manual/parallel\_mode.html
+Gelegentlich werden OpenMP Direktiven unmittelbar an den Schleifen verwendet.
+
+
+
 
 
 \chapter{Zusammenfassung}
 Kurzzusammenfassung/Abstract ausführlicher, auf Details eingehen
 
 \chapter{Ausblick}
-Verbesserung des Algorithmus:
+Verbesserung der Berechnungen:
 \begin{itemize}
-	\item Einbeziehung von sowohl der Forward- als auch der Backwardsliste bei der Ermittlung von Merge und Split.
+	\item Clustergröße, die zur Bildung des Ereignisses geführt hat, im Ereignis abspeichern. So kann der Benutzer eine Gewichtung der Ereignisse abhängig von der Clustergröße vornehmen bzw. die Auswirkungen kleiner Cluster dynamisch ausblenden.
+	
+	\item Die Mindestclustergröße auf wesentlich höhere Werte, zum Beispiel größer 100 einstellen, um das Ereignisrauschen in Zusammenhangskomponenten zu senken. Voraussetzung dafür ist die Erhöhung der durchsuchten Nachbarschaftsebenen. Dies kann zum Beispiel durch Umwandlung des iterativen Vorgehens in ein Rekursives erreicht werden. Empfehlenswert ist die Skalierung der Rekursionschritte mit der Mindestclustergröße, um die Berechnungsdauer der Reduktion nicht unnötig zu erhöhen. Da kleinere Cluster, die nur eine Zusammenhangskomponente bilden, bei der Reduktion erhalten bleiben, gibt es keinen Verlust dieser Ereignisinformationen.
+	Die im Berechnungsmodul vorhandenen Ausgaben der berechneten, quantitativen Daten ermöglichen leicht eine vorangehende statistische Analyse für eine zielgerichtete Einstellung der Mindestclustergröße, etwa durch die Ausgabe der Anzahl von Clustern bestimmter Größen.
+	
+	\item Einbeziehung von sowohl der Forward- als auch der Backwardsliste bei der Ermittlung von Merge und Split, Vergleich der Durchschnittswerte der Verhältnisse der gemeinsamen Partikel der Elternpartner in der jeweiligen anderen Liste und eine daraus abgeleitete Gewichtung.
+	
 	\item Vergleich von Clustern über mehrere Zeitschritte. Dazu eine Signatur für jeden Cluster nutzen, die beispielsweise mit der Summe der Partikelidentifikatoren gebildet werden kann.
+	
 	\item Nutzung der Nachbarschaften von Clustern, wie mit dem Nachbarschaftsgraphen vorgeschlagen
-	\item MMSE Datenformat: Eventeinteilung nach Typ oder Zeit (weniger Speicherplatz)
+	
+	\item Geschwindigkeitserhöhung:
+	\begin{itemize}
+		\item Nachbarschaftssuche: Nutzung von FLANN o.ä., die Parallelisierung nutzen. \cite{ohara2013annAlgo}
+		
+		\item Parallelisierung bei Clusterbildung: Mehrere Partikel parallel verarbeiten. Dazu muss die Clusterliste eine vordefinierte Größe aufweisen, was bereits durch die Speicherplatzreservierung implementiert ist. Des Weiteren müssen die Sprünge in der Schleife durch Abfragen ersetzt werden, was einen geringen Einfluss auf die Geschwindigkeit hat. Jedoch muss die Clustererstellung sequentiell erfolgen, um eine mehrfache Clusterzuweisung auf denselben Partikel zu vermeiden, was zu einer Verringerung der Parallelisierungseffizienz führt, da die Prozesse gegenseitig aufeinander warten müssen, bis die Clusterzuordnung des Wurzelpartikels abgeschlossen ist. Weiterhin müsste das Hinzufügen der traversierten Partikel zum Cluster entfernt werden, was ebenfalls die Effizienz senkt.
+	\end{itemize}
+	\item Speicherplatzverringerung MMSE Datenformat: Eventeinteilung nach Typ oder Zeit in Unterlisten
+\end{itemize}
+
+Verbesserung der Visualisierung
+\begin{itemize}
+	\item Sichtbarkeit der Glyphen verbessern: Senken der Partikelopazität, damit die sich hinter Partikeln befindlichen Glpyhen leichter sichtbar werden.
 \end{itemize}
 
 Weitere Untersuchungsmöglichkeiten der Visualisierung:
@@ -762,6 +913,17 @@ Weitere Untersuchungsmöglichkeiten der Visualisierung:
 	\item Wirkung der Farbzuordnung untersuchen
 	\item Elementattribute (Größe, Opazität) abhängig vom Zoom
 %	\item \visattr{Form}: Polyeder on-the-fly berechnen für unendlich viele Varianten (bei konvexen: vertex [0f-2f] und edge truncation [0f-1f], siehe Blender/Regular Solids) und offene Formen erlauben (keine Flächen, nur dicke Kanten), vgl. \cite{WebGLUniformPolyhedra}.
+\end{itemize}
+
+Verbesserungen Plugin und MegaMol
+\begin{itemize}
+	\item Calculation: Annahme von MPDC mit Clustereinfärbung: Dadurch sind die Auswirkungen der Parameter für die Ereignisberechnung viel schneller sichtbar (wenige Sekunden)!
+	\item Renderer: Ausgabe von quantitativen Ereigniswerten, analog zur Calculation.
+	\item SimpleSphereRenderer: Filtern (Ausblenden) nach Partikelfarben.
+	\item Globales Kennzeichen für die Logausgabe (vgl. Kennzeichen Calculation).
+	\item WASDQERF Steuerung (siehe Mail)
+	\item Hinzufügen eines Pfades für Texturen, indem zur megamol.cfg ein weiteres Element <texturedir> mit dem Attribut path hinzugefügt wird, analog zum Element <shaderdir>.
+	\item Hinzufügen eines Pfades für Logdateien zur Ausgabe von quantitativen Daten, indem zur megamol.cfg ein weiteres Element <outputFiledir> mit dem Attribut path hinzugefügt wird, analog zum Element <shaderdir>.
 \end{itemize}
 
 Benutzung von flexiblen Isooberflächen nach \cite{carr2010flexibleIsosurfaces}.
@@ -946,12 +1108,16 @@ Das Ergebnis ist in \autoref{tab:entwurf:mockup-ortx} zu finden.
 \begin{description}
 	\item [Adobe Photoshop]
 	\item [Blender] mit Extra Objects
+	\item [Fraps] Aufnahme der visuellen MegaMol Ausgaben
+	\item [IrfanView] Bildumwandlung
 	\item [TeXstudio, TeXlive] mit tudscr, glossaries, tikz u.a.
 \end{description}
 
 \subsubsection{MegaMol Plugin}
 \begin{description}
 	\item [ActivePerl]
+	\item [Adobe Illustrator] zur Gestaltung der Glyphen
+	\item [Adobe Photoshop] zur Erstellung der Texturen
 	\item [glm]
 	\item [lodepng] zum Laden von Texturen
 	\item [MegaMol] mit ANN, AntTweakBar, mmstd\_datatools, vislib
