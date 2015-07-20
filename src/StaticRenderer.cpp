@@ -7,8 +7,9 @@
  */
 
 #include "stdafx.h"
-#include "vislib/graphics/gl/IncludeAllGL.h"
 #include "StaticRenderer.h"
+
+#include "lodepng/lodepng.h"
 #include "mmcore/CoreInstance.h"
 #include "mmcore/view/CallClipPlane.h"
 #include "mmcore/view/CallGetTransferFunction.h"
@@ -17,7 +18,8 @@
 #include "mmcore/misc/PngBitmapCodec.h"
 #include "mmcore/param/FloatParam.h"
 #include "vislib/assert.h"
-#include "lodepng/lodepng.h"
+#include "vislib/graphics/gl/IncludeAllGL.h"
+
 
 
 using namespace megamol;
@@ -118,7 +120,7 @@ mmvis_static::VisualAttributes::AttributeType mmvis_static::VisualAttributes::ge
  */
 mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	getDataSlot("getdata", "Connects to the data source"),
-	getClipPlaneSlot("getclipplane", "Connects to a clipping plane module"),
+	//getClipPlaneSlot("getclipplane", "Connects to a clipping plane module"),
 	//filePathBirthTextureSlot("filePathBirthTexture", "The image file for birth events"),
 	//filePathDeathTextureSlot("filePathDeathTexture", "The image file for death events"),
 	//filePathMergeTextureSlot("filePathMergeTexture", "The image file for merge events"),
@@ -141,12 +143,13 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	this->getDataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
 	this->MakeSlotAvailable(&this->getDataSlot);
 
-	this->getClipPlaneSlot.SetCompatibleCall<view::CallClipPlaneDescription>();
-	this->MakeSlotAvailable(&this->getClipPlaneSlot);
+	//this->getClipPlaneSlot.SetCompatibleCall<view::CallClipPlaneDescription>();
+	//this->MakeSlotAvailable(&this->getClipPlaneSlot);
 
 	//this->filePathBirthTextureSlot << new param::FilePathParam("");
 	//this->MakeSlotAvailable(&this->filePathBirthTextureSlot);
 	
+	/// No agglomeration supported.
 	//core::param::EnumParam *visAttrAgglomeration = new core::param::EnumParam(0);
 	//mmvis_static::VisualAttributes::getValidAttributes(visAttrAgglomeration, mmvis_static::VisualAttributes::ParameterType::Agglomeration);
 	//this->eventAgglomerationVisAttrSlot << visAttrAgglomeration;
@@ -809,6 +812,10 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	// Deselect (bind to 0) the VBO.
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+	// Deselect textures.
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_TEXTURE_2D);
+
 	this->billboardShader.Disable();
 	
 	return true;
@@ -842,13 +849,91 @@ void mmvis_static::StaticRenderer::CreateOGLTextureFromFile(char* filename, GLui
 		);
 	glTexParameterf(textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	//glBindTexture(textureTarget, 0); // Unbind.
+	glBindTexture(textureTarget, 0); // Unbind.
 }
 
 
-/**
- * mmvis_static::StaticRenderer::LoadPngTexture
- */
+mmvis_static::StructureEventsDataCall* mmvis_static::StaticRenderer::GetData(float& outScaling) {
+	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
+
+	if (dataCall != NULL) {
+		//dataCall->SetFrameID(t);
+		
+		// calculate scaling
+		outScaling = dataCall->AccessBoundingBoxes().ObjectSpaceBBox().LongestEdge();
+		if (outScaling > 0.0000001) {
+			outScaling = 10.0f / outScaling;
+		}
+		else {
+			outScaling = 1.0f;
+		}
+
+		if (!(*dataCall)(0)) return NULL;
+
+		return dataCall;
+	}
+	else {
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN, "Static Renderer: Datacall not available.");
+		return NULL;
+	}
+}
+
+
+bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
+	view::CallRender3D *callRender = dynamic_cast<view::CallRender3D*>(&call);
+	if (callRender == NULL)
+		return false;
+
+	/// FrameCount and bbox has to be set in SE calculation/reader.
+
+	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
+	if ((dataCall != NULL) && ((*dataCall)(1))) {
+		callRender->SetTimeFramesCount(dataCall->FrameCount());
+		callRender->AccessBoundingBoxes() = dataCall->AccessBoundingBoxes();
+
+		float scaling = callRender->AccessBoundingBoxes().ObjectSpaceBBox().LongestEdge();
+		if (scaling > 0.0000001) {
+			scaling = 10.0f / scaling;
+		}
+		else {
+			scaling = 1.0f;
+		}
+		callRender->AccessBoundingBoxes().MakeScaledWorld(scaling);
+
+	}
+	else {
+		callRender->SetTimeFramesCount(1);
+		callRender->AccessBoundingBoxes().Clear();
+	}
+
+	return true;
+}
+
+
+void mmvis_static::StaticRenderer::release(void) {
+	this->billboardShader.Release();
+	glDeleteTextures(4, this->textureIDs);
+	/*birthOGL2Texture.Release();
+	deathOGL2Texture.Release();
+	mergeOGL2Texture.Release();
+	splitOGL2Texture.Release();*/
+}
+
+
+bool mmvis_static::StaticRenderer::GetCapabilities(Call& call) {
+	view::CallRender3D *cr = dynamic_cast<view::CallRender3D*>(&call);
+	if (cr == NULL) return false;
+
+	cr->SetCapabilities(
+		view::CallRender3D::CAP_RENDER
+		| view::CallRender3D::CAP_LIGHTING
+		| view::CallRender3D::CAP_ANIMATION
+		);
+
+	return true;
+}
+
+
 /*
 void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot, vislib::graphics::gl::OpenGLTexture2D &ogl2Texture) {
 	// Slot hat Wert: C:\Users\Roi\Bachelor\megamol\plugins\mmvis_static\Assets\GlyphenEventTypesAsterisk.png
@@ -896,25 +981,6 @@ void mmvis_static::StaticRenderer::LoadPngTexture(param::ParamSlot *filenameSlot
 
 
 /*
- * mmvis_static::StaticRenderer::GetCapabilities
- */
-bool mmvis_static::StaticRenderer::GetCapabilities(Call& call) {
-	view::CallRender3D *cr = dynamic_cast<view::CallRender3D*>(&call);
-	if (cr == NULL) return false;
-
-	cr->SetCapabilities(
-		view::CallRender3D::CAP_RENDER
-		| view::CallRender3D::CAP_LIGHTING
-		| view::CallRender3D::CAP_ANIMATION
-		);
-
-	return true;
-}
-
-
-/*
- * mmvis_static::StaticRenderer::getClipData
- */
 void mmvis_static::StaticRenderer::getClipData(float *clipDat, float *clipCol) {
 	view::CallClipPlane *ccp = this->getClipPlaneSlot.CallAs<view::CallClipPlane>();
 	if ((ccp != NULL) && (*ccp)()) {
@@ -935,81 +1001,6 @@ void mmvis_static::StaticRenderer::getClipData(float *clipDat, float *clipCol) {
 		clipCol[3] = 1.0f;
 	}
 }
-
-
-/*
- * mmvis_static::StaticRenderer::GetData
- */
-mmvis_static::StructureEventsDataCall* mmvis_static::StaticRenderer::GetData(float& outScaling) {
-	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
-
-	if (dataCall != NULL) {
-		//dataCall->SetFrameID(t);
-		
-		// calculate scaling
-		outScaling = dataCall->AccessBoundingBoxes().ObjectSpaceBBox().LongestEdge();
-		if (outScaling > 0.0000001) {
-			outScaling = 10.0f / outScaling;
-		}
-		else {
-			outScaling = 1.0f;
-		}
-
-		if (!(*dataCall)(0)) return NULL;
-
-		return dataCall;
-	}
-	else {
-		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN, "Static Renderer: Datacall not available.");
-		return NULL;
-	}
-}
-
-
-/*
- * mmvis_static::StaticRenderer::GetExtents
- */
-bool mmvis_static::StaticRenderer::GetExtents(Call& call) {
-	view::CallRender3D *callRender = dynamic_cast<view::CallRender3D*>(&call);
-	if (callRender == NULL)
-		return false;
-
-	/// FrameCount and bbox has to be set in SE calculation/reader.
-
-	mmvis_static::StructureEventsDataCall *dataCall = this->getDataSlot.CallAs<mmvis_static::StructureEventsDataCall>();
-	if ((dataCall != NULL) && ((*dataCall)(1))) {
-		callRender->SetTimeFramesCount(dataCall->FrameCount());
-		callRender->AccessBoundingBoxes() = dataCall->AccessBoundingBoxes();
-
-		float scaling = callRender->AccessBoundingBoxes().ObjectSpaceBBox().LongestEdge();
-		if (scaling > 0.0000001) {
-			scaling = 10.0f / scaling;
-		}
-		else {
-			scaling = 1.0f;
-		}
-		callRender->AccessBoundingBoxes().MakeScaledWorld(scaling);
-
-	}
-	else {
-		callRender->SetTimeFramesCount(1);
-		callRender->AccessBoundingBoxes().Clear();
-	}
-
-	return true;
-}
-
-
-/*
- * mmvis_static::StaticRenderer::release
- */
-void mmvis_static::StaticRenderer::release(void) {
-	this->billboardShader.Release();
-	glDeleteTextures(4, this->textureIDs);
-	/*birthOGL2Texture.Release();
-	deathOGL2Texture.Release();
-	mergeOGL2Texture.Release();
-	splitOGL2Texture.Release();*/
-}
+*/
 
 

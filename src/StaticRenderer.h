@@ -30,7 +30,7 @@ namespace megamol {
 		///
 		class VisualAttributes {
 		public:
-			enum class AttributeType : int {
+			static enum class AttributeType : int {
 				Brightness,
 				Hue,
 				Opacity,
@@ -41,7 +41,7 @@ namespace megamol {
 				Size,
 				Texture
 			};
-			enum class ParameterType : int {
+			static enum class ParameterType : int {
 				//Agglomeration,
 				Location,
 				Type,
@@ -86,6 +86,8 @@ namespace megamol {
 		///
 		/// The textures should get an own element <texturedir> with attribut path in megamol.cfg,
 		/// like <shaderdir path="" />.
+		///
+		/// Known issue: Not all ressource gets released (Module.cpp, 36). Maybe b/c VisualAttributes static methods get destroyed when main exits.
 		///
 		class StaticRenderer : public core::view::Renderer3DModule {
 		public:
@@ -256,8 +258,8 @@ namespace megamol {
 			/// The call for data
 			core::CallerSlot getDataSlot;
 
-			/// The call for clipping plane
-			core::CallerSlot getClipPlaneSlot;
+			/// The call for clipping plane. Clipplane here not meaningful.
+			//core::CallerSlot getClipPlaneSlot;
 
 			/// The hash id of the incoming data.
 			size_t dataHash;

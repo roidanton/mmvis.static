@@ -7,8 +7,9 @@
  */
 
 #include "stdafx.h"
-#include "mmcore/param/FilePathParam.h"
 #include "StructureEventsDataSource.h"
+
+#include "mmcore/param/FilePathParam.h"
 #include "StructureEventsDataCall.h"
 #include "vislib/sys/Log.h"
 #include "vislib/sys/FastFile.h"

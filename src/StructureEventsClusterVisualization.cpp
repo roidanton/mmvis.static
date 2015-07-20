@@ -7,14 +7,16 @@
  */
 
 #include "stdafx.h"
+#include "StructureEventsClusterVisualization.h"
 
 #include "ANN/ANN.h"
 #include "mmcore/param/BoolParam.h"
 #include "mmcore/param/FloatParam.h"
 #include "mmcore/param/IntParam.h"
-#include "StructureEventsClusterVisualization.h"
+#include "mmcore/param/StringParam.h"
 #include "vislib/math/Vector.h"
 #include "vislib/sys/Log.h"
+
 #include <chrono>
 #include <functional>
 #include <numeric>
@@ -37,8 +39,10 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	inDataSlot("in data", "Connects to the data source. Expects signed distance particles"),
 	outDataSlot("out data", "Slot to request data from this calculation."),
 	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
+	outputLabelSlot("outputLabel", "A label to tag data in output files."),
 	quantitativeDataOutputSlot("quantitativeDataOutput", "Create log files with quantitative data."),
 	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
+	createDummyTestDataSlot("createDummyTestData", "Creates random previous and current data. For I/O tests. Skips steps 1 and 2."),
 	periodicBoundaryConditionSlot("NeighbourSearch::periodicBoundary", "Periodic boundary condition for dataset."),
 	radiusMultiplierSlot("NeighbourSearch::radiusMultiplier", "The multiplicator for the particle radius definining the area for the neighbours search."),
 	msMinClusterAmountSlot("StructureEvents::msMinClusterAmount", "Minimal number of clusters for merge/split event detection."),
@@ -58,8 +62,17 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetExtent", &StructureEventsClusterVisualization::getSEExtentCallback);
 	this->MakeSlotAvailable(&this->outSEDataSlot);
 
+	this->outputLabelSlot.SetParameter(new param::StringParam(""));
+	this->MakeSlotAvailable(&this->outputLabelSlot);
+
+	this->quantitativeDataOutputSlot.SetParameter(new param::BoolParam(true));
+	this->MakeSlotAvailable(&this->quantitativeDataOutputSlot);
+
 	this->calculationActiveSlot.SetParameter(new param::BoolParam(false));
 	this->MakeSlotAvailable(&this->calculationActiveSlot);
+
+	this->createDummyTestDataSlot.SetParameter(new param::BoolParam(false));
+	this->MakeSlotAvailable(&this->createDummyTestDataSlot);
 
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
@@ -78,9 +91,6 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 
 	this->minClusterSizeSlot.SetParameter(new core::param::IntParam(10, 8));
 	this->MakeSlotAvailable(&this->minClusterSizeSlot);
-
-	this->quantitativeDataOutputSlot.SetParameter(new param::BoolParam(true));
-	this->MakeSlotAvailable(&this->quantitativeDataOutputSlot);
 }
 
 
@@ -317,6 +327,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		// Set header to csv if not set.
 		if (csvLogFilePeekTest.peek() == std::ifstream::traits_type::eof()) {
 			this->csvLogFile
+				<< "Label; "
 				<< "Time [y-m-d h:m:s]; "
 				<< "Frame ID [#frame]; "
 				<< "Particles [#particles]; "
@@ -368,6 +379,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 				<< "Total list memory [kiB]"
 				<< "\n";
 			this->csvLogFile
+				<< "; " // Label.
 				<< "y-m-d h:m:s; "
 				<< "#frame; "
 				<< "#particles; "
@@ -421,15 +433,18 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		}
 		csvLogFilePeekTest.close();
 
-		// Get current time. http://stackoverflow.com/a/10467633/4566599, http://stackoverflow.com/a/14387042/4566599
+		// Get current time in readable format. http://stackoverflow.com/a/10467633/4566599, http://stackoverflow.com/a/14387042/4566599
 		time_t     now = time(0);
 		struct tm  timezone;
 		localtime_s(&timezone, &now);
 		strftime(this->timeOutputCache, sizeof(this->timeOutputCache), "%Y-%m-%d %X", &timezone); // http://en.cppreference.com/w/cpp/chrono/c/strftime
 
-		// Create line of correct length.
+		vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
+
+		// Create horizontal line of correct length.
 		const int sizeOfHead = 6 + (this->frameId < 10 ? 1 : (this->frameId < 100 ? 2 : (this->frameId < 1000 ? 3 : 10))) // Frame.
-			+ 7 + sizeof(this->timeOutputCache); // Time.
+			+ 7 + sizeof(this->timeOutputCache) // Time.
+			+ label.Length(); // Label.
 		std::string splitLine;
 		for (int i = 0; i < sizeOfHead; ++i) {
 			splitLine.append("-");
@@ -437,10 +452,12 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		this->logFile
 			<< "StructureEvents Calculation (SE Calc) " << this->timeOutputCache
 			<< ", frame " << this->frameId  // For MMPLDs with single frame it is 0 of course. Alternatively data.FrameID() (returns same).
+			<< ", Kennzeichen " << label.PeekBuffer()
 			<< "\n"
 			<< splitLine << "\n";
 
 		this->csvLogFile
+			<< label.PeekBuffer() << "; " // Label
 			<< this->timeOutputCache << "; " // Time
 			<< this->frameId << "; "; // Frame ID
 	}
@@ -457,27 +474,30 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 
 	auto time_completeCalculation = std::chrono::system_clock::now();
 
-	///
-	/// 1st step.
-	///
-	buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
-	findNeighboursWithKDTree(data);
-	
-	///
-	/// 2nd step.
-	///
-	createClustersFastDepth();
-	mergeSmallClusters();
-	
-	//setDummyLists(10000, 100, 50);
+	if (this->createDummyTestDataSlot.Param<param::BoolParam>()->Value())
+		this->setDummyLists(10000, 100, 50);
+	else {
+		///
+		/// 1st step.
+		///
+		this->buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
+		this->findNeighboursWithKDTree(data);
+
+		///
+		/// 2nd step.
+		///
+		this->createClustersFastDepth();
+		this->mergeSmallClusters();
+	}
+
 	
 	///
 	/// 3rd and 4th step and output to SEDC.
 	/// testEventsCSVFile
 	if (this->previousClusterList.size() > 0 && this->previousParticleList.size() > 0) {
-		compareClusters();
-		determineStructureEvents();
-		setClusterColor(false);
+		this->compareClusters();
+		this->determineStructureEvents();
+		this->setClusterColor(false);
 	}
 	else {
 		///
@@ -487,7 +507,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		for (int numberOfSkippedFields = 0; numberOfSkippedFields < 18; ++numberOfSkippedFields) {
 			this->csvLogFile << " ;";
 		}
-		setClusterColor(true);
+		this->setClusterColor(true);
 	}
 
 	///
@@ -846,7 +866,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	bbox.EnforcePositiveSize(); // paranoia says Sebastian. Well, nothing compared to list pointer consistency checks.
 	auto bbox_cntr = bbox.CalcCenter();
 	
-	bool periodicBoundary = this->periodicBoundaryConditionSlot.Param<megamol::core::param::BoolParam>()->Value();
+	const bool periodicBoundary = this->periodicBoundaryConditionSlot.Param<megamol::core::param::BoolParam>()->Value();
 
 	///
 	/// Find and store neighbours.
@@ -909,7 +929,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 	for (auto & particle : this->particleList) {
 
 		// Skip particles for faster testing. Not usable with concurrency.
-		if (debugSkipParticles && particle.id > 1000)
+		if (debugSkipParticles && particle.id > 10000)
 			break;
 
 		ANNidxArray   nn_idx = 0;
@@ -1076,7 +1096,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 	if (this->radiusMultiplierSlot.Param<param::IntParam>()->Value() < 3)
 		this->clusterList.reserve(this->particleList.size() / 5); // Low radius multiplier will create a lot of clusters. Only important for test runs.
 	else
-		this->clusterList.reserve(this->particleList.size() / 10);
+		this->clusterList.reserve(this->particleList.size() / 20);
 
 	/// #pragma omp parallel for
 	/// Particle handling could be parallelized, if the traversed particles are not added to the cluster
@@ -1248,7 +1268,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 		int debugParticleInClustersNumber = 0;
 		int debugSizeOneClusters = 0; // For testing MergeClusters produces adjacent gas particle clusters theory.
 		int debugMinSizeClusters = 0; // For testing MergeClusters produces adjacent gas particle clusters theory.
-		bool skipCFDOutput = this->clusterList.size() > 50000 ? true : false; // Output takes forever with thousands of clusters and particles.
+		const bool skipCFDOutput = this->clusterList.size() > 50000 ? true : false; // Output takes forever with thousands of clusters and particles.
 
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			for (auto & cluster : this->clusterList) {
@@ -2383,7 +2403,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::setClusterColor(bool renewClusterColors) {
+void mmvis_static::StructureEventsClusterVisualization::setClusterColor(const bool renewClusterColors) {
 	auto time_setClusterColor = std::chrono::system_clock::now();
 
 	size_t debugBlackParticles = 0;
@@ -2446,7 +2466,7 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor(bool ren
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::setSignedDistanceColor(float min, float max) {
+void mmvis_static::StructureEventsClusterVisualization::setSignedDistanceColor(const float min, const float max) {
 	for (auto & element : this->particleList) {
 
 		float borderTolerance = 6 * element.radius;

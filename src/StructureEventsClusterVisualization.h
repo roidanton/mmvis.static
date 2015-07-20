@@ -550,11 +550,17 @@ namespace megamol {
 			/// The call for outgoing StructureEvent data.
 			core::CalleeSlot outSEDataSlot;
 
+			/// A label to tag data in output files.
+			core::param::ParamSlot outputLabelSlot;
+
 			/// Switch for creating log files and those with quantitative data.
 			core::param::ParamSlot quantitativeDataOutputSlot;
 
 			/// Switch the calculation on/off (once started it will last until finished).
 			core::param::ParamSlot calculationActiveSlot;
+
+			/// Creates random previous and current data. For I/O tests. Skips steps 1 and 2.
+			core::param::ParamSlot createDummyTestDataSlot;
 
 			/// Switch for periodic boundary condition.
 			core::param::ParamSlot periodicBoundaryConditionSlot;

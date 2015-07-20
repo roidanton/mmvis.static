@@ -8,6 +8,7 @@
 
 #include "stdafx.h"
 #include "StructureEventsWriter.h"
+
 #include "mmcore/param/FilePathParam.h"
 #include "vislib/sys/Log.h"
 #include "vislib/sys/FastFile.h"
