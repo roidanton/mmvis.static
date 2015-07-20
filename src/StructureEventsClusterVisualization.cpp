@@ -2656,11 +2656,11 @@ const int mmvis_static::StructureEventsClusterVisualization::getKDTreeMaxNeighbo
 void mmvis_static::StructureEventsClusterVisualization::normalizeToColorComponent(vislib::math::Vector<float, 3> &output, const uint64_t modificator) {
 
 	int gasColorSimilarity = 0;
-	float epsilon = 0.1f;
+	float epsilon = 0.3f; // Needs to be big to catch different brightness but similar hue.
 
 	for (int i = 0; i < 3; ++i) {
 		output[i] *= modificator % 1000;
-		//output[i] += modificator; // If modificator big, it has too big impact: everything is gray.
+		//output[i] += modificator; // If modificator big, impact is too big: everything is gray.
 		for (int division = 10; division <= 100000000; division *= 10) {
 			if (output[i] <= division) {
 				output[i] /= division;
@@ -2687,7 +2687,8 @@ void mmvis_static::StructureEventsClusterVisualization::normalizeToColorComponen
 			}
 		}
 		*/
-		int item = static_cast<int> (output[0]) % 3;
+
+		int item = modificator % 3;
 		output[item] += .3f;
 		if (output[item] > 1.f)
 			output[item] -= 1.f;
@@ -2695,7 +2696,6 @@ void mmvis_static::StructureEventsClusterVisualization::normalizeToColorComponen
 
 	if (output[0] + output[1] + output[2] < .2f) // I don't like dark colors.
 		output[modificator % 3] += .5f;
-
 	//color.Normalise(); // Big position component gets favored (everything mainly green).
 }
 
