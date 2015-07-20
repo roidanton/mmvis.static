@@ -522,6 +522,9 @@ namespace megamol {
 			/// Mean value and standard deviation of values: http ://stackoverflow.com/a/7616783/4566599
 			MeanStdDev meanStdDeviation(std::vector<double> v);
 
+			/// Converts a position to a normalized vector.
+			void normalizeToColorComponent(vislib::math::Vector<float, 3> &output, uint64_t modificator);
+
 			///
 			/// Returns minimal maxNeighbours for radius so no particle in radius gets excluded.
 			/// Determined by experiments:
@@ -611,6 +614,9 @@ namespace megamol {
 
 			/// Cache container of a single MMPLD particle list.
 			core::moldyn::MultiParticleDataCall::Particles particles;
+
+			/// Color for gas particles.
+			std::vector<float> gasColor;
 
 			/// Takes long, OBSOLETE.
 			//void sortBySignedDistance();

@@ -49,7 +49,7 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	msMinCPPercentageSlot("StructureEvents::msMinCPPercentage", "Minimal ratio of common particles of each cluster for merge/split event detection."),
 	bdMaxCPPercentageSlot("StructureEvents::bdMaxCPPercentage", "Maximal ratio of common particles for birth/death event detection."),
 	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged with bigger clusters if possible."),
-	dataHash(0), sedcHash(0), seMaxTimeCache(0), frameId(0), treeSizeOutputCache(0) {
+	dataHash(0), sedcHash(0), seMaxTimeCache(0), frameId(0), treeSizeOutputCache(0), gasColor({ .98f, .78f, 0.f }) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
 	this->MakeSlotAvailable(&this->inDataSlot);
@@ -2001,13 +2001,22 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 			}
 		}
 		if (colored == false) {
-			// Set random color.
-			std::random_device rd;
-			std::mt19937_64 mt(rd());
-			std::uniform_real_distribution<float> distribution(0, 1);
-			clusterList[cli].r = distribution(mt);
-			clusterList[cli].g = distribution(mt);
-			clusterList[cli].b = distribution(mt);
+
+			// Use root particle position for coloring.
+			const Particle* p = &this->particleList[this->clusterList[cli].rootParticleID];
+			vislib::math::Vector<float, 3> color(p->x, p->y, p->z);
+			this->normalizeToColorComponent(color, p->id);
+			clusterList[cli].r = color.GetX();
+			clusterList[cli].g = color.GetY();
+			clusterList[cli].b = color.GetZ();
+
+			// Set random color. Alternative.
+			//std::random_device rd;
+			//std::mt19937_64 mt(rd());
+			//std::uniform_real_distribution<float> distribution(0, 1);
+			//clusterList[cli].r = distribution(mt);
+			//clusterList[cli].g = distribution(mt);
+			//clusterList[cli].b = distribution(mt);
 		}
 	}
 
@@ -2413,16 +2422,26 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor(const bo
 	/// Colourize cluster.
 	///
 	if (renewClusterColors) {
-		for (auto & cluster : this->clusterList) {
+		#pragma omp parallel for
+		for (int cli = 0; cli < this->clusterList.size(); ++cli) {
+			
+			// Set color by particle position.
+			const Particle* p = &this->particleList[this->clusterList[cli].rootParticleID];
+			vislib::math::Vector<float, 3> color(p->x, p->y, p->z);
+			this->normalizeToColorComponent(color, p->id);
+			clusterList[cli].r = color.GetX();
+			clusterList[cli].g = color.GetY();
+			clusterList[cli].b = color.GetZ();
+
 			// Set random color.
-			std::random_device rd;
-			std::mt19937_64 mt(rd());
-			std::uniform_real_distribution<float> distribution(0, 1);
-			cluster.r = distribution(mt);
-			cluster.g = distribution(mt);
-			cluster.b = distribution(mt);
-			if (cluster.rootParticleID < 0) { // Debug.
-				printf("Cl: %d.\n", cluster.rootParticleID);
+			//std::random_device rd;
+			//std::mt19937_64 mt(rd());
+			//std::uniform_real_distribution<float> distribution(0, 1);
+			//clusterList[cli].r = distribution(mt);
+			//clusterList[cli].g = distribution(mt);
+			//clusterList[cli].b = distribution(mt);
+			if (this->clusterList[cli].rootParticleID < 0) { // Debug.
+				printf("Cl: %d.\n", this->clusterList[cli].rootParticleID);
 			}
 		}
 	}
@@ -2430,20 +2449,22 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor(const bo
 	///
 	/// Colourize particles.
 	///
-	for (auto & particle : this->particleList) {
+	#pragma omp parallel for
+	for (int pli = 0; pli < this->particleList.size(); ++pli) {
+		Particle* particle = &this->particleList[pli];
 
 		// Gas. Orange.
-		if (particle.clusterID == -1) {
-			particle.r = .98f;
-			particle.g = .78f;
-			particle.b = 0.f;
+		if (particle->clusterID == -1) {
+			particle->r = this->gasColor[0];
+			particle->g = this->gasColor[1];
+			particle->b = this->gasColor[2];
 			continue;
 		}
 
 		// Cluster.
-		particle.r = this->clusterList[particle.clusterID].r;
-		particle.g = this->clusterList[particle.clusterID].g;
-		particle.b = this->clusterList[particle.clusterID].b;
+		particle->r = this->clusterList[particle->clusterID].r;
+		particle->g = this->clusterList[particle->clusterID].g;
+		particle->b = this->clusterList[particle->clusterID].b;
 
 		/*
 		if (particle.r < 0) { // Debug wrong clusterPtr, points to nothing: ints = -572662307; floats = -1998397155538108400.000000 for all -> points to reallocated address!
@@ -2488,9 +2509,9 @@ void mmvis_static::StructureEventsClusterVisualization::setSignedDistanceColor(c
 
 		// Gas. Orange.
 		if (element.signedDistance < 0) {
-			element.r = .98f;
-			element.g = .78f;
-			element.b = 0.f;
+			element.r = this->gasColor[0];
+			element.g = this->gasColor[1];
+			element.b = this->gasColor[2];
 			//element.g = 1 - element.signedDistance / min; element.r = element.b = 0.f;
 		}
 	}
@@ -2629,6 +2650,53 @@ const int mmvis_static::StructureEventsClusterVisualization::getKDTreeMaxNeighbo
 		break;
 	}
 	return maxNeighbours;
+}
+
+
+void mmvis_static::StructureEventsClusterVisualization::normalizeToColorComponent(vislib::math::Vector<float, 3> &output, const uint64_t modificator) {
+
+	int gasColorSimilarity = 0;
+	float epsilon = 0.1f;
+
+	for (int i = 0; i < 3; ++i) {
+		output[i] *= modificator % 1000;
+		//output[i] += modificator; // If modificator big, it has too big impact: everything is gray.
+		for (int division = 10; division <= 100000000; division *= 10) {
+			if (output[i] <= division) {
+				output[i] /= division;
+				break;
+			}
+		}
+		if (output[i] > 1)
+			output[i] = .5f; // Fallback for values that are too big.
+
+		if (output[i] >= this->gasColor[i] - epsilon && output[i] <= this->gasColor[i] + epsilon)
+			gasColorSimilarity++;
+	}
+
+	// Check similarities to gas
+	if (gasColorSimilarity == 3) {
+		/*
+		for (int i = 0; i < 3; ++i) {
+			output[i] += 1.f / (float)(modificator % 8 + 1);
+			if (output[i] > 1.f) {
+				if (output[i] <= 1.5f)
+					output[i] -= .5f;
+				else
+					output[i] -= 1.f;
+			}
+		}
+		*/
+		int item = static_cast<int> (output[0]) % 3;
+		output[item] += .3f;
+		if (output[item] > 1.f)
+			output[item] -= 1.f;
+	}
+
+	if (output[0] + output[1] + output[2] < .2f) // I don't like dark colors.
+		output[modificator % 3] += .5f;
+
+	//color.Normalise(); // Big position component gets favored (everything mainly green).
 }
 
 
