@@ -503,9 +503,10 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 		///
 		/// Log output.
 		///
-		this->logFile << "Skipped step 3 and step 4 since no previous clusters available.\n";
-		for (int numberOfSkippedFields = 0; numberOfSkippedFields < 18; ++numberOfSkippedFields) {
-			this->csvLogFile << " ;";
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+			this->logFile << "Skipped step 3 and step 4 since no previous clusters available.\n";
+			for (int numberOfSkippedFields = 0; numberOfSkippedFields < 18; ++numberOfSkippedFields)
+				this->csvLogFile << "; ";
 		}
 		this->setClusterColor(true);
 	}
@@ -2567,8 +2568,22 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists(int partic
 		this->structureEvents[i].type = StructureEvents::getEventType(disType(mt));
 	}
 
+
+	///
+	/// Log output.
+	///
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+		this->logFile << "Skipped step 1 and step 2 since dummy list is set.\n";
+		this->csvLogFile << particleAmount << "; ";
+		for (int numberOfSkippedFields = 0; numberOfSkippedFields < 5; ++numberOfSkippedFields)
+			this->csvLogFile << "; ";
+		this->csvLogFile << clusterAmount << "; ";
+		for (int numberOfSkippedFields = 0; numberOfSkippedFields < 13; ++numberOfSkippedFields)
+			this->csvLogFile << "; ";
+	}
+
 	vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
-		"Dummy lists set: %d, %d, %d.", particleAmount, clusterAmount, eventAmount);
+		"SECalc: Skipped step 1 and step 2 since dummy list is set.\nDummy lists set: %d, %d, %d.", particleAmount, clusterAmount, eventAmount);
 }
 
 
