@@ -1,13 +1,13 @@
 /**
- * StructureEventsClusterVisualization.h
+ * StructureEventsCalculation.h
  *
  * Copyright (C) 2009-2015 by MegaMol Team
  * Copyright (C) 2015 by Richard Hähne, TU Dresden
  * Alle Rechte vorbehalten.
  */
 
-#ifndef MMVISSTATIC_StructureEventsClusterVisualization_H_INCLUDED
-#define MMVISSTATIC_StructureEventsClusterVisualization_H_INCLUDED
+#ifndef MMVISSTATIC_StructureEventsCalculation_H_INCLUDED
+#define MMVISSTATIC_StructureEventsCalculation_H_INCLUDED
 #if (defined(_MSC_VER) && (_MSC_VER > 1000))
 #pragma once
 #endif /* (defined(_MSC_VER) && (_MSC_VER > 1000)) */
@@ -83,7 +83,7 @@ namespace megamol {
 		/// ----------------
 		/// The files should get an own element <outputFiledir> with attribut path in megamol.cfg, like <shaderdir path="" />.
 		///
-		class StructureEventsClusterVisualization : public core::Module {
+		class StructureEventsCalculation : public core::Module {
 		public:
 
 			struct MeanStdDev {
@@ -128,7 +128,7 @@ namespace megamol {
 				Particle(int radiusModifier) : clusterID(-1) {
 					// The compiler should set vector reservation since the vector
 					// is stored at a different location in memory than the struct.
-					neighbourIDs.reserve(StructureEventsClusterVisualization::getKDTreeMaxNeighbours(radiusModifier));
+					neighbourIDs.reserve(StructureEventsCalculation::getKDTreeMaxNeighbours(radiusModifier));
 				}
 
 				bool operator==(const Particle& rhs) const {
@@ -403,7 +403,7 @@ namespace megamol {
 			 * @return The name of this module.
 			 */
 			static const char *ClassName(void) {
-				return "StructureEventsClusterVisualization";
+				return "StructureEventsCalculation";
 			}
 
 			/**
@@ -412,7 +412,7 @@ namespace megamol {
 			 * @return A human readable description of this module.
 			 */
 			static const char *Description(void) {
-				return "Calculates clusters from particle data";
+				return "Calculates clusters and events from signed particle data";
 			}
 
 			/**
@@ -425,10 +425,10 @@ namespace megamol {
 			}
 
 			/// Ctor.
-			StructureEventsClusterVisualization(void);
+			StructureEventsCalculation(void);
 
 			/// Dtor.
-			virtual ~StructureEventsClusterVisualization(void);
+			virtual ~StructureEventsCalculation(void);
 
 		private:
 
@@ -634,15 +634,15 @@ namespace megamol {
 			//bool isInSameComponent(const Particle &referenceParticle, const Particle &particle) const;
 
 			/// Get a particle from particleList with particle ID. UNUSED.
-			//mmvis_static::StructureEventsClusterVisualization::Particle
-			//	mmvis_static::StructureEventsClusterVisualization::_getParticle(const uint64_t particleID) const;
+			//mmvis_static::StructureEventsCalculation::Particle
+			//	mmvis_static::StructureEventsCalculation::_getParticle(const uint64_t particleID) const;
 
 			/// Get a cluster from clusterList with particle ID. UNUSED.
-			//mmvis_static::StructureEventsClusterVisualization::Cluster*
-			//	mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const;
+			//mmvis_static::StructureEventsCalculation::Cluster*
+			//	mmvis_static::StructureEventsCalculation::_getCluster(const uint64_t rootParticleID) const;
 		};
 
 	} /* namespace mmvis_static */
 } /* namespace megamol */
 
-#endif /* MMVISSTATIC_StructureEventsClusterVisualization_H_INCLUDED */
+#endif /* MMVISSTATIC_StructureEventsCalculation_H_INCLUDED */

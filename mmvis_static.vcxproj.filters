@@ -66,9 +66,6 @@
     <ClInclude Include="src\StaticRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\StructureEventsCalculator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\StructureEventsDataSource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -81,10 +78,7 @@
     <ClInclude Include="include\lodepng\lodepng.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\StructureEventsClusterVisualization.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\StructureEventsClusterKDTree.h">
+    <ClInclude Include="src\StructureEventsCalculation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -101,9 +95,6 @@
     <ClCompile Include="src\StaticRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\StructureEventsCalculator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\StructureEventsDataSource.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -116,10 +107,7 @@
     <ClCompile Include="include\lodepng\lodepng.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\StructureEventsClusterVisualization.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\StructureEventsClusterKDTree.cpp">
+    <ClCompile Include="src\StructureEventsCalculation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

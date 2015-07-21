@@ -1,5 +1,5 @@
 /**
- * StructureEventsClusterVisualization.cpp
+ * StructureEventsCalculation.cpp
  *
  * Copyright (C) 2009-2015 by MegaMol Team
  * Copyright (C) 2015 by Richard Hähne, TU Dresden
@@ -7,7 +7,7 @@
  */
 
 #include "stdafx.h"
-#include "StructureEventsClusterVisualization.h"
+#include "StructureEventsCalculation.h"
 
 #include "ANN/ANN.h"
 #include "mmcore/param/BoolParam.h"
@@ -33,9 +33,9 @@ using namespace megamol;
 using namespace megamol::core;
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisualization
+ * mmvis_static::StructureEventsCalculation::StructureEventsCalculation
  */
-mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisualization() : Module(),
+mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(),
 	inDataSlot("in data", "Connects to the data source. Expects signed distance particles"),
 	outDataSlot("out data", "Slot to request data from this calculation."),
 	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
@@ -54,12 +54,12 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
 	this->MakeSlotAvailable(&this->inDataSlot);
 
-	this->outDataSlot.SetCallback("MultiParticleDataCall", "GetData", &StructureEventsClusterVisualization::getDataCallback);
-	this->outDataSlot.SetCallback("MultiParticleDataCall", "GetExtent", &StructureEventsClusterVisualization::getExtentCallback);
+	this->outDataSlot.SetCallback("MultiParticleDataCall", "GetData", &StructureEventsCalculation::getDataCallback);
+	this->outDataSlot.SetCallback("MultiParticleDataCall", "GetExtent", &StructureEventsCalculation::getExtentCallback);
 	this->MakeSlotAvailable(&this->outDataSlot);
 
-	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetData", &StructureEventsClusterVisualization::getSEDataCallback);
-	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetExtent", &StructureEventsClusterVisualization::getSEExtentCallback);
+	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetData", &StructureEventsCalculation::getSEDataCallback);
+	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetExtent", &StructureEventsCalculation::getSEExtentCallback);
 	this->MakeSlotAvailable(&this->outSEDataSlot);
 
 	this->outputLabelSlot.SetParameter(new param::StringParam(""));
@@ -95,32 +95,32 @@ mmvis_static::StructureEventsClusterVisualization::StructureEventsClusterVisuali
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::~StructureEventsClusterVisualization
+ * mmvis_static::StructureEventsCalculation::~StructureEventsCalculation
  */
-mmvis_static::StructureEventsClusterVisualization::~StructureEventsClusterVisualization(void) {
+mmvis_static::StructureEventsCalculation::~StructureEventsCalculation(void) {
 }
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::create
+ * mmvis_static::StructureEventsCalculation::create
  */
-bool mmvis_static::StructureEventsClusterVisualization::create(void) {
+bool mmvis_static::StructureEventsCalculation::create(void) {
 	// intentionally empty
 	return true;
 }
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::release
+ * mmvis_static::StructureEventsCalculation::release
  */
-void mmvis_static::StructureEventsClusterVisualization::release(void) {
+void mmvis_static::StructureEventsCalculation::release(void) {
 }
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::getDataCallback
+ * mmvis_static::StructureEventsCalculation::getDataCallback
  */
-bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& caller) {
+bool mmvis_static::StructureEventsCalculation::getDataCallback(Call& caller) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
 	MultiParticleDataCall *outMpdc = dynamic_cast<MultiParticleDataCall*>(&caller);
@@ -151,7 +151,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getDataCallback(Call& ca
 }
 
 
-bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& caller) {
+bool mmvis_static::StructureEventsCalculation::getSEDataCallback(Call& caller) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
 	StructureEventsDataCall* outSedc = dynamic_cast<StructureEventsDataCall*>(&caller);
@@ -178,9 +178,9 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEDataCallback(Call& 
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::getExtentCallback
+ * mmvis_static::StructureEventsCalculation::getExtentCallback
  */
-bool mmvis_static::StructureEventsClusterVisualization::getExtentCallback(Call& caller) {
+bool mmvis_static::StructureEventsCalculation::getExtentCallback(Call& caller) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
 	MultiParticleDataCall *outMpdc = dynamic_cast<MultiParticleDataCall*>(&caller);
@@ -203,7 +203,7 @@ bool mmvis_static::StructureEventsClusterVisualization::getExtentCallback(Call& 
 }
 
 
-bool mmvis_static::StructureEventsClusterVisualization::getSEExtentCallback(Call& caller) {
+bool mmvis_static::StructureEventsCalculation::getSEExtentCallback(Call& caller) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
 	//Works. printf("Calc: SE Extend Callback\n");
@@ -232,9 +232,9 @@ bool mmvis_static::StructureEventsClusterVisualization::getSEExtentCallback(Call
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::manipulateData
+ * mmvis_static::StructureEventsCalculation::manipulateData
  */
-bool mmvis_static::StructureEventsClusterVisualization::manipulateData (
+bool mmvis_static::StructureEventsCalculation::manipulateData (
 	megamol::core::moldyn::MultiParticleDataCall& outData,
 	//mmvis_static::StructureEventsDataCall& outSEData,
 	megamol::core::moldyn::MultiParticleDataCall& inData) {
@@ -296,9 +296,9 @@ bool mmvis_static::StructureEventsClusterVisualization::manipulateData (
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::manipulateExtent
+ * mmvis_static::StructureEventsCalculation::manipulateExtent
  */
-bool mmvis_static::StructureEventsClusterVisualization::manipulateExtent(
+bool mmvis_static::StructureEventsCalculation::manipulateExtent(
 	megamol::core::moldyn::MultiParticleDataCall& outData,
 	megamol::core::moldyn::MultiParticleDataCall& inData) {
 
@@ -309,9 +309,9 @@ bool mmvis_static::StructureEventsClusterVisualization::manipulateExtent(
 
 
 /**
- * mmvis_static::StructureEventsClusterVisualization::setData
+ * mmvis_static::StructureEventsCalculation::setData
  */
-void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::moldyn::MultiParticleDataCall& data) {
+void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::MultiParticleDataCall& data) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
 	///
@@ -621,7 +621,7 @@ void mmvis_static::StructureEventsClusterVisualization::setData(megamol::core::m
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamol::core::moldyn::MultiParticleDataCall& data,
+void mmvis_static::StructureEventsCalculation::buildParticleList(megamol::core::moldyn::MultiParticleDataCall& data,
 	uint64_t& globalParticleIndex, float& globalRadius, uint8_t(&globalColor)[4], float& globalColorIndexMin, float& globalColorIndexMax) {
 	using megamol::core::moldyn::MultiParticleDataCall;
 
@@ -809,7 +809,7 @@ void mmvis_static::StructureEventsClusterVisualization::buildParticleList(megamo
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data) {
+void mmvis_static::StructureEventsCalculation::findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data) {
 
 	auto time_buildTree = std::chrono::system_clock::now();
 
@@ -1048,7 +1048,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursWithKDTree
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth() {
+void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 	auto time_createCluster = std::chrono::system_clock::now();
 
 	size_t debugNoNeighbourCounter = 0;
@@ -1340,7 +1340,7 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersFastDepth(
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
+void mmvis_static::StructureEventsCalculation::mergeSmallClusters() {
 	auto time_mergeClusters = std::chrono::system_clock::now();
 
 	int mergedParticles = 0;
@@ -1679,7 +1679,7 @@ void mmvis_static::StructureEventsClusterVisualization::mergeSmallClusters() {
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
+void mmvis_static::StructureEventsCalculation::compareClusters() {
 
 	if (this->previousClusterList.size() == 0 || this->previousParticleList.size() == 0) {
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
@@ -2149,7 +2149,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents() {
+void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 
 	if (this->partnerClustersList.forwardList.size() == 0 || this->partnerClustersList.backwardsList.size() == 0) {
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
@@ -2412,7 +2412,7 @@ void mmvis_static::StructureEventsClusterVisualization::determineStructureEvents
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::setClusterColor(const bool renewClusterColors) {
+void mmvis_static::StructureEventsCalculation::setClusterColor(const bool renewClusterColors) {
 	auto time_setClusterColor = std::chrono::system_clock::now();
 
 	size_t debugBlackParticles = 0;
@@ -2489,7 +2489,7 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor(const bo
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::setSignedDistanceColor(const float min, const float max) {
+void mmvis_static::StructureEventsCalculation::setSignedDistanceColor(const float min, const float max) {
 	for (auto & element : this->particleList) {
 
 		float borderTolerance = 6 * element.radius;
@@ -2519,7 +2519,7 @@ void mmvis_static::StructureEventsClusterVisualization::setSignedDistanceColor(c
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::setDummyLists(int particleAmount, int clusterAmount, int eventAmount) {
+void mmvis_static::StructureEventsCalculation::setDummyLists(int particleAmount, int clusterAmount, int eventAmount) {
 	this->particleList.resize(particleAmount);
 	this->previousParticleList.resize(particleAmount);
 	this->clusterList.resize(clusterAmount);
@@ -2609,8 +2609,8 @@ void mmvis_static::StructureEventsClusterVisualization::setDummyLists(int partic
 }
 
 
-mmvis_static::StructureEventsClusterVisualization::MeanStdDev
-mmvis_static::StructureEventsClusterVisualization::meanStdDeviation(std::vector<double> v) {
+mmvis_static::StructureEventsCalculation::MeanStdDev
+mmvis_static::StructureEventsCalculation::meanStdDeviation(std::vector<double> v) {
 	double sum = std::accumulate(v.begin(), v.end(), 0.0);
 	double mean = sum / v.size();
 	
@@ -2627,7 +2627,7 @@ mmvis_static::StructureEventsClusterVisualization::meanStdDeviation(std::vector<
 }
 
 
-const int mmvis_static::StructureEventsClusterVisualization::getKDTreeMaxNeighbours(const int radiusMultiplier) {
+const int mmvis_static::StructureEventsCalculation::getKDTreeMaxNeighbours(const int radiusMultiplier) {
 	int maxNeighbours = 0;
 	switch (radiusMultiplier){
 	case 2: // Not tested, so using safe maxNeighbours amount.
@@ -2654,7 +2654,7 @@ const int mmvis_static::StructureEventsClusterVisualization::getKDTreeMaxNeighbo
 }
 
 
-const vislib::math::Vector<float, 3> mmvis_static::StructureEventsClusterVisualization::getColorFromProperties(const Particle &p) {
+const vislib::math::Vector<float, 3> mmvis_static::StructureEventsCalculation::getColorFromProperties(const Particle &p) {
 
 	/// Switch magic, well, dirty empiric nonesense that works a bit.
 	int variableSelector = p.clusterID % 11;
@@ -2759,7 +2759,7 @@ const vislib::math::Vector<float, 3> mmvis_static::StructureEventsClusterVisuali
 
 
 /*
-void mmvis_static::StructureEventsClusterVisualization::sortBySignedDistance() {
+void mmvis_static::StructureEventsCalculation::sortBySignedDistance() {
 	///
 	/// Sort list from greater to lower signedDistance.
 	///
@@ -2775,7 +2775,7 @@ void mmvis_static::StructureEventsClusterVisualization::sortBySignedDistance() {
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::findNeighboursBySignedDistance() {
+void mmvis_static::StructureEventsCalculation::findNeighboursBySignedDistance() {
 	uint64_t counter = 0;
 	for (auto & particle : this->particleList) {
 		if (particle.signedDistance < 0)
@@ -2828,7 +2828,7 @@ void mmvis_static::StructureEventsClusterVisualization::findNeighboursBySignedDi
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::createClustersSignedDistanceOnly() {
+void mmvis_static::StructureEventsCalculation::createClustersSignedDistanceOnly() {
 
 	uint64_t clusterID = 0;
 	uint64_t listIteration = 0;
@@ -2887,9 +2887,9 @@ void mmvis_static::StructureEventsClusterVisualization::createClustersSignedDist
 }
 
 
-bool mmvis_static::StructureEventsClusterVisualization::isInSameComponent(
-	const mmvis_static::StructureEventsClusterVisualization::Particle &referenceParticle,
-	const mmvis_static::StructureEventsClusterVisualization::Particle &particle) const {
+bool mmvis_static::StructureEventsCalculation::isInSameComponent(
+	const mmvis_static::StructureEventsCalculation::Particle &referenceParticle,
+	const mmvis_static::StructureEventsCalculation::Particle &particle) const {
 
 	// Avoid sqrt since calculation cost is very high.
 	float physicalDistance = powf(referenceParticle.x - particle.x, 2) + powf(referenceParticle.y - particle.y, 2) + powf(referenceParticle.z - particle.z, 2);
@@ -2900,8 +2900,8 @@ bool mmvis_static::StructureEventsClusterVisualization::isInSameComponent(
 
 
 
-mmvis_static::StructureEventsClusterVisualization::Particle
-mmvis_static::StructureEventsClusterVisualization::_getParticle (const uint64_t particleID) const {
+mmvis_static::StructureEventsCalculation::Particle
+mmvis_static::StructureEventsCalculation::_getParticle (const uint64_t particleID) const {
 	auto time_getParticle = std::chrono::system_clock::now();
 
 	for (auto & particle : this->particleList) {
@@ -2917,8 +2917,8 @@ mmvis_static::StructureEventsClusterVisualization::_getParticle (const uint64_t 
 	// Missing return statement!
 }
 
-mmvis_static::StructureEventsClusterVisualization::Cluster*
-mmvis_static::StructureEventsClusterVisualization::_getCluster(const uint64_t rootParticleID) const {
+mmvis_static::StructureEventsCalculation::Cluster*
+mmvis_static::StructureEventsCalculation::_getCluster(const uint64_t rootParticleID) const {
 	auto time_getCluster = std::chrono::system_clock::now();
 
 	for (auto &cluster : this->clusterList) {

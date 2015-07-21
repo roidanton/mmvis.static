@@ -243,11 +243,9 @@ if exist "$(ProjectDir)\PostBuild.bat" cmd /Q /C "$(ProjectDir)\PostBuild.bat"
   <ItemGroup>
     <ClInclude Include="include\lodepng\lodepng.h" />
     <ClInclude Include="include\mmvis_static\mmvis_static.h" />
-    <ClInclude Include="src\StructureEventsCalculator.h" />
     <ClInclude Include="src\StaticRenderer.h" />
     <ClInclude Include="src\stdafx.h" />
-    <ClInclude Include="src\StructureEventsClusterKDTree.h" />
-    <ClInclude Include="src\StructureEventsClusterVisualization.h" />
+    <ClInclude Include="src\StructureEventsCalculation.h" />
     <ClInclude Include="src\StructureEventsDataCall.h" />
     <ClInclude Include="src\StructureEventsDataSource.h" />
     <ClInclude Include="src\StructureEventsWriter.h" />
@@ -255,7 +253,6 @@ if exist "$(ProjectDir)\PostBuild.bat" cmd /Q /C "$(ProjectDir)\PostBuild.bat"
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\lodepng\lodepng.cpp" />
-    <ClCompile Include="src\StructureEventsCalculator.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\mmvis_static.cpp" />
     <ClCompile Include="src\StaticRenderer.cpp" />
@@ -265,8 +262,7 @@ if exist "$(ProjectDir)\PostBuild.bat" cmd /Q /C "$(ProjectDir)\PostBuild.bat"
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\StructureEventsClusterKDTree.cpp" />
-    <ClCompile Include="src\StructureEventsClusterVisualization.cpp" />
+    <ClCompile Include="src\StructureEventsCalculation.cpp" />
     <ClCompile Include="src\StructureEventsDataCall.cpp" />
     <ClCompile Include="src\StructureEventsDataSource.cpp" />
     <ClCompile Include="src\StructureEventsWriter.cpp" />

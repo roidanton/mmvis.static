@@ -16,9 +16,7 @@
 
 // Modules.
 #include "StaticRenderer.h"
-#include "StructureEventsCalculator.h"
-//#include "StructureEventsClusterKDTree.h"
-#include "StructureEventsClusterVisualization.h"
+#include "StructureEventsCalculation.h"
 #include "StructureEventsDataSource.h"
 #include "StructureEventsWriter.h"
 
@@ -51,9 +49,7 @@ namespace {
 
             // register modules here:
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StaticRenderer>();
-			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsCalculator>();
-			//this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsClusterKDTree>();
-			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsClusterVisualization>();
+			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsCalculation>();
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsDataSource>();
 			this->module_descriptions.RegisterAutoDescription<megamol::mmvis_static::StructureEventsWriter>();
 
