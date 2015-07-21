@@ -2004,8 +2004,7 @@ void mmvis_static::StructureEventsClusterVisualization::compareClusters() {
 
 			// Use root particle position for coloring.
 			const Particle* p = &this->particleList[this->clusterList[cli].rootParticleID];
-			vislib::math::Vector<float, 3> color(p->x, p->y, p->z);
-			this->normalizeToColorComponent(color, p->id);
+			const vislib::math::Vector<float, 3> color = this->getColorFromProperties(this->particleList[this->clusterList[cli].rootParticleID]);
 			clusterList[cli].r = color.GetX();
 			clusterList[cli].g = color.GetY();
 			clusterList[cli].b = color.GetZ();
@@ -2426,9 +2425,11 @@ void mmvis_static::StructureEventsClusterVisualization::setClusterColor(const bo
 		for (int cli = 0; cli < this->clusterList.size(); ++cli) {
 			
 			// Set color by particle position.
-			const Particle* p = &this->particleList[this->clusterList[cli].rootParticleID];
-			vislib::math::Vector<float, 3> color(p->x, p->y, p->z);
-			this->normalizeToColorComponent(color, p->id);
+			//vislib::math::Vector<float, 3> color(p->x, p->y, p->z);
+			//if (p->neighbourIDs.size() > 1) {
+			//	color.Set(static_cast<float>(p->neighbourIDs[0] % 10000), p->y, static_cast<float>(p->neighbourIDs[1]));
+			//}
+			const vislib::math::Vector<float, 3> color = this->getColorFromProperties(this->particleList[this->clusterList[cli].rootParticleID]);
 			clusterList[cli].r = color.GetX();
 			clusterList[cli].g = color.GetY();
 			clusterList[cli].b = color.GetZ();
@@ -2653,50 +2654,107 @@ const int mmvis_static::StructureEventsClusterVisualization::getKDTreeMaxNeighbo
 }
 
 
-void mmvis_static::StructureEventsClusterVisualization::normalizeToColorComponent(vislib::math::Vector<float, 3> &output, const uint64_t modificator) {
+const vislib::math::Vector<float, 3> mmvis_static::StructureEventsClusterVisualization::getColorFromProperties(const Particle &p) {
 
+	/// Switch magic, well, dirty empiric nonesense that works a bit.
+	int variableSelector = p.clusterID % 11;
+	float v1, v2, v3;
+	float variance = (static_cast<float>((p.id % 99) + 2)) / 100.f; // 0.02 - 1;
+	switch (variableSelector) {
+	case 0: // Random.
+		if (p.neighbourIDs.size() > 2) {
+			v1 = static_cast<float>(p.neighbourIDs[0]);
+			v2 = static_cast<float>(p.neighbourIDs[1]);
+			v3 = static_cast<float>(p.neighbourIDs[2]);
+		}
+		else {
+			v1 = static_cast<float>(p.id);
+			v2 = static_cast<float>(p.clusterID) * 10.f;
+			v3 = static_cast<float>(p.signedDistance) * 10.f;
+		}
+		break;
+	// 2n3.
+	case 1: // Combination.
+		v1 = p.signedDistance; // Small.
+		v2 = p.x * (p.y + p.z); // Mid - dominant.
+		v3 = (p.neighbourIDs.size() > 0) ? static_cast<float>(p.neighbourIDs[0]) : static_cast<float>(p.id); // Likely dominant.
+		break;
+	case 2:
+		v1 = 0;
+		v2 = p.signedDistance;
+		v3 = p.signedDistance;
+		break;
+	case 3:
+		v1 = 0.05f;
+		v2 = p.x;
+		v3 = p.x;
+		break;
+	// 1n3.
+	case 4:
+		v1 = p.x;
+		v2 = p.y; // Often dominant.
+		v3 = p.z;
+		break;
+	// Grey-like ratios.
+	case 5: // One random minus.
+		v1 = 1.f - variance;
+		v2 = 1.f;
+		v3 = 1.f;
+		break;
+	case 6: // One random plus.
+		v1 = 1.f + variance;
+		v2 = 1.f;
+		v3 = 1.f;
+		break;
+	case 7: // Two random mixed.
+		v1 = 1.f - variance;
+		v2 = 1.f + variance;
+		v3 = 1.f;
+		break;
+	case 8: // Two random plus.
+		v1 = 1.f + variance;
+		v2 = 1.f + variance;
+		v3 = 1.f;
+		break;
+	case 9: // Two random minus.
+		v1 = 1.f - variance;
+		v2 = 1.f - variance;
+		v3 = 1.f;
+		break;
+	case 10: // Line.
+		v1 = 1.f + variance;
+		v2 = 1.f + variance;
+		v3 = 1.f - variance;
+		break;
+	}
+
+	int index = p.id % 3;
+	vislib::math::Vector<float, 3> output;
+	output[index] = v1;
+	output[(index + 1) % 3] = v2;
+	output[(index + 2) % 3] = v3;
+
+	output.Normalise();
+
+	/// Adjust brightness.
+	float brightnessAdjustment = static_cast<float>((static_cast<int> (p.signedDistance * 1000) % 66) + 35);
+	brightnessAdjustment = brightnessAdjustment / 100.f; // 0.35 - 1;
+	output *= vislib::math::Vector<float, 3>(brightnessAdjustment, brightnessAdjustment, brightnessAdjustment);
+
+	/// Check similarities to gas
 	int gasColorSimilarity = 0;
 	float epsilon = 0.3f; // Needs to be big to catch different brightness but similar hue.
-
 	for (int i = 0; i < 3; ++i) {
-		output[i] *= modificator % 1000;
-		//output[i] += modificator; // If modificator big, impact is too big: everything is gray.
-		for (int division = 10; division <= 100000000; division *= 10) {
-			if (output[i] <= division) {
-				output[i] /= division;
-				break;
-			}
-		}
-		if (output[i] > 1)
-			output[i] = .5f; // Fallback for values that are too big.
-
 		if (output[i] >= this->gasColor[i] - epsilon && output[i] <= this->gasColor[i] + epsilon)
 			gasColorSimilarity++;
 	}
-
-	// Check similarities to gas
 	if (gasColorSimilarity == 3) {
-		/*
-		for (int i = 0; i < 3; ++i) {
-			output[i] += 1.f / (float)(modificator % 8 + 1);
-			if (output[i] > 1.f) {
-				if (output[i] <= 1.5f)
-					output[i] -= .5f;
-				else
-					output[i] -= 1.f;
-			}
-		}
-		*/
-
-		int item = modificator % 3;
-		output[item] += .3f;
+		int item = p.id % 3;
+		output[item] += .5f;
 		if (output[item] > 1.f)
 			output[item] -= 1.f;
 	}
-
-	if (output[0] + output[1] + output[2] < .2f) // I don't like dark colors.
-		output[modificator % 3] += .5f;
-	//color.Normalise(); // Big position component gets favored (everything mainly green).
+	return output;
 }
 
 
