@@ -1210,8 +1210,11 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 				if (particle.clusterID != this->clusterList[particle.clusterID].id) {
 					vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
 						"SECalc step 2 (build): Cluster ID and position in cluster don't match: %d != %d!", particle.clusterID, this->clusterList[particle.clusterID].id);
-					this->debugFile << "SECalc step 2 (build) error: Cluster ID and position in cluster don't match: "
-						<< particle.clusterID << " != " << this->clusterList[particle.clusterID].id << "!\n";
+					this->debugFile
+						<< "SECalc step 2 (build) error: Cluster ID and position in cluster don't match: "
+						<< particle.clusterID << " != " << this->clusterList[particle.clusterID].id << "!"
+						<< " " << this->timeOutputCache
+						<< "\n";
 				}
 
 				///
@@ -1228,8 +1231,11 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 					if (this->particleList[particleID].id != particleID) {
 						vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
 							"SECalc step 2 (build): Particle ID and position in particle list don't match: %d != %d!", particleID, this->particleList[particleID].id);
-						this->debugFile << "SECalc step 2 (build) error: Particle ID and position in particle list don't match: "
-							<< particleID << " != " << this->particleList[particleID].id << "!\n";
+						this->debugFile
+							<< "SECalc step 2 (build) error: Particle ID and position in particle list don't match: "
+							<< particleID << " != " << this->particleList[particleID].id << "!"
+							<< " " << this->timeOutputCache
+							<< "\n";
 					}
 
 					if (this->particleList[particleID].clusterID >= 0)
@@ -1387,15 +1393,21 @@ void mmvis_static::StructureEventsCalculation::mergeSmallClusters() {
 		if (particle.clusterID != this->clusterList[particle.clusterID].id) {
 			vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
 				"SECalc step 2 (merge): Cluster ID and position in cluster don't match: %d != %d!", particle.clusterID, this->clusterList[particle.clusterID].id);
-			this->debugFile << "SECalc step 2 (merge) Error: Cluster ID and position in cluster don't match: "
-				<< particle.clusterID << " != " << this->clusterList[particle.clusterID].id << "!\n";
+			this->debugFile
+				<< "SECalc step 2 (merge) Error: Cluster ID and position in cluster don't match: "
+				<< particle.clusterID << " != " << this->clusterList[particle.clusterID].id << "!"
+				<< " " << this->timeOutputCache
+				<< "\n";
 		}
 		if (this->clusterList[particle.clusterID].rootParticleID != this->particleList[this->clusterList[particle.clusterID].rootParticleID].id) {
 			vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
 				"SECalc step 2 (merge): Root particle ID and position in particle list don't match: %d != %d!",
 				this->clusterList[particle.clusterID].rootParticleID, this->particleList[this->clusterList[particle.clusterID].rootParticleID].id);
-			this->debugFile << "SECalc step 2 (merge) error: Root particle ID and position in particleList don't match: "
-				<< this->clusterList[particle.clusterID].rootParticleID << " != " << this->particleList[this->clusterList[particle.clusterID].rootParticleID].id << "!\n";
+			this->debugFile
+				<< "SECalc step 2 (merge) error: Root particle ID and position in particleList don't match: "
+				<< this->clusterList[particle.clusterID].rootParticleID << " != " << this->particleList[this->clusterList[particle.clusterID].rootParticleID].id << "!"
+				<< " " << this->timeOutputCache
+				<< "\n";
 		}
 
 		//if (particle.clusterPtr->numberOfParticles >= this->minClusterSize)
@@ -1706,7 +1718,10 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 
 	if (this->previousClusterList.size() == 0 || this->previousParticleList.size() == 0) {
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
-			this->debugFile << "SECCalc step 3: No previous data, quit cluster comparison.\n";
+			this->debugFile
+				<< "SECCalc step 3: No previous data, quit cluster comparison."
+				<< " " << this->timeOutputCache
+				<< "\n";
 		}
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN,
 			"SECCalc step 3: No previous data, quit cluster comparison.");
@@ -2195,7 +2210,10 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 
 	if (this->partnerClustersList.forwardList.size() == 0 || this->partnerClustersList.backwardsList.size() == 0) {
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
-			this->debugFile << "SECalc step 4: No comparison data, quit determination of StructureEvents.\n";
+			this->debugFile
+				<< "SECalc step 4: No comparison data, quit determination of StructureEvents."
+				<< " " << this->timeOutputCache
+				<< "\n";
 		}
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN,
 			"SECalc step 4: No comparison data, quit determination of StructureEvents.");
