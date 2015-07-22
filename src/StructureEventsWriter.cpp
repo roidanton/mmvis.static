@@ -25,7 +25,7 @@ mmvis_static::StructureEventsWriter::StructureEventsWriter() : AbstractDataWrite
 	filenameSlot("filename", "The path to the MMSE file to be written"),
 	dataSlot("data", "The slot requesting the data to be written") {
 
-	this->filenameSlot << new param::FilePathParam("eventsFromMPDC.mmse");
+	this->filenameSlot.SetParameter(new param::FilePathParam("eventsFromMPDC.mmse"));
 	this->MakeSlotAvailable(&this->filenameSlot);
 
 	this->dataSlot.SetCompatibleCall<StructureEventsDataCallDescription>();
@@ -144,7 +144,7 @@ bool mmvis_static::StructureEventsWriter::run(void) {
 	/// Set header.
 	///
 	vislib::StringA magicID("MMSE");
-	ASSERT_WRITEOUT(magicID.PeekBuffer(), 4); // irgendwie ist der 6. nicht Nul :-/
+	ASSERT_WRITEOUT(magicID.PeekBuffer(), 4); // Only works with 4.
 	//UINT16 version = 0; // Um Zustand zu dokumentieren, bis wohin geschrieben wurde? Ein bisschen und "The version number encodes the major version as multiple of 100 and adds the minor version."
 	//ASSERT_WRITEOUT(&version, 2);
 	//ASSERT_WRITEOUT(&frameCnt, 4);
@@ -202,6 +202,7 @@ bool mmvis_static::StructureEventsWriter::run(void) {
 #undef ASSERT_WRITEOUT
 	return true;
 }
+
 
 bool mmvis_static::StructureEventsWriter::writeData(vislib::sys::File& file, StructureEventsDataCall& data) {
 	using vislib::sys::Log;

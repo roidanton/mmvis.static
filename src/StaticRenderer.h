@@ -276,6 +276,9 @@ namespace megamol {
 			/// The texture IDs. Global since only loaded once in renderer. 1-4 for events, 5 for time background. 5 obsolete.
 			GLuint textureIDs[4];
 
+			/// Cache frameId to recognize changes in renderer.
+			unsigned int frameIdCache;
+
 			/// Container for the data call. Global since only created once in renderer.
 			//StructureEventsDataCall* dataCall;
 		};

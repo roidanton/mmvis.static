@@ -414,6 +414,11 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		recreateVertexBuffer = true;
 	}
 
+	if (this->frameIdCache != static_cast<unsigned int>(callRender->Time())) {
+		this->frameIdCache = static_cast<unsigned int>(callRender->Time());
+		recreateVertexBuffer = true;
+	}
+
 	///
 	/// Read from call and create VBO.
 	///

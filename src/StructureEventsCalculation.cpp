@@ -11,10 +11,12 @@
 
 #include "ANN/ANN.h"
 #include "mmcore/param/BoolParam.h"
+#include "mmcore/param/FilePathParam.h"
 #include "mmcore/param/FloatParam.h"
 #include "mmcore/param/IntParam.h"
 #include "mmcore/param/StringParam.h"
 #include "vislib/math/Vector.h"
+#include "vislib/sys/FastFile.h"
 #include "vislib/sys/Log.h"
 
 #include <chrono>
@@ -43,6 +45,7 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	quantitativeDataOutputSlot("quantitativeDataOutput", "Create log files with quantitative data."),
 	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
 	createDummyTestDataSlot("createDummyTestData", "Creates random previous and current data. For I/O tests. Skips steps 1 and 2."),
+	mmseFilenameSlot("mmseFilename", "The path to the MMSE file to be written"),
 	periodicBoundaryConditionSlot("NeighbourSearch::periodicBoundary", "Periodic boundary condition for dataset."),
 	radiusMultiplierSlot("NeighbourSearch::radiusMultiplier", "The multiplicator for the particle radius definining the area for the neighbours search."),
 	msMinClusterAmountSlot("StructureEvents::msMinClusterAmount", "Minimal number of clusters for merge/split event detection."),
@@ -73,6 +76,9 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 
 	this->createDummyTestDataSlot.SetParameter(new param::BoolParam(false));
 	this->MakeSlotAvailable(&this->createDummyTestDataSlot);
+
+	this->mmseFilenameSlot.SetParameter(new param::FilePathParam(""));
+	this->MakeSlotAvailable(&this->mmseFilenameSlot);
 
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
@@ -474,13 +480,14 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 
 	auto time_completeCalculation = std::chrono::system_clock::now();
 
+	this->buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
+
 	if (this->createDummyTestDataSlot.Param<param::BoolParam>()->Value())
 		this->setDummyLists(10000, 100, 50);
 	else {
 		///
 		/// 1st step.
 		///
-		this->buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
 		this->findNeighboursWithKDTree(data);
 
 		///
@@ -510,6 +517,12 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 		}
 		this->setClusterColor(true);
 	}
+
+	///
+	/// Write MMSE.
+	///
+	this->writeSE(data);
+
 
 	///
 	/// Output to MPDC.
@@ -2524,7 +2537,7 @@ void mmvis_static::StructureEventsCalculation::setDummyLists(int particleAmount,
 	this->previousParticleList.resize(particleAmount);
 	this->clusterList.resize(clusterAmount);
 	this->previousClusterList.resize(clusterAmount);
-	this->structureEvents.resize(eventAmount);
+	this->structureEvents.resize(eventAmount); // Resets events, so if dummy is used in animation it resets the events.
 
 	uint64_t numberOfParticlesInCluster = 0;
 
@@ -2606,6 +2619,103 @@ void mmvis_static::StructureEventsCalculation::setDummyLists(int particleAmount,
 
 	vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 		"SECalc: Skipped step 1 and step 2 since dummy list is set.\nDummy lists set: %d, %d, %d.", particleAmount, clusterAmount, eventAmount);
+}
+
+
+void mmvis_static::StructureEventsCalculation::writeSE(megamol::core::moldyn::MultiParticleDataCall& data) {
+
+	///
+	/// Check availability.
+	///
+	vislib::TString filename(this->mmseFilenameSlot.Param<param::FilePathParam>()->Value());
+	if (filename.IsEmpty()) { // Avoids separate boolean to set output file.
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+			"No MMSE file name specified. No file is written.");
+		return;
+	}
+
+	if (this->structureEvents.size() == 0) {
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
+			"No event data. Abort MMSE writing.");
+		return;
+	}
+
+	if (vislib::sys::File::Exists(filename)) {
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN,
+			"WriteSE: File %s already exists and will be overwritten.",
+			vislib::StringA(filename).PeekBuffer());
+	}
+
+	vislib::math::Cuboid<float> bbox;
+	vislib::math::Cuboid<float> cbox;
+
+	/// Set bounding boxes.
+	if (data.AccessBoundingBoxes().IsObjectSpaceBBoxValid()
+		|| data.AccessBoundingBoxes().IsObjectSpaceClipBoxValid()) {
+		if (data.AccessBoundingBoxes().IsObjectSpaceBBoxValid()) {
+			bbox = data.AccessBoundingBoxes().ObjectSpaceBBox();
+		}
+		else {
+			bbox = data.AccessBoundingBoxes().ObjectSpaceClipBox();
+		}
+		if (data.AccessBoundingBoxes().IsObjectSpaceClipBoxValid()) {
+			cbox = data.AccessBoundingBoxes().ObjectSpaceClipBox();
+		}
+		else {
+			cbox = data.AccessBoundingBoxes().ObjectSpaceBBox();
+		}
+	}
+	else {
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN, "WriteSE: Object space bounding boxes not valid. Using defaults.");
+		bbox.Set(-1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f);
+		cbox.Set(-1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f);
+	}
+	
+	///
+	/// Create file.
+	///
+	vislib::sys::FastFile file;
+	if (!file.Open(filename, vislib::sys::File::WRITE_ONLY, vislib::sys::File::SHARE_EXCLUSIVE, vislib::sys::File::CREATE_OVERWRITE)) {
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
+			"Unable to create MMSE file \"%s\". Abort.",
+			vislib::StringA(filename).PeekBuffer());
+		return;
+	}
+
+#define ASSERT_WRITEOUT(A, S) if (file.Write((A), (S)) != (S)) { \
+        vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR, "Write SE: Write error %d", __LINE__); \
+        file.Close(); \
+        return; \
+		    }
+
+	///
+	/// Set header.
+	///
+	vislib::StringA magicID("MMSE");
+	ASSERT_WRITEOUT(magicID.PeekBuffer(), 4); // Only works with 4.
+	ASSERT_WRITEOUT(bbox.PeekBounds(), 6 * 4); // 6 * float.
+	ASSERT_WRITEOUT(cbox.PeekBounds(), 6 * 4); // 6 * float.
+
+	///
+	/// Header continued.
+	///
+	uint64_t eventCnt = this->structureEvents.size();
+	ASSERT_WRITEOUT(&eventCnt, 8);
+	float maxTime = this->seMaxTimeCache;
+	ASSERT_WRITEOUT(&maxTime, 4);
+
+	///
+	/// Daten.
+	///
+	unsigned int eventStride = sizeof(StructureEvents::StructureEvent);
+	const void *startPtr = &this->structureEvents.front().x; // Start of the eventdata.
+	ASSERT_WRITEOUT(startPtr, eventStride * eventCnt);
+
+	vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "SECalc Writer: %d events written, maxTime %f.", eventCnt, this->seMaxTimeCache);
+
+	file.Close();
+
+#undef ASSERT_WRITEOUT
 }
 
 

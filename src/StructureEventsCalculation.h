@@ -28,8 +28,6 @@
 namespace megamol {
 	namespace mmvis_static {
 		///
-		/// use /EHsc for compiler, see concurrency below
-		///
 		/// Calculates Structure Events in several steps:
 		/// 1) Getting the neighbours of each particle.
 		/// 2) Creating clusters by using these neighbours.
@@ -74,6 +72,7 @@ namespace megamol {
 		///   work as well, however it has the same limitations like OpenMP regarding efficiency to these algorithms
 		///   advantages to OpenMP: http://stackoverflow.com/a/13377387/4566599
 		///   speed comparison to OpenMP: http://blogs.msdn.com/b/nativeconcurrency/archive/2009/11/18/concurency-parallel-for-and-concurrency-parallel-for-each.aspx
+		///   if used, use /EHsc for compiler
 		///
 		/// - parallel mode of libstdc++ is not available to vc++. Maybe could be a minor benifit for some std::find_if, std::max_element.
 		///   https://gcc.gnu.org/onlinedocs/libstdc++/manual/parallel_mode.html
@@ -507,7 +506,7 @@ namespace megamol {
 			/// Compare clusters of two frames.
 			void compareClusters();
 
-			/// Sets the StructureEvents.
+			/// Using heuristic to set the StructureEvents.
 			void determineStructureEvents();
 
 			/// Set colour of particles based on cluster assignment.
@@ -518,6 +517,9 @@ namespace megamol {
 
 			/// Only sets ids, cluster id and numberOfParticles.
 			void setDummyLists(int particleAmount, int clusterAmount, int structureEvents);
+
+			/// Supplements the writer; for jobs where the MMPLD Writer has to be called.
+			void writeSE(megamol::core::moldyn::MultiParticleDataCall& data);
 
 			/// Mean value and standard deviation of values: http ://stackoverflow.com/a/7616783/4566599
 			MeanStdDev meanStdDeviation(std::vector<double> v);
@@ -566,6 +568,9 @@ namespace megamol {
 
 			/// Creates random previous and current data. For I/O tests. Skips steps 1 and 2.
 			core::param::ParamSlot createDummyTestDataSlot;
+
+			/// The path to the MMSE file to be written.
+			core::param::ParamSlot mmseFilenameSlot;
 
 			/// Switch for periodic boundary condition.
 			core::param::ParamSlot periodicBoundaryConditionSlot;
