@@ -328,7 +328,7 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 		this->csvLogFile.open("SECalc.csv", std::ios_base::app | std::ios_base::out);
 		std::ifstream csvLogFilePeekTest;
 		csvLogFilePeekTest.open("SECalc.csv");
-		this->debugFile.open("SECalcDebug.log");
+		this->debugFile.open("SECalcDebug.log", std::ios_base::app | std::ios_base::out);
 
 		// Set header to csv if not set.
 		if (csvLogFilePeekTest.peek() == std::ifstream::traits_type::eof()) {
@@ -1079,7 +1079,7 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 
 	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		// CFD == Cluster Fast Depth
-		std::string filename = "SECalc CFD Test.csv";
+		std::string filename = "SECalc ClusterFastDepth.csv";
 		testCFDCSVFile.open(filename.c_str(), std::ios_base::app | std::ios_base::out);
 		std::ifstream peekTest;
 		peekTest.open(filename.c_str());
@@ -1714,7 +1714,7 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 	}
 
 	///
-	/// Copy lists and clear them.
+	/// Copy lists and clear the old ones.
 	/// Copy is made for the future:
 	/// Comparison of several frames won't be implemented during the BA thesis.
 	///
@@ -1727,26 +1727,30 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 		this->partnerClustersList.backwardsList.clear(); // Don't forget!
 	}
 
+	///
+	/// Log output.
+	///
 	std::ofstream compareAllFile;
-	//std::ofstream compareSummaryFile;
 	std::ofstream forwardListFile;
 	std::ofstream backwardsListFile;
 
-	// SECC == Structure Events Cluster Compare.
-	std::string filenameEnd = " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
-	std::string filename = "SECC All" + filenameEnd + ".log";
-	compareAllFile.open(filename.c_str());
-	//filename = "SECC Summary" + filenameEnd + ".log";
-	//compareSummaryFile.open(filename.c_str());
-	filename = "SECC forwardList" + filenameEnd + ".csv";
-	forwardListFile.open(filename.c_str());
-	filename = "SECC backwardsList" + filenameEnd + ".csv";
-	backwardsListFile.open(filename.c_str());
+	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+		// SECC == Structure Events Cluster Compare.
+		vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
+		std::string labelStr = label;
+		std::string filenameEnd = " " + labelStr + " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
+		std::string filename = "SECC All" + filenameEnd + ".log";
+		compareAllFile.open(filename.c_str());
+		filename = "SECC forward" + filenameEnd + ".csv";
+		forwardListFile.open(filename.c_str());
+		filename = "SECC backwards" + filenameEnd + ".csv";
+		backwardsListFile.open(filename.c_str());
+	}
 
 	auto time_compareClusters = std::chrono::system_clock::now();
 
 	///
-	/// Create a compareMatrix to see how many particles the clusters have in common.
+	/// Create a comparison matrix to see how many particles the clusters have in common.
 	/// The inner vector contains the columns, the outer vector contains the rows.
 	/// The columns represents the previous clusters. Column id == cluster id of previous clusterList.
 	/// The rows represents the current clusters. Row id == cluster id of current clusterList.
@@ -2127,38 +2131,39 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 		MeanStdDev mdTotalCommonPercentageBw = meanStdDeviation(vTotalCommonPercentage);
 
 		///
-		/// Frame to frame evaluation: Min/Max/Mean/StdDev.
+		/// Log output for frame to frame evaluation: Min/Max/Mean/StdDev.
 		///
-		PartnerClusters maxPercentageFwd = partnerClustersList.getMaxPercentage();
-		PartnerClusters minPercentageFwd = partnerClustersList.getMinPercentage();
-		PartnerClusters maxPercentageBw = partnerClustersList.getMaxPercentage(PartnerClustersList::Direction::backwards);
-		PartnerClusters minPercentageBw = partnerClustersList.getMinPercentage(PartnerClustersList::Direction::backwards);
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+			PartnerClusters maxPercentageFwd = partnerClustersList.getMaxPercentage();
+			PartnerClusters minPercentageFwd = partnerClustersList.getMinPercentage();
+			PartnerClusters maxPercentageBw = partnerClustersList.getMaxPercentage(PartnerClustersList::Direction::backwards);
+			PartnerClusters minPercentageBw = partnerClustersList.getMinPercentage(PartnerClustersList::Direction::backwards);
 
-		this->logFile << "Step 3 (compare clusters), forward/fw (previous -> current), backwards/bw (current -> previous):"
-			<< "\n"
-			<< "  - Gas ratio frames: previous " << gasPercentagePrevious << "% (" << gasCountPrevious << "), "
-			<< "current " << gasPercentageCurrent << "% (" << gasCountCurrent << ")."
-			<< "\n"
-			<< "  - Fw ratio: "
-			<< "Min " << minPercentageFwd.getTotalCommonPercentage() << "% (cl " << minPercentageFwd.cluster.id << ", localMax to total ratio " << minPercentageFwd.getLocalMaxTotalPercentage() << "%), "
-			<< "Mean " << mdTotalCommonPercentageFwd.mean << "% (std deviation " << mdTotalCommonPercentageFwd.deviation << "%), "
-			<< "Max " << maxPercentageFwd.getTotalCommonPercentage() << "% (cl " << maxPercentageFwd.cluster.id << ", localMax to total ratio " << maxPercentageFwd.getLocalMaxTotalPercentage() << "%)"
-			<< "\n"
-			<< "  - Bw ratio: "
-			<< "Min " << minPercentageBw.getTotalCommonPercentage() << "% (cl " << minPercentageBw.cluster.id << ", localMax to total ratio " << minPercentageBw.getLocalMaxTotalPercentage() << "%), "
-			<< "Mean " << mdTotalCommonPercentageBw.mean << "% (std deviation " << mdTotalCommonPercentageBw.deviation << "%), "
-			<< "Max " << maxPercentageBw.getTotalCommonPercentage() << "% (cl " << maxPercentageBw.cluster.id << ", localMax to total ratio " << maxPercentageBw.getLocalMaxTotalPercentage() << "%)"
-			<< "\n";
-		
-		this->csvLogFile << minPercentageFwd.getTotalCommonPercentage() << "; " // Forward min common particle ratio (%)
-			<< mdTotalCommonPercentageFwd.mean << "; " // Forward mean common particle ratio (%)
-			<< mdTotalCommonPercentageFwd.deviation << "; " // Forward common particle ratio std deviation (%)
-			<< maxPercentageFwd.getTotalCommonPercentage() << "; " // Forward max common particle ratio (%)
-			<< minPercentageBw.getTotalCommonPercentage() << "; " // Backwards min common particle ratio (%)
-			<< mdTotalCommonPercentageBw.mean << "; " // Backwards mean common particle ratio (%)
-			<< mdTotalCommonPercentageBw.deviation << "; " // Backwards common particle ratio std deviation (%)
-			<< maxPercentageBw.getTotalCommonPercentage() << "; "; // Backwards max common particle ratio (%)
+			this->logFile << "Step 3 (compare clusters), forward/fw (previous -> current), backwards/bw (current -> previous):"
+				<< "\n"
+				<< "  - Gas ratio frames: previous " << gasPercentagePrevious << "% (" << gasCountPrevious << "), "
+				<< "current " << gasPercentageCurrent << "% (" << gasCountCurrent << ")."
+				<< "\n"
+				<< "  - Fw ratio: "
+				<< "Min " << minPercentageFwd.getTotalCommonPercentage() << "% (cl " << minPercentageFwd.cluster.id << ", localMax to total ratio " << minPercentageFwd.getLocalMaxTotalPercentage() << "%), "
+				<< "Mean " << mdTotalCommonPercentageFwd.mean << "% (std deviation " << mdTotalCommonPercentageFwd.deviation << "%), "
+				<< "Max " << maxPercentageFwd.getTotalCommonPercentage() << "% (cl " << maxPercentageFwd.cluster.id << ", localMax to total ratio " << maxPercentageFwd.getLocalMaxTotalPercentage() << "%)"
+				<< "\n"
+				<< "  - Bw ratio: "
+				<< "Min " << minPercentageBw.getTotalCommonPercentage() << "% (cl " << minPercentageBw.cluster.id << ", localMax to total ratio " << minPercentageBw.getLocalMaxTotalPercentage() << "%), "
+				<< "Mean " << mdTotalCommonPercentageBw.mean << "% (std deviation " << mdTotalCommonPercentageBw.deviation << "%), "
+				<< "Max " << maxPercentageBw.getTotalCommonPercentage() << "% (cl " << maxPercentageBw.cluster.id << ", localMax to total ratio " << maxPercentageBw.getLocalMaxTotalPercentage() << "%)"
+				<< "\n";
 
+			this->csvLogFile << minPercentageFwd.getTotalCommonPercentage() << "; " // Forward min common particle ratio (%)
+				<< mdTotalCommonPercentageFwd.mean << "; " // Forward mean common particle ratio (%)
+				<< mdTotalCommonPercentageFwd.deviation << "; " // Forward common particle ratio std deviation (%)
+				<< maxPercentageFwd.getTotalCommonPercentage() << "; " // Forward max common particle ratio (%)
+				<< minPercentageBw.getTotalCommonPercentage() << "; " // Backwards min common particle ratio (%)
+				<< mdTotalCommonPercentageBw.mean << "; " // Backwards mean common particle ratio (%)
+				<< mdTotalCommonPercentageBw.deviation << "; " // Backwards common particle ratio std deviation (%)
+				<< maxPercentageBw.getTotalCommonPercentage() << "; "; // Backwards max common particle ratio (%)
+		}
 		///
 		/// Summary evaluation: Most common/uncommon clusters, critical values have to be evaluated depending on:
 		/// - how many clusters are close to MinPercentage
@@ -2213,9 +2218,8 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 	int deathAmount[birthDeathTestAmount] = { 0 };
 
 	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
-		// DSE == Determine Structure Events
-		//std::string filenameEnd = " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
-		std::string filename = "SECalc DSE Test.csv"; // +filenameEnd + ".log";
+		// DSE == Determine Structure Events.
+		std::string filename = "SECalc DetermineStructureEvents.csv";
 		testEventsCSVFile.open(filename.c_str(), std::ios_base::app | std::ios_base::out);
 		std::ifstream testEventsCSVFilePeekTest;
 		testEventsCSVFilePeekTest.open(filename.c_str());
