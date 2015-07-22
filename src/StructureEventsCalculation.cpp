@@ -643,13 +643,11 @@ void mmvis_static::StructureEventsCalculation::buildParticleList(megamol::core::
 	///
 	if (this->particleList.size() > 0) {
 		this->previousParticleList = this->particleList;
-		// Don't forget!
-		this->particleList.clear();
+		this->particleList.clear(); // Don't forget!
 	}
 	if (this->clusterList.size() > 0) {
 		this->previousClusterList = this->clusterList;
-		// Don't forget!
-		this->clusterList.clear();
+		this->clusterList.clear(); // Don't forget!
 	}
 
 	///
@@ -1715,6 +1713,20 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 		return;
 	}
 
+	///
+	/// Copy lists and clear them.
+	/// Copy is made for the future:
+	/// Comparison of several frames won't be implemented during the BA thesis.
+	///
+	if (this->partnerClustersList.forwardList.size() > 0) {
+		//this->previousPartnerClustersList.forwardList = this->partnerClustersList.forwardList;
+		this->partnerClustersList.forwardList.clear(); // Don't forget!
+	}
+	if (this->partnerClustersList.backwardsList.size() > 0) {
+		//this->previousPartnerClustersList.backwardsList = this->partnerClustersList.backwardsList;
+		this->partnerClustersList.backwardsList.clear(); // Don't forget!
+	}
+
 	std::ofstream compareAllFile;
 	//std::ofstream compareSummaryFile;
 	std::ofstream forwardListFile;
@@ -2249,7 +2261,7 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 	///
 	/// Forward direction.
 	///
-	for (auto partnerClusters : this->partnerClustersList.forwardList) {
+	for (auto partnerClusters : this->partnerClustersList.forwardList) { // No parallelization because of little computation and sequential output.
 		
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			// For test output.
@@ -2321,7 +2333,7 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 	partnerAmount25p3 = partnerAmount30p2 = partnerAmount30p3 = partnerAmount35p2 = partnerAmount40p2 = partnerAmount45p2 = 0;
 	int birthAmount[5] = { 0 };
 
-	for (auto partnerClusters : this->partnerClustersList.backwardsList) {
+	for (auto partnerClusters : this->partnerClustersList.backwardsList) { // No parallelization because of little computation and sequential output.
 		// For test output.
 		if (partnerClusters.getBigPartnerAmount(25) > 2)
 			partnerAmount25p3++;

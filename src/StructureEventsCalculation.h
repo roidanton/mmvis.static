@@ -330,6 +330,10 @@ namespace megamol {
 				}
 			};
 
+			///
+			/// Container to hold both comparison lists w/o own global values.
+			/// Provides methods to access extrema or search in both lists.
+			///
 			class PartnerClustersList {
 			private:
 			public:
@@ -605,6 +609,7 @@ namespace megamol {
 
 			/// Cluster comparison.
 			PartnerClustersList partnerClustersList;
+			//PartnerClustersList previousPartnerClustersList; // For future implementations.
 
 			/// Structure Events. The list should never be cleared/reset so that
 			/// it can contain the StructureEvents of all calculated frames.
