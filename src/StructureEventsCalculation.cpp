@@ -48,10 +48,10 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	mmseFilenameSlot("mmseFilename", "The path to the MMSE file to be written"),
 	periodicBoundaryConditionSlot("NeighbourSearch::periodicBoundary", "Periodic boundary condition for dataset."),
 	radiusMultiplierSlot("NeighbourSearch::radiusMultiplier", "The multiplicator for the particle radius definining the area for the neighbours search."),
+	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged with bigger clusters if possible."),
 	msMinClusterAmountSlot("StructureEvents::msMinClusterAmount", "Minimal number of clusters for merge/split event detection."),
 	msMinCPPercentageSlot("StructureEvents::msMinCPPercentage", "Minimal ratio of common particles of each cluster for merge/split event detection."),
 	bdMaxCPPercentageSlot("StructureEvents::bdMaxCPPercentage", "Maximal ratio of common particles for birth/death event detection."),
-	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged with bigger clusters if possible."),
 	dataHash(0), sedcHash(0), seMaxTimeCache(0), frameId(0), treeSizeOutputCache(0), gasColor({ .98f, .78f, 0.f }) {
 
 	this->inDataSlot.SetCompatibleCall<core::moldyn::MultiParticleDataCallDescription>();
@@ -86,17 +86,17 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	this->radiusMultiplierSlot.SetParameter(new core::param::IntParam(5, 2, 10));
 	this->MakeSlotAvailable(&this->radiusMultiplierSlot);
 
-	this->msMinCPPercentageSlot.SetParameter(new core::param::FloatParam(40, 20, 45));
-	this->MakeSlotAvailable(&this->msMinCPPercentageSlot);
+	this->minClusterSizeSlot.SetParameter(new core::param::IntParam(10, 8));
+	this->MakeSlotAvailable(&this->minClusterSizeSlot);
 
 	this->msMinClusterAmountSlot.SetParameter(new core::param::IntParam(2, 2));
 	this->MakeSlotAvailable(&this->msMinClusterAmountSlot);
 
+	this->msMinCPPercentageSlot.SetParameter(new core::param::FloatParam(40, 20, 45));
+	this->MakeSlotAvailable(&this->msMinCPPercentageSlot);
+
 	this->bdMaxCPPercentageSlot.SetParameter(new core::param::FloatParam(2, 2, 10));
 	this->MakeSlotAvailable(&this->bdMaxCPPercentageSlot);
-
-	this->minClusterSizeSlot.SetParameter(new core::param::IntParam(10, 8));
-	this->MakeSlotAvailable(&this->minClusterSizeSlot);
 }
 
 
@@ -926,6 +926,7 @@ void mmvis_static::StructureEventsCalculation::findNeighboursWithKDTree(megamol:
 
 	uint64_t debugSkippedNeighbours = 0; // Not usable with concurrency.
 	uint64_t debugAddedNeighbours = 0; // Not usable with concurrency.
+	uint64_t progressControl = 1; // For avoiding duplicated progress control output. Initial value different from % 100000.
 
 	/// OpenMP. Doesnt work b/c ANN64d.dll throws exception (Zugriffsverletzung) for annkFRSearch, annkSearch:
 	/// Since parallel access by several threads to the same tree!
@@ -1007,8 +1008,11 @@ void mmvis_static::StructureEventsCalculation::findNeighboursWithKDTree(megamol:
 
 					// Progress. Deactivate if concurrent loop.
 					if (debugAddedNeighbours % 100000 == 0)
-						vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
-							"SECalc step 1 progress: Neighbours: %d added, %d out of FRSearch radius.", debugAddedNeighbours, debugSkippedNeighbours);
+						if (debugAddedNeighbours != progressControl) {
+							progressControl = debugAddedNeighbours;
+							vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+								"SECalc step 1 progress: Neighbours: %d added, %d out of FRSearch radius.", debugAddedNeighbours, debugSkippedNeighbours);
+						}
 				}
 			}
 		}
@@ -1067,6 +1071,8 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 	size_t debugNoNeighbourCounter = 0;
 	size_t debugUsedExistingClusterCounter = 0;
 	size_t debugNumberOfGasParticles = 0;
+	uint64_t progressControl = 1; // For avoiding duplicated progress control output. Initial value different from % 100000.
+	size_t progressControlCluster = 1; // For avoiding duplicated progress control output. Initial value different from % 100.
 
 	int clusterID = 0;
 
@@ -1238,18 +1244,24 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 				
 				//this->debugFile << clusterPtr << " with root " << (*clusterPtr).rootParticleID << ", parsed particles " << parsedParticleIDs.size() << " , number of particles " << (*clusterPtr).numberOfParticles << ".\n"; // Debugging black particles (clusterList got reallocated during creation).
 
-				if (this->clusterList.size() % 1000 == 0) {
-					vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
-						"SECalc step 2 progress: Amount of clusters %d. Particle %d. Liquid particles w/o neighbours %d.", this->clusterList.size(), particle.id, debugNoNeighbourCounter);
-				}
+				// Progress, to not loose patience. To track creation of a lot of clusters.
+				if (this->clusterList.size() % 1000 == 0)
+					if (this->clusterList.size() != progressControlCluster) {
+						progressControlCluster = this->clusterList.size();
+						vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+							"SECalc step 2 progress: Amount of clusters %d. Particle %d. Liquid particles w/o neighbours %d.", this->clusterList.size(), particle.id, debugNoNeighbourCounter);
+					}
 
 				// Progress, to not loose patience when waiting for results.
 				if (particle.id % 100000 == 0) {
-					auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_addParticlePath);
-					auto durTotal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_createCluster);
-					vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
-						"SECalc step 2 progress: Cluster for p %d (%lld ms, total %lld ms), pathlength %d.\nCluster elements: %d. Total number of clusters: %d.",
+					if (particle.id != progressControl) {
+						progressControl = particle.id;
+						auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_addParticlePath);
+						auto durTotal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_createCluster);
+						vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+							"SECalc step 2 progress: Cluster for p %d (%lld ms, total %lld ms), pathlength %d.\nCluster elements: %d. Total number of clusters: %d.",
 							particle.id, duration.count(), durTotal.count(), parsedParticleIDs.size(), (*clusterPtr).numberOfParticles, this->clusterList.size());
+					}
 				}
 				break;
 			}
@@ -2630,19 +2642,19 @@ void mmvis_static::StructureEventsCalculation::writeSE(megamol::core::moldyn::Mu
 	vislib::TString filename(this->mmseFilenameSlot.Param<param::FilePathParam>()->Value());
 	if (filename.IsEmpty()) { // Avoids separate boolean to set output file.
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
-			"No MMSE file name specified. No file is written.");
+			"SECalc output: No MMSE file name specified. No file is written.");
 		return;
 	}
 
 	if (this->structureEvents.size() == 0) {
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
-			"No event data. Abort MMSE writing.");
+			"SECalc output: No event data. Abort MMSE writing.");
 		return;
 	}
 
 	if (vislib::sys::File::Exists(filename)) {
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN,
-			"WriteSE: File %s already exists and will be overwritten.",
+			"SECalc output: File %s already exists and will be overwritten.",
 			vislib::StringA(filename).PeekBuffer());
 	}
 
@@ -2677,7 +2689,7 @@ void mmvis_static::StructureEventsCalculation::writeSE(megamol::core::moldyn::Mu
 	vislib::sys::FastFile file;
 	if (!file.Open(filename, vislib::sys::File::WRITE_ONLY, vislib::sys::File::SHARE_EXCLUSIVE, vislib::sys::File::CREATE_OVERWRITE)) {
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_ERROR,
-			"Unable to create MMSE file \"%s\". Abort.",
+			"SECalc output: Unable to create MMSE file \"%s\". Abort.",
 			vislib::StringA(filename).PeekBuffer());
 		return;
 	}
@@ -2711,7 +2723,7 @@ void mmvis_static::StructureEventsCalculation::writeSE(megamol::core::moldyn::Mu
 	const void *startPtr = &this->structureEvents.front().x; // Start of the eventdata.
 	ASSERT_WRITEOUT(startPtr, eventStride * eventCnt);
 
-	vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "SECalc Writer: %d events written, maxTime %f.", eventCnt, this->seMaxTimeCache);
+	vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "SECalc output: %d events written, maxTime %f.", eventCnt, this->seMaxTimeCache);
 
 	file.Close();
 
