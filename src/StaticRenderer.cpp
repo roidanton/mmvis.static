@@ -20,7 +20,8 @@
 #include "vislib/assert.h"
 #include "vislib/graphics/gl/IncludeAllGL.h"
 
-
+#include <omp.h>
+#include <thread>
 
 using namespace megamol;
 using namespace megamol::core;
@@ -415,12 +416,14 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	}
 
 	if (this->frameIdCache != static_cast<unsigned int>(callRender->Time())) {
+		//printf("%d != %d\n", this->frameIdCache, static_cast<unsigned int>(callRender->Time())); // Debug.
 		this->frameIdCache = static_cast<unsigned int>(callRender->Time());
 		recreateVertexBuffer = true;
 	}
 
 	///
 	/// Read from call and create VBO.
+	/// Bad performance with many events since calculations are made.
 	///
 	if (recreateVertexBuffer) {
 		StructureEvents events = dataCall->getEvents();
@@ -436,149 +439,146 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		const uint8_t *typePtr = static_cast<const uint8_t*>(events.getType());
 
 		// Debug.
-		//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "Events: %d, stride: %d, location: %p, time: %p, type: %p",
+		//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "SE Renderer: Recreate events: %d, stride: %d, location: %p, time: %p, type: %p",
 		//	events.getCount(), events.getStride(), locationPtr, timePtr, typePtr);
-		
+
 		// Container for all vertices.
 		std::vector<Vertex> vertexList;
 
-		for (int eventCounter = 0; eventCounter < events.getCount(); ++eventCounter, locationPtr += events.getStride(), timePtr += events.getStride(), typePtr += events.getStride()) {
-			
-			// Use correct pointer types.
-			const float *locationPtrf = reinterpret_cast<const float*>(locationPtr);
-			const float *timePtrf = reinterpret_cast<const float*>(timePtr);
-			const StructureEvents::EventType *timePtrET = reinterpret_cast<const StructureEvents::EventType*>(typePtr);
+		// Resize vertex to be able to use concurrency for following loop. Currently not implemented, see below.
+		vertexList.resize(events.getCount() * 4); // 4 vertices needed for each event to create billboard. Uses constructor of Vertex.
 
-			// Filter time.
-			switch (this->timeModeSlot.Param<param::EnumParam>()->Value()) {
+		// Return 0 when detection not possible: http://en.cppreference.com/w/cpp/thread/thread/hardware_concurrency
+		int supportedThreads = std::thread::hardware_concurrency();
+
+		if (supportedThreads == 0)
+			supportedThreads = 1; // Important for loop and conditional statements.
+
+		size_t concurrentDivideEvents = 0;
+		if (supportedThreads > 1)
+			concurrentDivideEvents = static_cast<size_t>(static_cast<float>(events.getCount()) / static_cast<float>(supportedThreads)); // Cast likely rounds down.
+
+		#pragma omp parallel for
+		for (int thread = 0; thread < supportedThreads; ++thread) {
+
+			/// Set upper bound.
+			size_t concurrentMaxEvent;
+			if (thread == supportedThreads - 1)	// Avoid missing events due to round down.
+				concurrentMaxEvent = events.getCount();
+			else
+				concurrentMaxEvent = concurrentDivideEvents * (thread + 1);
+
+			/// Set lower bound.
+			size_t concurrentStartEvent = 0;
+			if (thread > 0)
+				concurrentStartEvent = concurrentDivideEvents * thread + 1;
+
+			const uint8_t *concurrentLocationPtr = locationPtr + concurrentStartEvent * events.getStride();
+			const uint8_t *concurrentTimePtr = timePtr + concurrentStartEvent * events.getStride();
+			const uint8_t *concurrentTypePtr = typePtr + concurrentStartEvent * events.getStride();
+
+			//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, // vislib::sys::log causes crash in concurrency.
+			//printf("SERenderer Concurrency: Retrieve event thread %d reading events %d - %d.\n", omp_get_thread_num(), concurrentStartEvent, concurrentMaxEvent); // Debug.
+
+			// No concurrency here (incrementation of pointers has to be sync'ed) so outer loop created.
+			for (size_t eventCounter = concurrentStartEvent; eventCounter < concurrentMaxEvent; ++eventCounter,
+				concurrentLocationPtr += events.getStride(), concurrentTimePtr += events.getStride(), concurrentTypePtr += events.getStride()) {
+
+				// Use correct pointer types.
+				const float *locationPtrf = reinterpret_cast<const float*>(concurrentLocationPtr);
+				const float *timePtrf = reinterpret_cast<const float*>(concurrentTimePtr);
+				const StructureEvents::EventType *timePtrET = reinterpret_cast<const StructureEvents::EventType*>(concurrentTypePtr);
+
+				// Filter time.
+				switch (this->timeModeSlot.Param<param::EnumParam>()->Value()) {
 				case 0: // All.
 					break;
 				case 1: // Current.
-					if (*timePtrf != callRender->Time())
+					if (*timePtrf != floor(callRender->Time()))
 						continue;
 					break;
 				case 2: // Previous.
 					if (*timePtrf > callRender->Time())
 						continue;
 					break;
-			}
+				}
 
-			// Filter event types.
-			switch (this->eventTypeModeSlot.Param<param::EnumParam>()->Value()) {
-			case 0: // All.
-				break;
-			case 1:
-				printf("Birth %d.  ", *timePtrET);
-				if (*timePtrET != StructureEvents::EventType::BIRTH)
-					continue;
-				break;
-			case 2:
-				printf("Death %d.  ", *timePtrET);
-				if (*timePtrET != StructureEvents::EventType::DEATH)
-					continue;
-				break;
-			case 3:
-				printf("Merge %d.  ", *timePtrET);
-				if (*timePtrET != StructureEvents::EventType::MERGE)
-					continue;
-				break;
-			case 4:
-				printf("Split %d.  ", *timePtrET);
-				if (*timePtrET != StructureEvents::EventType::SPLIT)
-					continue;
-				break;
-			}
+				// Filter event types.
+				switch (this->eventTypeModeSlot.Param<param::EnumParam>()->Value()) {
+				case 0: // All.
+					break;
+				case 1:
+					//Debug printf("Birth %d.  ", *timePtrET);
+					if (*timePtrET != StructureEvents::EventType::BIRTH)
+						continue;
+					break;
+				case 2:
+					//Debug printf("Death %d.  ", *timePtrET);
+					if (*timePtrET != StructureEvents::EventType::DEATH)
+						continue;
+					break;
+				case 3:
+					//Debug printf("Merge %d.  ", *timePtrET);
+					if (*timePtrET != StructureEvents::EventType::MERGE)
+						continue;
+					break;
+				case 4:
+					//Debug printf("Split %d.  ", *timePtrET);
+					if (*timePtrET != StructureEvents::EventType::SPLIT)
+						continue;
+					break;
+				}
 
-			// Debug.
-			//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "Event %d: location (%f, %f, %f), time %f, type %d / %f",
-			//	eventCounter, locationPtrf[0], locationPtrf[1], locationPtrf[2], *timePtrf, *timePtrET, static_cast<float>(*timePtrET));
+				// Debug.
+				//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO, "Event %d: location (%f, %f, %f), time %f, type %d / %f",
+				//	eventCounter, locationPtrf[0], locationPtrf[1], locationPtrf[2], *timePtrf, *timePtrET, static_cast<float>(*timePtrET));
 
-			// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used too in future.
-			for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
-				Vertex vertex;
-				vertex.colorHSV = { 0.0f, 1.0f, 1.0f };
-				vertex.opacity = 1.0f;
-				vertex.timeTextureType = 0.0f;
-				vertex.relativeTime = 0.0f;
-				float minValue = .4f; // Minimal value for brightness and opacity.
-				//unsigned int vertexListCounter = (eventCounter*4 + quadCounter);
+				///
+				/// Get Renderer settings and calculate values (expensive!).
+				///
+				glm::vec3 position; ///< The position of the event.
+				GLfloat eventType = -1.f; ///< Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, 3 = split
+				glm::vec3 colorHSV = { 0.0f, 1.0f, 1.0f }; ///< Color in HSV: Hue, Saturation, Value = [0,1]. Converted to rgb in shader.
+				GLfloat opacity = 1.0f; ///< Opacity.
+				GLfloat timeTextureType = 0.0f; ///< 0 := No time texture. 1 := texture type 1.
+				GLfloat relativeTime = 0.0f; ///< Time from 0 to 1, calculated in cpp.
+
+				float minValueColor = .4f; // Minimal value for brightness and opacity.
 
 				// Position.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position) {
-					vertex.position.x = locationPtrf[0];
-					vertex.position.y = locationPtrf[1];
-					vertex.position.z = locationPtrf[2];
+					position.x = locationPtrf[0];
+					position.y = locationPtrf[1];
+					position.z = locationPtrf[2];
 				}
-				
+
 				// Time.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue)
-					vertex.colorHSV = { *timePtrf / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
+					colorHSV = { *timePtrf / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
+
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
-					vertex.colorHSV = { 208.f / 360.f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue };  // Defined color, brightness from minValue-100%.
+					colorHSV = { 208.f / 360.f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - minValueColor) + minValueColor };  // Defined color, brightness from minValue-100%.
+
 				// Opacity for time is stupid and deactivated in User Interface anyway.
 				//else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity)
-				//	vertex.opacity = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue;  // From minValue-100%.
+				//	vertex.opacity = *timePtrf / events.getMaxTime() * (1.f - minValueColor) + minValueColor;  // From minValue-100%.
+
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture) {
-					vertex.colorHSV = { 0.0f, 0.0f, 1.0f };
-					vertex.timeTextureType = 1.0f;
+					colorHSV = { 0.0f, 0.0f, 1.0f };
+					timeTextureType = 1.0f;
 					float minValueTex = 0.01f;
-					vertex.relativeTime = *timePtrf / events.getMaxTime() * (1.f - minValueTex) + minValueTex;
+					relativeTime = *timePtrf / events.getMaxTime() * (1.f - minValueTex) + minValueTex;
 				}
 
 				// Type.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
-					vertex.eventType = static_cast<float>(*timePtrET);
-				
-				// Specific properties for the quad corners.
-				glm::vec2 quadSpanModifier, texUV;
-				switch (quadCounter) {
-				case 0:
-					quadSpanModifier = { -1.0f, -1.0f };
-					texUV = { 0.0f, 0.0f };
-					break;
-				case 1:
-					quadSpanModifier = { 1.0f, -1.0f };
-					texUV = { 1.0f, 0.0f };
-					break;
-				case 2:
-					quadSpanModifier = { 1.0f, 1.0f };
-					texUV = { 1.0f, 1.0f };
-					break;
-				case 3:
-					quadSpanModifier = { -1.0f, 1.0f };
-					texUV = { 0.0f, 1.0f };
-					break;
-				}
-				vertex.spanQuad = quadSpanModifier;
-				//vertex.position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
-				vertex.texUV = texUV;
+					eventType = static_cast<float>(*timePtrET);
 
-				vertexList.push_back(vertex);
-			}
-
-			// Create second quad for time with slightly off z-position. Obsolete since done in same texture.
-			/*
-			if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture) {
+				///
+				/// Make 4 vertices from one event for quad generation in shader. Alternatively geometry shader could be used with recent OGL versions.
+				///
 				for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
-					Vertex vertex;
-					vertex.opacity = 1.0f;
-					vertex.colorHSV = { 0.0f, 0.0f, 1.0f }; // White.
-					float minValue = .1f; // Minimal value for quad size.
-
-					// Position (it gets pushed back a little in the shader).
-					if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position) {
-						vertex.position.x = locationPtrf[0];
-						vertex.position.y = locationPtrf[1];
-						vertex.position.z = locationPtrf[2];
-					}
-
-					// Type misuse.
-					if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
-						vertex.eventType = 4; // It's a misuse of this parameter to tell the shader that this is a time quad.
-
-					// Specific properties for the quad corners. Defines size dependent upon time.
-					float quadSpanHeight = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue; // Range 0 to +1.
-					float quadSpanHeightScaled = quadSpanHeight * 2 - 1; // Since quad ranges from -1 to +1 instead of 0 to +1.
+					// Specific properties for the quad corners.
 					glm::vec2 quadSpanModifier, texUV;
 					switch (quadCounter) {
 					case 0:
@@ -590,25 +590,83 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 						texUV = { 1.0f, 0.0f };
 						break;
 					case 2:
-						quadSpanModifier = { 1.0f, quadSpanHeightScaled };
-						texUV = { 1.0f, quadSpanHeight };
+						quadSpanModifier = { 1.0f, 1.0f };
+						texUV = { 1.0f, 1.0f };
 						break;
 					case 3:
-						quadSpanModifier = { -1.0f, quadSpanHeightScaled };
-						texUV = { 0.0f, quadSpanHeight };
+						quadSpanModifier = { -1.0f, 1.0f };
+						texUV = { 0.0f, 1.0f };
 						break;
 					}
-					vertex.spanQuad = quadSpanModifier;
-					//vertex.position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
-					vertex.texUV = texUV;
 
-					vertexList.push_back(vertex);
+					size_t vertexListCounter = eventCounter * 4 + quadCounter;
+					vertexList[vertexListCounter].position = position;
+					vertexList[vertexListCounter].spanQuad = quadSpanModifier;
+					vertexList[vertexListCounter].texUV = texUV;
+					vertexList[vertexListCounter].eventType = eventType;
+					vertexList[vertexListCounter].colorHSV = colorHSV;
+					vertexList[vertexListCounter].opacity = opacity;
+					vertexList[vertexListCounter].timeTextureType = timeTextureType;
+					vertexList[vertexListCounter].relativeTime = relativeTime;
+
+					//vertexList[vertexListCounter].position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
 				}
+				
+				// Create second quad for time with slightly off z-position. Obsolete since done in same texture.
+				/*
+				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture) {
+					for (int quadCounter = 0; quadCounter < 4; ++quadCounter) {
+						Vertex vertex;
+						vertex.opacity = 1.0f;
+						vertex.colorHSV = { 0.0f, 0.0f, 1.0f }; // White.
+						float minValue = .1f; // Minimal value for quad size.
+
+						// Position (it gets pushed back a little in the shader).
+						if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position) {
+							vertex.position.x = locationPtrf[0];
+							vertex.position.y = locationPtrf[1];
+							vertex.position.z = locationPtrf[2];
+						}
+
+						// Type misuse.
+						if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTypeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Texture)
+							vertex.eventType = 4; // It's a misuse of this parameter to tell the shader that this is a time quad.
+
+						// Specific properties for the quad corners. Defines size dependent upon time.
+						float quadSpanHeight = *timePtrf / events.getMaxTime() * (1.f - minValue) + minValue; // Range 0 to +1.
+						float quadSpanHeightScaled = quadSpanHeight * 2 - 1; // Since quad ranges from -1 to +1 instead of 0 to +1.
+						glm::vec2 quadSpanModifier, texUV;
+						switch (quadCounter) {
+						case 0:
+							quadSpanModifier = { -1.0f, -1.0f };
+							texUV = { 0.0f, 0.0f };
+							break;
+						case 1:
+							quadSpanModifier = { 1.0f, -1.0f };
+							texUV = { 1.0f, 0.0f };
+							break;
+						case 2:
+							quadSpanModifier = { 1.0f, quadSpanHeightScaled };
+							texUV = { 1.0f, quadSpanHeight };
+							break;
+						case 3:
+							quadSpanModifier = { -1.0f, quadSpanHeightScaled };
+							texUV = { 0.0f, quadSpanHeight };
+							break;
+						}
+						vertex.spanQuad = quadSpanModifier;
+						//vertex.position += glm::vec3(quadSpanModifier, 0.0f); // Testdata for usage without spanQuad.
+						vertex.texUV = texUV;
+
+						vertexList.push_back(vertex);
+					}
+				}
+				*/
 			}
-			*/
 		}
 
-		// Set dummy data to avoid crash.
+		// Set dummy data to avoid crash. Not needed with resize.
+		/*
 		if (vertexList.size() == 0) {
 			bool testData = false;
 			
@@ -668,11 +726,16 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 					"SERenderer: Dummy vertex data set: %d vertices, test (%f, %f).", vertexList.size(), vertexList[10].position.x, vertexList[5].eventType);
 			}
+			
 		}
+		*/
 
 		// Debug.
-		//printf("Vertex %d: location (%f, %f, %f)\n",
-		//	0, vertexList[0].position.x, vertexList[0].position.y, vertexList[0].position.z);
+		//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+		//	"SERenderer: %d vertices. VertexID: (Pos), EventType:\n  %d: (%f, %f, %f), %f\n  %d: (%f, %f, %f), %f",
+		//	vertexList.size(), 0, vertexList[0].position.x, vertexList[0].position.y, vertexList[0].position.z, vertexList[0].eventType,
+		//	vertexList.size() - 1, vertexList[vertexList.size() - 1].position.x, vertexList[vertexList.size() - 1].position.y,
+		//	vertexList[vertexList.size() - 1].position.z, vertexList[vertexList.size() - 1].eventType);
 
 		// Create a VBO.
 		// Generate 1 (generic) buffer, put the resulting identifier in the vertex buffer object

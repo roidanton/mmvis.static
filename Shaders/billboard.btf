@@ -160,6 +160,14 @@ vec3 HSV2RGB( vec3 hsv ) {
         <![CDATA[
 void main() {
 
+    ///
+    /// Don't draw if the quad is an empty event which is marked by
+    /// the renderer with a negative time.
+    ///
+    if (f_relativeTime < -.1f) {
+      discard;
+    }
+
     vec4 tex2D;
     
     // Revert to "normal" UV handling (known from Blender etc).
@@ -199,7 +207,8 @@ void main() {
 
     // Set time.
     if (f_timeTextureType < 0.9f) { // No time texture.
-        // Check if pixel has to be replaced.
+        // Replace purple like (255,0,255) pixels.
+        // Usage of a range due to blending in source texture.
         if (tex2D.r > .6f
           && tex2D.g < .4f
           && tex2D.b > .6f) {
@@ -211,7 +220,8 @@ void main() {
         }
     }
     else if (f_timeTextureType < 1.9f) { // Filling time type.
-        // Check if pixel has to be replaced.
+        // Replace purple like (255,0,255) pixels.
+        // Usage of a range due to blending in source texture.
         if (tex2D.r > .6f
           && tex2D.g < .4f
           && tex2D.b > .6f) {

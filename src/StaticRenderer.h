@@ -87,7 +87,9 @@ namespace megamol {
 		/// The textures should get an own element <texturedir> with attribut path in megamol.cfg,
 		/// like <shaderdir path="" />.
 		///
-		/// Known issue: Not all ressource gets released (Module.cpp, 36). Maybe b/c VisualAttributes static methods get destroyed when main exits.
+		/// Known issues:
+		/// - (not Renderer itself) CallRender3D does not properly handle frames that are outside of source data range in MuxRenderer; Renderer should contain walkaround for this.
+		/// - (mb not caused by Renderer) Not all ressource gets released (Module.cpp, 36). Maybe b/c VisualAttributes static methods get destroyed when main exits.
 		///
 		class StaticRenderer : public core::view::Renderer3DModule {
 		public:
@@ -240,6 +242,34 @@ namespace megamol {
 				GLfloat opacity; ///< Opacity.
 				GLfloat timeTextureType; ///< 0 := No time texture. 1 := texture type 1.
 				GLfloat relativeTime; ///< Time from 0 to 1, calculated in cpp.
+
+				Vertex() :
+					position(0),
+					spanQuad(0),
+					texUV(0),
+					eventType(-1), // Intentionally so it can be detected as invalid by Renderer/Shader.
+					colorHSV({ 0, 1, 1 }),
+					opacity(0), // Intentionally so it is hidden by default.
+					timeTextureType(0),
+					relativeTime(-1) {} // Intentionally so it can be detected as invalid by Renderer/Shader.
+
+				Vertex (
+					glm::vec3 position,
+					glm::vec2 spanQuad,
+					glm::vec2 texUV,
+					GLfloat eventType,
+					glm::vec3 colorHSV,
+					GLfloat opacity,
+					GLfloat timeTextureType,
+					GLfloat relativeTime) :
+					position(position),
+					spanQuad(spanQuad),
+					texUV(texUV),
+					eventType(eventType),
+					colorHSV(colorHSV),
+					opacity(opacity),
+					timeTextureType(timeTextureType),
+					relativeTime(relativeTime) {}
 			};
 
 			/// Shader attributes.
