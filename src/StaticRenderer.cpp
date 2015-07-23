@@ -534,7 +534,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				//	eventCounter, locationPtrf[0], locationPtrf[1], locationPtrf[2], *timePtrf, *timePtrET, static_cast<float>(*timePtrET));
 
 				///
-				/// Get Renderer settings and calculate values (expensive!).
+				/// Get Renderer settings and calculate values.
+				/// Expensive. This could also be done in vertex shader.
 				///
 				glm::vec3 position; ///< The position of the event.
 				GLfloat eventType = -1.f; ///< Eventtype hardcoded in shader: 0 = birth, 1 = death, 2 = merge, 3 = split
@@ -665,23 +666,13 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 			}
 		}
 
-		// Set dummy data to avoid crash. Not needed with resize.
-		/*
+		// Set dummy data to avoid crash.
 		if (vertexList.size() == 0) {
-			bool testData = false;
+			//bool testData = false;
 			
-			if (!testData) {
-				Vertex vertex;
-				vertex.position = { 0, 0, 0 };
-				vertex.colorHSV = { 0, 0, 0 };
-				vertex.opacity = 0;
-				vertex.spanQuad = { 0, 0 };
-				vertex.texUV = { 0, 0 };
-				vertex.eventType = 0;
-				vertex.timeTextureType = 0;
-				vertex.relativeTime = 0;
-				vertexList.push_back(vertex);
-			}
+			//if (!testData)
+				vertexList.emplace_back(); // Constructor of vertex is used.
+			/*
 			else {
 				// Set test data
 				int eventMax = 4;
@@ -726,9 +717,8 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 					"SERenderer: Dummy vertex data set: %d vertices, test (%f, %f).", vertexList.size(), vertexList[10].position.x, vertexList[5].eventType);
 			}
-			
+			*/			
 		}
-		*/
 
 		// Debug.
 		//vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,

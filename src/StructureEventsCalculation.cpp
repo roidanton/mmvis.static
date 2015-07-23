@@ -41,11 +41,11 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	inDataSlot("in data", "Connects to the data source. Expects signed distance particles"),
 	outDataSlot("out data", "Slot to request data from this calculation."),
 	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
-	outputLabelSlot("outputLabel", "A label to tag data in output files."),
-	quantitativeDataOutputSlot("quantitativeDataOutput", "Create log files with quantitative data."),
+	outputLabelSlot("output::label", "A label to tag data in output files."),
+	quantitativeDataOutputSlot("output::quantitativeData", "Create log files with quantitative data."),
+	mmseFilenameSlot("output::mmseFilename", "The path to the MMSE file to be written"),
 	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
 	createDummyTestDataSlot("createDummyTestData", "Creates random previous and current data. For I/O tests. Skips steps 1 and 2."),
-	mmseFilenameSlot("mmseFilename", "The path to the MMSE file to be written"),
 	periodicBoundaryConditionSlot("NeighbourSearch::periodicBoundary", "Periodic boundary condition for dataset."),
 	radiusMultiplierSlot("NeighbourSearch::radiusMultiplier", "The multiplicator for the particle radius definining the area for the neighbours search."),
 	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged with bigger clusters if possible."),
@@ -71,14 +71,14 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	this->quantitativeDataOutputSlot.SetParameter(new param::BoolParam(true));
 	this->MakeSlotAvailable(&this->quantitativeDataOutputSlot);
 
+	this->mmseFilenameSlot.SetParameter(new param::FilePathParam(""));
+	this->MakeSlotAvailable(&this->mmseFilenameSlot);
+
 	this->calculationActiveSlot.SetParameter(new param::BoolParam(false));
 	this->MakeSlotAvailable(&this->calculationActiveSlot);
 
 	this->createDummyTestDataSlot.SetParameter(new param::BoolParam(false));
 	this->MakeSlotAvailable(&this->createDummyTestDataSlot);
-
-	this->mmseFilenameSlot.SetParameter(new param::FilePathParam(""));
-	this->MakeSlotAvailable(&this->mmseFilenameSlot);
 
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
@@ -324,10 +324,18 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 	/// Log output.
 	///
 	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
-		this->logFile.open("SECalc.log", std::ios_base::app | std::ios_base::out);
-		this->csvLogFile.open("SECalc.csv", std::ios_base::app | std::ios_base::out);
+		vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
+		std::string filenameEnd;
+		if (!label.IsEmpty()) {
+			std::string labelStr = label;
+			filenameEnd = " " + labelStr;
+		}
+		std::string filenameLog = "SECalc" + filenameEnd + ".log";
+		this->logFile.open(filenameLog.c_str(), std::ios_base::app | std::ios_base::out);
+		std::string filenameCSV = "SECalc" + filenameEnd + ".csv";
+		this->csvLogFile.open(filenameCSV.c_str(), std::ios_base::app | std::ios_base::out);
 		std::ifstream csvLogFilePeekTest;
-		csvLogFilePeekTest.open("SECalc.csv");
+		csvLogFilePeekTest.open(filenameCSV.c_str()); // Attention to use correct filename.
 		this->debugFile.open("SECalcDebug.log", std::ios_base::app | std::ios_base::out);
 
 		// Set header to csv if not set.
@@ -444,8 +452,6 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 		struct tm  timezone;
 		localtime_s(&timezone, &now);
 		strftime(this->timeOutputCache, sizeof(this->timeOutputCache), "%Y-%m-%d %X", &timezone); // http://en.cppreference.com/w/cpp/chrono/c/strftime
-
-		vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
 
 		// Create horizontal line of correct length.
 		const int sizeOfHead = 6 + (this->frameId < 10 ? 1 : (this->frameId < 100 ? 2 : (this->frameId < 1000 ? 3 : 10))) // Frame.
@@ -584,7 +590,7 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 		// Tree and clusters.
 		size_t kdtreeBytes = this->treeSizeOutputCache / unitConversion;
 		size_t clusterBytes = this->clusterList.size() * sizeof(Cluster) / unitConversion;
-		size_t previousClusterBytes = this->clusterList.size() * sizeof(Cluster) / unitConversion;
+		size_t previousClusterBytes = this->previousClusterList.size() * sizeof(Cluster) / unitConversion;
 
 		// Comparison: Partner clusters and their partners.
 		innerVectorSize = 0;
@@ -1078,14 +1084,21 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 	std::ofstream testCFDCSVFile;
 
 	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+		vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
+		std::string filenameEnd;
+		if (!label.IsEmpty()) {
+			std::string labelStr = label;
+			filenameEnd = " " + labelStr;
+		}
 		// CFD == Cluster Fast Depth
-		std::string filename = "SECalc ClusterFastDepth.csv";
+		std::string filename = "SECalc ClusterFastDepth" + filenameEnd + ".csv";
 		testCFDCSVFile.open(filename.c_str(), std::ios_base::app | std::ios_base::out);
 		std::ifstream peekTest;
 		peekTest.open(filename.c_str());
 
 		if (peekTest.peek() == std::ifstream::traits_type::eof()) {
 			testCFDCSVFile
+				<< "Label; "
 				<< "Time; "
 				<< "Frame ID; "
 				<< "Cluster ID; "
@@ -1301,6 +1314,8 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 		const bool skipCFDOutput = this->clusterList.size() > 50000 ? true : false; // Output takes forever with thousands of clusters and particles.
 
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+			vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
+
 			for (auto & cluster : this->clusterList) {
 				// Particles in clusters.
 				debugParticleInClustersNumber += static_cast<int>(cluster.numberOfParticles);
@@ -1318,6 +1333,7 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 						for (auto & particle : this->particleList) {
 							if (particle.clusterID == cluster.id) {
 								testCFDCSVFile
+									<< label.PeekBuffer() << "; "
 									<< this->timeOutputCache << "; "
 									<< this->frameId << "; "
 									<< cluster.id << "; "
@@ -1605,9 +1621,11 @@ void mmvis_static::StructureEventsCalculation::mergeSmallClusters() {
 	int debugMinSizeClusters = 0; // For testing MergeClusters produces adjacent gas particle clusters theory.
 	for (auto & cluster : this->clusterList) {
 		if (cluster.numberOfParticles < this->minClusterSizeSlot.Param<param::IntParam>()->Value()) {
-			debugMinSizeClusters++;
-			if (cluster.numberOfParticles == 0)
+			if (cluster.numberOfParticles == 0) {
 				removedClusters++;
+				continue;
+			}
+			debugMinSizeClusters++;
 			if (cluster.numberOfParticles == 1)
 				debugSizeOneClusters++;
 		}
@@ -1752,8 +1770,12 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		// SECC == Structure Events Cluster Compare.
 		vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
-		std::string labelStr = label;
-		std::string filenameEnd = " " + labelStr + " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
+		std::string filenameEnd;
+		if (!label.IsEmpty()) {
+			std::string labelStr = label;
+			filenameEnd = " " + labelStr;
+		}
+		filenameEnd += " f" + std::to_string(this->frameId) + " p" + std::to_string(this->particleList.size());
 		std::string filename = "SECC All" + filenameEnd + ".log";
 		compareAllFile.open(filename.c_str());
 		filename = "SECC forward" + filenameEnd + ".csv";
@@ -1909,7 +1931,8 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 		/// Log output.
 		///
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
-			compareAllFile << "Previous cluster " << partnerClusters.cluster.id
+			compareAllFile
+				<< "Previous cluster " << partnerClusters.cluster.id
 				<< ", " << partnerClusters.cluster.numberOfParticles << " particles"
 				<< ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)"
 				<< ", " << partnerClusters.getLocalMaxTotalPercentage() << " % max to total ratio"
@@ -1922,7 +1945,8 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 
 			for (int i = 0; i < partnerClusters.getNumberOfPartners(); ++i) {
 				PartnerClusters::PartnerCluster cc = partnerClusters.getPartner(i);
-				compareAllFile << "Cluster " << cc.cluster.id << " (size " << cc.cluster.numberOfParticles << "): " << cc.commonParticles << " common"
+				compareAllFile
+					<< "Cluster " << cc.cluster.id << " (size " << cc.cluster.numberOfParticles << "): " << cc.commonParticles << " common"
 					<< ", ratio this/global (" << cc.getCommonPercentage() << "%, " << cc.getClusterCommonPercentage(partnerClusters.cluster) << "%)"
 					<< "\n";
 			}
@@ -1988,7 +2012,8 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 		/// Log output.
 		///
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
-			compareAllFile << "Cluster " << partnerClusters.cluster.id
+			compareAllFile
+				<< "Cluster " << partnerClusters.cluster.id
 				<< ", " << partnerClusters.cluster.numberOfParticles << " particles"
 				<< ", " << partnerClusters.getTotalCommonParticles() << " common particles (" << partnerClusters.getTotalCommonPercentage() << "%)"
 				<< ", " << partnerClusters.getLocalMaxTotalPercentage() << " % max to total ratio"
@@ -2001,7 +2026,8 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 
 			for (int i = 0; i < partnerClusters.getNumberOfPartners(); ++i) {
 				PartnerClusters::PartnerCluster pc = partnerClusters.getPartner(i);
-				compareAllFile << "Previous cluster " << pc.cluster.id << " (size " << pc.cluster.numberOfParticles << "): " << pc.commonParticles << " common"
+				compareAllFile
+					<< "Previous cluster " << pc.cluster.id << " (size " << pc.cluster.numberOfParticles << "): " << pc.commonParticles << " common"
 					<< ", ratio this/global (" << pc.getCommonPercentage() << "%, " << pc.getClusterCommonPercentage(partnerClusters.cluster) << "%)"
 					<< "\n";
 			}
@@ -2236,14 +2262,21 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 	int deathAmount[birthDeathTestAmount] = { 0 };
 
 	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+		vislib::StringA label(this->outputLabelSlot.Param<param::StringParam>()->Value());
+		std::string filenameEnd;
+		if (!label.IsEmpty()) {
+			std::string labelStr = label;
+			filenameEnd = " " + labelStr;
+		}
 		// DSE == Determine Structure Events.
-		std::string filename = "SECalc DetermineStructureEvents.csv";
+		std::string filename = "SECalc DetermineStructureEvents" + filenameEnd + ".csv";
 		testEventsCSVFile.open(filename.c_str(), std::ios_base::app | std::ios_base::out);
 		std::ifstream testEventsCSVFilePeekTest;
 		testEventsCSVFilePeekTest.open(filename.c_str());
 
 		if (testEventsCSVFilePeekTest.peek() == std::ifstream::traits_type::eof()) {
 			testEventsCSVFile
+				<< "Label; "
 				<< "Time; "
 				<< "Frame ID; "
 				<< "25%, 3+ Split (#prevClusters); "
@@ -2274,6 +2307,7 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 		testEventsCSVFilePeekTest.close();
 
 		testEventsCSVFile
+			<< label.PeekBuffer() << "; "
 			<< this->timeOutputCache << "; "
 			<< this->frameId << "; ";
 	}
