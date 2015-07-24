@@ -307,6 +307,8 @@ bool mmvis_static::StructureEventsCalculation::manipulateData (
 			reCalculateSE = true;
 		}
 		if (reCalculateSE) {
+			// No previous and partner list size detection here, since
+			// method itself catches this.
 			determineStructureEvents();
 		}
 	}
@@ -511,14 +513,13 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 
 	auto time_completeCalculation = std::chrono::system_clock::now();
 
-	this->buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
-
 	if (this->createDummyTestDataSlot.Param<param::BoolParam>()->Value())
 		this->setDummyLists(20000, 500, 50);
 	else {
 		///
 		/// 1st step.
 		///
+		this->buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
 		this->findNeighboursWithKDTree(data);
 
 		///
@@ -542,10 +543,14 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 		/// Log output.
 		///
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
-			this->logFile << "Skipped step 3 and step 4 since no previous clusters available.\n";
+			this->logFile << "Skipped step 3 and step 4 since no previous clusters are available.\n";
 			for (int numberOfSkippedFields = 0; numberOfSkippedFields < 18; ++numberOfSkippedFields)
 				this->csvLogFile << "; ";
 		}
+
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
+			"SECalc: Skipped step 3 and step 4 since no previous clusters are available.");
+
 		this->setClusterColor(true);
 	}
 
