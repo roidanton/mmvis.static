@@ -583,19 +583,19 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 					glm::vec2 quadSpanModifier, texUV;
 					switch (quadCounter) {
 					case 0:
-						quadSpanModifier = { -1.0f, -1.0f };
+						quadSpanModifier = { -.5f, 0.f };
 						texUV = { 0.0f, 0.0f };
 						break;
 					case 1:
-						quadSpanModifier = { 1.0f, -1.0f };
+						quadSpanModifier = {  .5f, 0.f };
 						texUV = { 1.0f, 0.0f };
 						break;
 					case 2:
-						quadSpanModifier = { 1.0f, 1.0f };
+						quadSpanModifier = {  .5f, 1.f };
 						texUV = { 1.0f, 1.0f };
 						break;
 					case 3:
-						quadSpanModifier = { -1.0f, 1.0f };
+						quadSpanModifier = { -.5f, 1.f };
 						texUV = { 0.0f, 1.0f };
 						break;
 					}
@@ -749,7 +749,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 	this->billboardShader.Enable();
 
 	// Set sizeModificator of all billboards. Scales the billboards in shader. Additional scale to allow very small icons.
-	GLfloat quadSizeModificator = this->glyphSizeSlot.Param<param::FloatParam>()->Value() / 10;
+	GLfloat quadSizeModificator = this->glyphSizeSlot.Param<param::FloatParam>()->Value() / 5;
 	glUniform1f(this->billboardShader.ParameterLocation("quadSizeModificator"), quadSizeModificator);
 
 	// Bind texture.
