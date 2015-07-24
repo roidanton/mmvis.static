@@ -11,6 +11,7 @@
 
 #include "ANN/ANN.h"
 #include "mmcore/param/BoolParam.h"
+#include "mmcore/param/EnumParam.h"
 #include "mmcore/param/FilePathParam.h"
 #include "mmcore/param/FloatParam.h"
 #include "mmcore/param/IntParam.h"
@@ -41,11 +42,12 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	inDataSlot("in data", "Connects to the data source. Expects signed distance particles"),
 	outDataSlot("out data", "Slot to request data from this calculation."),
 	outSEDataSlot("out SE data", "Slot to request StructureEvents data from this calculation."),
+	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
+	createDummyTestDataSlot("createDummyTestData", "Creates random previous and current data. For I/O tests. Skips steps 1 and 2."),
 	outputLabelSlot("output::label", "A label to tag data in output files."),
 	quantitativeDataOutputSlot("output::quantitativeData", "Create log files with quantitative data."),
 	mmseFilenameSlot("output::mmseFilename", "The path to the MMSE file to be written"),
-	calculationActiveSlot("active", "Switch the calculation on/off (once started it will last until finished)."),
-	createDummyTestDataSlot("createDummyTestData", "Creates random previous and current data. For I/O tests. Skips steps 1 and 2."),
+	clusterColoringSlot("output::clusterColoring", "The mode for coloring clusters."),
 	periodicBoundaryConditionSlot("NeighbourSearch::periodicBoundary", "Periodic boundary condition for dataset."),
 	radiusMultiplierSlot("NeighbourSearch::radiusMultiplier", "The multiplicator for the particle radius definining the area for the neighbours search."),
 	minClusterSizeSlot("ClusterCreation::minClusterSize", "Minimal allowed cluster size in connected components, smaller clusters will be merged with bigger clusters if possible."),
@@ -65,6 +67,15 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	this->outSEDataSlot.SetCallback("StructureEventsDataCall", "GetExtent", &StructureEventsCalculation::getSEExtentCallback);
 	this->MakeSlotAvailable(&this->outSEDataSlot);
 
+	this->calculationActiveSlot.SetParameter(new param::BoolParam(false));
+	this->MakeSlotAvailable(&this->calculationActiveSlot);
+
+	this->createDummyTestDataSlot.SetParameter(new param::BoolParam(false));
+	this->MakeSlotAvailable(&this->createDummyTestDataSlot);
+
+	///
+	/// Output.
+	///
 	this->outputLabelSlot.SetParameter(new param::StringParam(""));
 	this->MakeSlotAvailable(&this->outputLabelSlot);
 
@@ -74,21 +85,31 @@ mmvis_static::StructureEventsCalculation::StructureEventsCalculation() : Module(
 	this->mmseFilenameSlot.SetParameter(new param::FilePathParam(""));
 	this->MakeSlotAvailable(&this->mmseFilenameSlot);
 
-	this->calculationActiveSlot.SetParameter(new param::BoolParam(false));
-	this->MakeSlotAvailable(&this->calculationActiveSlot);
+	core::param::EnumParam *clusterColoringSlotParam = new core::param::EnumParam(0);
+	clusterColoringSlotParam->SetTypePair(0, "Root particle properties and frame-inherited colors.");
+	clusterColoringSlotParam->SetTypePair(1, "Random and frame-inherited colors.");
+	clusterColoringSlotParam->SetTypePair(2, "All random.");
+	this->clusterColoringSlot << clusterColoringSlotParam;
+	this->MakeSlotAvailable(&this->clusterColoringSlot);
 
-	this->createDummyTestDataSlot.SetParameter(new param::BoolParam(false));
-	this->MakeSlotAvailable(&this->createDummyTestDataSlot);
-
+	///
+	/// NeighbourSearch.
+	///
 	this->periodicBoundaryConditionSlot.SetParameter(new core::param::BoolParam(true));
 	this->MakeSlotAvailable(&this->periodicBoundaryConditionSlot);
 
 	this->radiusMultiplierSlot.SetParameter(new core::param::IntParam(5, 2, 10));
 	this->MakeSlotAvailable(&this->radiusMultiplierSlot);
 
+	///
+	/// Cluster creation.
+	///
 	this->minClusterSizeSlot.SetParameter(new core::param::IntParam(10, 8));
 	this->MakeSlotAvailable(&this->minClusterSizeSlot);
 
+	///
+	/// StructureEvents.
+	///
 	this->msMinClusterAmountSlot.SetParameter(new core::param::IntParam(2, 2));
 	this->MakeSlotAvailable(&this->msMinClusterAmountSlot);
 
@@ -251,6 +272,10 @@ bool mmvis_static::StructureEventsCalculation::manipulateData (
 
 		// Recalculate everything if dirty slots.
 		bool reCalculate = false;
+		if (this->clusterColoringSlot.IsDirty()) {
+			this->clusterColoringSlot.ResetDirty();
+			reCalculate = true;
+		}
 		if (this->minClusterSizeSlot.IsDirty()) {
 			this->minClusterSizeSlot.ResetDirty();
 			reCalculate = true;
@@ -489,7 +514,7 @@ void mmvis_static::StructureEventsCalculation::setData(megamol::core::moldyn::Mu
 	this->buildParticleList(data, globalParticleIndex, globalRadius, globalColor, globalColorIndexMin, globalColorIndexMax);
 
 	if (this->createDummyTestDataSlot.Param<param::BoolParam>()->Value())
-		this->setDummyLists(10000, 100, 50);
+		this->setDummyLists(20000, 500, 50);
 	else {
 		///
 		/// 1st step.
@@ -1349,14 +1374,14 @@ void mmvis_static::StructureEventsCalculation::createClustersFastDepth() {
 					}
 				}
 			}
+
+			// Check cluster creation.
+			assert(debugParticleInClustersNumber + debugNumberOfGasParticles + debugNoNeighbourCounter == particleList.size());
 		}
 		
 		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
 			"SECalc Step 2: %d (%d/%d) clusters created in %lld ms. %d particles used existing clusters.\nDebug: %d liquid particles w/o neighbour, %d size one clusters.",
 			this->clusterList.size(), minCluster, maxCluster, duration.count(), debugUsedExistingClusterCounter, debugNoNeighbourCounter, debugSizeOneClusters);
-
-		// Check cluster creation.
-		assert(debugParticleInClustersNumber + debugNumberOfGasParticles + debugNoNeighbourCounter == particleList.size());
 
 		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 			this->logFile
@@ -1803,6 +1828,7 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 	//int previousGasClusterID = static_cast<int>(this->previousClusterList.size());
 
 	// Previous to current particle comparison.
+	assert(this->particleList.size() == this->previousParticleList.size()); // Catches (smaller) dummy lists.
 	for (int pid = 0; pid < this->particleList.size(); ++pid) { // Since particleList size stays the same for each frame, one loop is just fine.
 		if (this->particleList[pid].clusterID != -1 && this->previousParticleList[pid].clusterID != -1) // Skip gas.
 			clusterComparisonMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++; // Race condition, so no parallel processing.
@@ -2061,44 +2087,62 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 	*/
 
 	///
-	/// Coloring of descendant clusters by using their biggest ancestor.
+	/// Coloring of descendant clusters by using their biggest ancestor
+	/// or using random colors.
 	///
-	#pragma omp parallel for
-	for (int cli = 0; cli < this->clusterList.size(); ++cli) {
-		bool colored = false;
-		if (this->clusterList[cli].numberOfParticles > 0) {
-			PartnerClusters* pcs = this->partnerClustersList.getPartnerClusters(this->clusterList[cli].id, PartnerClustersList::Direction::backwards);
-			if (pcs != NULL) {
-				for (int pci = 0; pci < pcs->getNumberOfPartners(); ++pci) {
-					PartnerClusters::PartnerCluster pc = pcs->getPartner(pci);
-					// Get partner with most common particles.
-					if (pcs->getMaxCommonParticles() == pc.commonParticles) {
-						clusterList[cli].r = pc.cluster.r;
-						clusterList[cli].g = pc.cluster.g;
-						clusterList[cli].b = pc.cluster.b;
-						colored = true;
-						break;
+	switch (this->clusterColoringSlot.Param<param::EnumParam>()->Value()) {
+	case 0: // With color inheritance.
+	case 1: // With color inheritance.
+		#pragma omp parallel for
+		for (int cli = 0; cli < this->clusterList.size(); ++cli) {
+			bool colored = false;
+			if (this->clusterList[cli].numberOfParticles > 0) {
+				PartnerClusters* pcs = this->partnerClustersList.getPartnerClusters(this->clusterList[cli].id, PartnerClustersList::Direction::backwards);
+				if (pcs != NULL) {
+					for (int pci = 0; pci < pcs->getNumberOfPartners(); ++pci) {
+						PartnerClusters::PartnerCluster pc = pcs->getPartner(pci);
+						// Get partner with most common particles.
+						if (pcs->getMaxCommonParticles() == pc.commonParticles) {
+							this->clusterList[cli].r = pc.cluster.r;
+							this->clusterList[cli].g = pc.cluster.g;
+							this->clusterList[cli].b = pc.cluster.b;
+							colored = true;
+							break;
+						}
 					}
 				}
 			}
+			if (colored == false) { // No parent cluster.
+				if (this->clusterColoringSlot.Param<param::EnumParam>()->Value() == 0) { // Root particle properties.
+					// Use root particle properties for coloring.
+					const Particle* p = &this->particleList[this->clusterList[cli].rootParticleID];
+					const vislib::math::Vector<float, 3> color = this->getColorFromProperties(this->particleList[this->clusterList[cli].rootParticleID]);
+					this->clusterList[cli].r = color.GetX();
+					this->clusterList[cli].g = color.GetY();
+					this->clusterList[cli].b = color.GetZ();
+				}
+				else { // Random color.
+					std::random_device rd;
+					std::mt19937_64 mt(rd());
+					std::uniform_real_distribution<float> distribution(0, 1);
+					this->clusterList[cli].r = distribution(mt);
+					this->clusterList[cli].g = distribution(mt);
+					this->clusterList[cli].b = distribution(mt);
+				}
+			}
 		}
-		if (colored == false) {
-
-			// Use root particle position for coloring.
-			const Particle* p = &this->particleList[this->clusterList[cli].rootParticleID];
-			const vislib::math::Vector<float, 3> color = this->getColorFromProperties(this->particleList[this->clusterList[cli].rootParticleID]);
-			clusterList[cli].r = color.GetX();
-			clusterList[cli].g = color.GetY();
-			clusterList[cli].b = color.GetZ();
-
-			// Set random color. Alternative.
-			//std::random_device rd;
-			//std::mt19937_64 mt(rd());
-			//std::uniform_real_distribution<float> distribution(0, 1);
-			//clusterList[cli].r = distribution(mt);
-			//clusterList[cli].g = distribution(mt);
-			//clusterList[cli].b = distribution(mt);
+		break;
+	case 2: // No inheritance,
+		//#pragma omp parallel for
+		for (int cli = 0; cli < this->clusterList.size(); ++cli) {
+			std::random_device rd;
+			std::mt19937_64 mt(rd()); // Runtime doesn't like concurrency here, though it works in dummy list.
+			std::uniform_real_distribution<float> distribution(0, 1);
+			clusterList[cli].r = distribution(mt);
+			clusterList[cli].g = distribution(mt);
+			clusterList[cli].b = distribution(mt);
 		}
+		break;
 	}
 
 	///
@@ -2390,22 +2434,25 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 	int birthAmount[5] = { 0 };
 
 	for (auto partnerClusters : this->partnerClustersList.backwardsList) { // No parallelization because of little computation and sequential output.
-		// For test output.
-		if (partnerClusters.getBigPartnerAmount(25) > 2)
-			partnerAmount25p3++;
-		if (partnerClusters.getBigPartnerAmount(30) > 1)
-			partnerAmount30p2++;
-		if (partnerClusters.getBigPartnerAmount(30) > 2)
-			partnerAmount30p3++;
-		if (partnerClusters.getBigPartnerAmount(35) > 1)
-			partnerAmount35p2++;
-		if (partnerClusters.getBigPartnerAmount(40) > 1)
-			partnerAmount40p2++;
-		if (partnerClusters.getBigPartnerAmount(45) > 1)
-			partnerAmount45p2++;
-		for (int limit = 0; limit < birthDeathTestAmount; ++limit) {
-			if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= limit + 1) {
-				birthAmount[limit]++;
+		
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+			// For test output.
+			if (partnerClusters.getBigPartnerAmount(25) > 2)
+				partnerAmount25p3++;
+			if (partnerClusters.getBigPartnerAmount(30) > 1)
+				partnerAmount30p2++;
+			if (partnerClusters.getBigPartnerAmount(30) > 2)
+				partnerAmount30p3++;
+			if (partnerClusters.getBigPartnerAmount(35) > 1)
+				partnerAmount35p2++;
+			if (partnerClusters.getBigPartnerAmount(40) > 1)
+				partnerAmount40p2++;
+			if (partnerClusters.getBigPartnerAmount(45) > 1)
+				partnerAmount45p2++;
+			for (int limit = 0; limit < birthDeathTestAmount; ++limit) {
+				if (partnerClusters.getNumberOfPartners() == 0 || partnerClusters.getTotalCommonPercentage() <= limit + 1) {
+					birthAmount[limit]++;
+				}
 			}
 		}
 
@@ -2428,7 +2475,7 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 			se.y = this->particleList[partnerClusters.cluster.rootParticleID].y;
 			se.z = this->particleList[partnerClusters.cluster.rootParticleID].z;
 			se.time = static_cast<float>(this->frameId);
-			se.type = StructureEvents::DEATH;
+			se.type = StructureEvents::BIRTH;
 			this->structureEvents.push_back(se);
 			eventAmount[0]++;
 		}
@@ -2453,11 +2500,23 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 	///
 	/// Set maximum time.
 	///
-	this->seMaxTimeCache = std::max_element(
-		this->structureEvents.begin(), this->structureEvents.end(), [](const StructureEvents::StructureEvent& lhs, const StructureEvents::StructureEvent& rhs) {
-		return lhs.time < rhs.time;
-	})->time;
+	if (this->structureEvents.size() > 0) {
+		this->seMaxTimeCache = std::max_element(
+			this->structureEvents.begin(), this->structureEvents.end(), [](const StructureEvents::StructureEvent& lhs, const StructureEvents::StructureEvent& rhs) {
+			return lhs.time < rhs.time;
+		})->time;
+	}
+	else {
+		if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
+			this->debugFile
+				<< "SECalc step 4: No structure events determined!"
+				<< " " << this->timeOutputCache
+				<< "\n";
+		}
 
+		vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_WARN,
+			"SECalc step 4: No structure events determined!");
+	}
 	///
 	/// Change hash to flag that sedc data has changed.
 	///
@@ -2469,7 +2528,7 @@ void mmvis_static::StructureEventsCalculation::determineStructureEvents() {
 	// Time measurement.
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - time_setStructureEvents);
 	vislib::sys::Log::DefaultLog.WriteMsg(vislib::sys::Log::LEVEL_INFO,
-		"SECalc step 4: Determined structure events (%lld ms).", duration.count());
+		"SECalc step 4: Determined %d structure events (%lld ms).", std::accumulate(eventAmount, eventAmount + 4, 0), duration.count());
 
 	if (this->quantitativeDataOutputSlot.Param<param::BoolParam>()->Value()) {
 		this->logFile
@@ -2514,29 +2573,32 @@ void mmvis_static::StructureEventsCalculation::setClusterColor(const bool renewC
 	/// Colourize cluster.
 	///
 	if (renewClusterColors) {
-		#pragma omp parallel for
-		for (int cli = 0; cli < this->clusterList.size(); ++cli) {
-			
-			// Set color by particle position.
-			//vislib::math::Vector<float, 3> color(p->x, p->y, p->z);
-			//if (p->neighbourIDs.size() > 1) {
-			//	color.Set(static_cast<float>(p->neighbourIDs[0] % 10000), p->y, static_cast<float>(p->neighbourIDs[1]));
-			//}
-			const vislib::math::Vector<float, 3> color = this->getColorFromProperties(this->particleList[this->clusterList[cli].rootParticleID]);
-			clusterList[cli].r = color.GetX();
-			clusterList[cli].g = color.GetY();
-			clusterList[cli].b = color.GetZ();
+		switch (this->clusterColoringSlot.Param<param::EnumParam>()->Value()) {
+		case 0: // Particle properties.
+			#pragma omp parallel for
+			for (int cli = 0; cli < this->clusterList.size(); ++cli) {
+				const vislib::math::Vector<float, 3> color = this->getColorFromProperties(this->particleList[this->clusterList[cli].rootParticleID]);
+				this->clusterList[cli].r = color.GetX();
+				this->clusterList[cli].g = color.GetY();
+				this->clusterList[cli].b = color.GetZ();
 
-			// Set random color.
-			//std::random_device rd;
-			//std::mt19937_64 mt(rd());
-			//std::uniform_real_distribution<float> distribution(0, 1);
-			//clusterList[cli].r = distribution(mt);
-			//clusterList[cli].g = distribution(mt);
-			//clusterList[cli].b = distribution(mt);
-			if (this->clusterList[cli].rootParticleID < 0) { // Debug.
-				printf("Cl: %d.\n", this->clusterList[cli].rootParticleID);
+				if (this->clusterList[cli].rootParticleID < 0) { // Debug.
+					printf("Cl: %d.\n", this->clusterList[cli].rootParticleID);
+				}
 			}
+			break;
+		case 1: // Random.
+		case 2: // Random.
+			//#pragma omp parallel for
+			for (int cli = 0; cli < this->clusterList.size(); ++cli) {
+				std::random_device rd;
+				std::mt19937_64 mt(rd()); // Runtime doesn't like concurrency here, though it works in dummy list.
+				std::uniform_real_distribution<float> distribution(0, 1);
+				this->clusterList[cli].r = distribution(mt);
+				this->clusterList[cli].g = distribution(mt);
+				this->clusterList[cli].b = distribution(mt);
+			}
+			break;
 		}
 	}
 
@@ -2631,8 +2693,8 @@ void mmvis_static::StructureEventsCalculation::setDummyLists(int particleAmount,
 		std::random_device rd;
 		std::mt19937_64 mt(rd());
 		std::uniform_int_distribution<uint64_t> distribution(1, maxParticles);
-		clusterList[i].numberOfParticles = distribution(mt);
-		numberOfParticlesInCluster += clusterList[i].numberOfParticles;
+		this->clusterList[i].numberOfParticles = distribution(mt);
+		numberOfParticlesInCluster += this->clusterList[i].numberOfParticles;
 
 		uint64_t streuung = this->clusterList[i].numberOfParticles / 10;
 		std::uniform_int_distribution<uint64_t> distribution2(this->clusterList[i].numberOfParticles - streuung, this->clusterList[i].numberOfParticles + streuung);
