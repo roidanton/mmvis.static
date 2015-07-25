@@ -2098,7 +2098,7 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 	switch (this->clusterColoringSlot.Param<param::EnumParam>()->Value()) {
 	case 0: // With color inheritance.
 	case 1: // With color inheritance.
-		#pragma omp parallel for
+		//#pragma omp parallel for
 		for (int cli = 0; cli < this->clusterList.size(); ++cli) {
 			bool colored = false;
 			if (this->clusterList[cli].numberOfParticles > 0) {
@@ -2128,7 +2128,7 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 				}
 				else { // Random color.
 					std::random_device rd;
-					std::mt19937_64 mt(rd());
+					std::mt19937_64 mt(rd()); // Runtime doesn't always like concurrency here (crashes), though it works in dummy list.
 					std::uniform_real_distribution<float> distribution(0, 1);
 					this->clusterList[cli].r = distribution(mt);
 					this->clusterList[cli].g = distribution(mt);
@@ -2141,7 +2141,7 @@ void mmvis_static::StructureEventsCalculation::compareClusters() {
 		//#pragma omp parallel for
 		for (int cli = 0; cli < this->clusterList.size(); ++cli) {
 			std::random_device rd;
-			std::mt19937_64 mt(rd()); // Runtime doesn't like concurrency here, though it works in dummy list.
+			std::mt19937_64 mt(rd()); // Runtime doesn't always like concurrency here (crashes), though it works in dummy list.
 			std::uniform_real_distribution<float> distribution(0, 1);
 			clusterList[cli].r = distribution(mt);
 			clusterList[cli].g = distribution(mt);
@@ -2597,7 +2597,7 @@ void mmvis_static::StructureEventsCalculation::setClusterColor(const bool renewC
 			//#pragma omp parallel for
 			for (int cli = 0; cli < this->clusterList.size(); ++cli) {
 				std::random_device rd;
-				std::mt19937_64 mt(rd()); // Runtime doesn't like concurrency here, though it works in dummy list.
+				std::mt19937_64 mt(rd()); // Runtime doesn't always like concurrency here (crashes), though it works in dummy list.
 				std::uniform_real_distribution<float> distribution(0, 1);
 				this->clusterList[cli].r = distribution(mt);
 				this->clusterList[cli].g = distribution(mt);
