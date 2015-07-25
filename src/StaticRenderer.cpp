@@ -173,8 +173,10 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 
 	core::param::EnumParam *timeModeParam = new core::param::EnumParam(0);
 	timeModeParam->SetTypePair(0, "All");
-	timeModeParam->SetTypePair(1, "Current");
-	timeModeParam->SetTypePair(2, "Previous");
+	timeModeParam->SetTypePair(1, "Current +1");
+	timeModeParam->SetTypePair(2, "Current");
+	timeModeParam->SetTypePair(3, "All following");
+	timeModeParam->SetTypePair(4, "All previous");
 	this->timeModeSlot << timeModeParam;
 	this->MakeSlotAvailable(&this->timeModeSlot);
 
@@ -493,11 +495,20 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				switch (this->timeModeSlot.Param<param::EnumParam>()->Value()) {
 				case 0: // All.
 					break;
-				case 1: // Current.
+				case 1: // Current +1
+					if (*timePtrf > floor(callRender->Time()) + 1 ||
+						*timePtrf < floor(callRender->Time()))
+						continue;
+					break;
+				case 2: // Current.
 					if (*timePtrf != floor(callRender->Time()))
 						continue;
 					break;
-				case 2: // Previous.
+				case 3: // All following
+					if (*timePtrf < callRender->Time())
+						continue;
+					break;
+				case 4: // All previous.
 					if (*timePtrf > callRender->Time())
 						continue;
 					break;
