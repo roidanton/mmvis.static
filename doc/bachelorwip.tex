@@ -14,6 +14,7 @@
 \subject{Arbeitsname Bachelorarbeit}
 %\subject{bachelor}
 \title{Visualisierung von Strukturveränderungen in Molekulardynamikdaten}
+%Zweittitel: Ritterspiele im Bällebad (Glyphen/blaues Kreuz (Death) in bunten Kugeln) - props to Caro
 \thesis{Bachelor WIP}
 %\thesis{bachelor}
 
@@ -49,117 +50,153 @@
 
 Die visuelle Analyse spielt für komplexe, partikelbasierte Daten, wie sie beispielsweise in der Molekulardynamik entstehen, eine immer wichtiger werdende Rolle. Da die Datensätze immer größer werden, gewinnen abstrahierte Visualisierungen zur Vermittlung eines Überblicks zunehmend an Bedeutung. Kritisch ist hierbei vor allem die Darstellung zeitlicher Entwicklungen. Üblicherweise werden diese als Animation oder in rein abstrakter Form dargestellt. Diese Visualisierungen bieten nur einen schlechten zeitlichen Überblick oder stellen kaum Bezug zum ursprünglich simulierten Ortsraum dar.
 
-Ziel dieser Arbeit ist es daher an einem konkreten Beispiel eine Visualisierung zu entwickeln, die im geometrischen Kontext der Originaldaten die zeitliche Entwicklung der Struktur des Datensatzes darstellt. [... Aufgabenstellung]
+Ziel dieser Arbeit ist es daher an einem konkreten Beispiel eine Visualisierung zu entwickeln, die im geometrischen Kontext der Originaldaten die zeitliche Entwicklung der Struktur des Datensatzes dar-stellt. Der zu untersuchende Datensatz (exp2mill.mmpld, 2 Mio. Partikel, 150 Zeitschritte) zeigt einen Flüssigkeitsfilm im Vakuum, der aufgrund seines übergroßen Innendrucks explodiert. Hierbei bilden sich Molekülcluster, -Tröpfchen und –Filamentstrukturen, welche sich über die Zeit hinweg verändern (aufspalten und verschmelzen).
+
+Zunächst soll der Datensatz in mehreren Stufen analysiert werden. Ein erster Schritt bestimmt die Interface-Grenzen zwischen der flüssigen Phase und dem Vakuum, bzw. in späteren Zeitschritten der Gasphase. In einem zweiten Schritt wird auf dieser Basis eine vorzeichenbehaftete Distanzfunktion aufgestellt, die für alle Partikel die Entfernung zum Rand bestimmt. Für diese beiden Arbeitsschritte kann auf bestehenden Quellcode zurückgegriffen werden. Anschließend wird, auf Basis eines vom Benutzer vorgegebenen Schwellwerts die Struktur der Daten, in Form von Clustern/Knoten und Verbindungen, vergleichbar zu einem Contour-Tree extrahiert. Besondere zeitliche Ereignisse sind gekennzeichnet durch Änderungen in dieser Struktur (Split, Merge, Birth, Death). Diese Ereignisse werden, beispielsweise über Glyphen, in einer zeitunabhängigen Ansicht in Ortsraumkoordinaten des Originaldatensatzes visualisiert.
+
+Die entstandene Lösung soll in zweierlei Hinsicht evaluiert werden. Zum einen betrifft dies die Berechnungsgeschwindigkeit. Hierbei ist jedoch eine umfassende Optimierung nicht so wichtig wie die grundsätzliche Komplexität und Skalierbarkeit der eingesetzten Algorithmen. Als zweites soll die entstandene Visualisierung in einer informellen Diskussion mit Experten (auch per E-Mail) bewertet werden.
+
 
 \chapter{Einleitung}
+%eigene Interpretation Aufgabenstellung
+%eigene Schwerpunkte
+%Probleme/Herausforderung
+%Vorabblick auf die Lösung
 
-eigene Interpretation Aufgabenstellung
-eigene Schwerpunkte
-Probleme/Herausforderung
-Vorabblick auf die Lösung
+Atome und Moleküle bestimmten Orten in festen, flüssigen, gasförmigen oder plasmatischen Phasen zuzuordnen, ist eine wesentliche Grundlage zahlreicher Anwendungen der Materialwissenschaft, der Physik oder der Chemie. %TODO Quellen dünne Schichten, Turbinen, Laser cluster (TUDD), droplet
+%\cite{yang2008waterDroplet} \cite{alexander2011clusteringBioPymol}.
+%In der Molekulardynamik variiert die Art der Zuordnung je nach zugrundeliegenden Datentyps, Datengröße sowie Zielstellung der Berechnung oder Visualisierung .
+Durch Diffusion oder Konvektion kann sich die Zugehörigkeit dieser Teilchen zu bestimmten Agglomerationen über die Zeit ändern. Agglomerationen können Molekülcluster, -tröpfchen und –filamentstrukturen sein. Da in den Agglomerationen die Teilchen eine räumliche Nähe zueinander aufweisen und auch durch chemische Bindungen zusammenhängen können, ist eine Betrachtung als Zusammenhangskomponente möglich.
+
+Molekulardynamische Berechnungen ermöglichen die Vorhersage von Materialverhalten. Sie werden aufgrund des hohen Berechnungsaufwandes verursacht durch die komplexen Struktur-Eigenschafts-Beziehungen von Atomen und Molekülen meist im nanoskopischen Bereich mit begrenzter Anzahl von betrachteten Teilchen durchgeführt. Dieser Arbeit liegt ein Datensatz mit zwei Millionen Partikeln in einer Flüssigkeitsphase zugrunde, die sich im Zentrum eines evakuiertem Quaders befindet. Durch den hohen Druckunterschied zwischen der Flüssigkeit und dem des sie umgebenden Vakuums expandiert sie explosionsartig. Dabei entstehen Filamentstrukturen und Tröpfchen. Auch gehen Partikel von der Flüssigkeits- in die Gasphase über.
+
+Die Partikel liegen als diskrete Topologie, das heißt mit voneinander disjunkten Positionen vor. Bis auf die räumliche Nähe weisen sie keine Zusammenhänge auf. Jeder Partikel besitzt einen \contour{Tiefenwert}, der unter anderem markiert, ob er sich in der flüssigen oder gasförmigen Phase befindet.
+
+Um die Bewegung der Partikel verfolgen zu können, werden sie in Gruppen eingeteilt, ähnlich der Zusammenhangskomponenten. Da jedoch auch Strukturereignisse innerhalb dieser Komponenten erkannt werden sollen, erfolgt eine wesentlich feinere Zuordnung in sogenannte Cluster. Diese Cluster können eine gesamte Zusammenhangskomponente beinhalten oder auch nur ein Teil deren sein.
+
+Daher liegt ein Schwerpunkt der Arbeit auf der Clustererzeugung, wozu der \CFDterm{Fast-Depth-Algorithmus} entwickelt wurde. Er ermöglicht eine reproduzierbare Einteilung der Partikel innerhalb von Zusammenhangskomponenten, erzeugt über mehrere Zeitschritte jedoch ein Rauschen, da Änderungen in der Partikelstruktur eine andere Clusterbildung zur Folge haben.
+
+Der zweite und der dritte Schwerpunkt und auch das Ziel dieser Arbeit sind die Erkennung der Ereignisse sowie deren Visualisierung im Raum der Partikel. Die Erkennung erfolgt auf Basis eines Vergleichs der gebildeten Cluster über zwei Zeitschritte und nutzt ein heuristisches Vorgehen. Die Analyse der daraus entstehenden Daten ermöglicht die Auswahl bestimmter Parameter, die zur Steuerung der Anzahl und der Qualität der erkannten Ereignisse dienen.
+Da die Partikel als dreidimensionale Kugeln dargestellt werden,
+%TODO Bild Partikel
+sollte die Ereignisdarstellung ebenfalls mit dreidimensionalen Glyphen durchgeführt werden, um die Konsistenz in der Anzeige zu erhalten. Die Erstellung eines Prototypen hat jedoch gezeigt, dass Formen abseits von Kugeln, wie die im Prototyp verwendeten Polygone, eine Erkennung erschweren. So werden im Ergebnis 3D Sprites (im Folgenden als \viss{Billboards}{Billboard} bezeichnet) verwendet, die sich stark von den Partikeln abheben und damit gut sichtbar sind. Weiterhin wird eine Taxonomie für eine Verknüpfung bestimmter visueller Attribute mit den Ereignisparametern vorgeschlagen, die zur Gestaltung und Positionierung der Glyphen dient. Ein im Rahmen dieser Arbeit erstellter Renderer ermöglicht eine Filterung und Skalierung der Glyphen, so dass der Anwender die Darstellung seinen Bedürfnissen nach anpassen kann.
+
+Eine Herausforderung stellt der Ansatz für die Clusterbildung dar. Dies kann über den \contour{Tiefenwert} der Partikel kombiniert mit Abstandsmessungen geschehen oder über die Bestimmung ihrer Nachbarschaftsbeziehungen. Der Aufwand für beide Berechnungen skaliert mit $\mathcal{O}(n^2)$ mit $n$ als Partikelanzahl. %Detaillierter im Abschnitt Nachbarschaftssuche
+Unklar ist zu Beginn, wie die Aufteilung der Zusammenhangskomponenten in einzelne Cluster erfolgen kann. %verwandte Arbeiten/lokale MAxima helfen...
+Weiterhin musste geprüft werden, ob Ereignisse durch die Untersuchung einzelner Partikel, durch topologische Veränderungen der durch die Partikel beschriebene Grenze (keine Grenzfläche, da diskrete und keine kontinuierlichen Daten vorliegen), durch die Nachbarschaften von Clustern oder über Mengenvergleiche erkennbar sind.
+
+Die gesamte Berechnung soll testfähig sein. Das bedeutet, dass die Berechnungen der Cluster für einen Zeitpunkt des zwei Millionen Partikel großen Datensatzes innerhalb von Minuten und nicht von Stunden abgeschlossen sein muss. Erkenntnisse aus der Skelettextraktion, der Behandlung von Laserscandaten sowie die Nutzung von Konturbäumen helfen bei der Entwicklung.
+
+
 
 \chapter{Verwandte Arbeiten}
+Für die Zuordnung von Teilchen zu Agglomerationen bzw. Zusammenhangskomponenten ist das Wissen über deren räumliche Begrenzung Voraussetzung, das Wissen über ihre Topologie. Dazu ist es notwendig, den Oberflächenverlauf oder Positionsinformationen über das Volumen zu kennen. Die Volumen- und Oberflächenbestimmung von großen Datensätzen ist bei Skelettextraktionen untersucht, die zum Beispiel die durch Laserscanverfahren ermittelte Daten auswerten. Weiterhin wurden Datenstrukturen entwickelt, um räumliche Datensätze beliebiger Dimensionen anhand ihrer Funktionswerte in Zusammenhangskomponenten einzuteilen. Sie werden als Konturbäume bezeichnet.
 
-Die Arbeit behandelt zwei voneinander unabhängige Bereiche. Zum Einen werden Elemente eines Vektorraumes in Gruppen zusammengefasst, zum Anderen werden Ergebnisse innerhalb dieses Vektorraumes dargestellt. Der erste Schritt beinhaltet die Erkennung von Strukturen, der zweite Schritt die Erstellung grafischer Elemente.
+Anschließend wird auf die Visualisierung großer Datenmengen und Zeitverläufe eingegangen.
 
-\section{Clustering und Oberflächenextraktion}
-
-Atome und Moleküle bestimmten Orten in festen, flüssigen, gasförmigen oder plasmatischen Phasen zuzuordnen, ist eine wesentliche Grundlage der Materialwissenschaft. %QUELLEN DÜNNE SCHICHTEN ETC \cite{yang2008waterDroplet} \cite{alexander2011clusteringBioPymol}.
-%In der Molekulardynamik variiert die Art der Zuordnung je nach zugrundeliegenden Datentyps, Datengröße sowie Zielstellung der Berechnung oder Visualisierung .
-Durch Diffusion oder Konvektion kann sich die Zugehörigkeit dieser Teilchen zu bestimmten Agglomerationen über die Zeit ändern. Agglomerationen können Molekülcluster, -tröpfchen und –filamentstrukturen sein. 
-
-Für die Zuordnung von Teilchen zu Agglomerationen ist das Wissen über deren räumliche Begrenzung Voraussetzung. Dazu ist es notwendig, den Oberflächenverlauf oder Positionsinformationen über das Volumen zu kennen. Die Volumen- und Oberflächenbestimmung von großen Datensätzen ist zum Beispiel bei Skelettextraktionen und Laserscanverfahren untersucht.
-
-\subsection*{Skelettextraktion}
-Skelettextraktionsverfahren nutzen Oberflächen oder Volumen dazu, eine (volumenlose) 1D Skelettkurve zu erstellen, die die Oberfläche oder das Volumen eines 3D Objektes durch ihren Bogenverlauf abbildet und zusätzliche Eigenschaften als Metadaten enthält wie z.B. die Volumendicke \cite{au2008skeletonExtractionbyMeshContraction}. Palágyi vergleicht die Kurve mit einem brennenden Gegenstand, der von allen Seiten gleichmäßig niederbrennt. Die Stellen, an denen sich das Feuer auslöscht, bilden das Skelett des Gegenstandes \cite{palagyi2008parallelSurfaceThinning}. Blum nennt sie Medialachsenskelette \cite{blum1967descriptorsOfShape}. Daneben gibt es, abhängig vom Skelettermittlungsverfahren weitere Skeletttypen wie z.B. Kurvenskelette \cite{dey2006CurveSkeletonsMedialGeodesicFunction} \cite{cornea2007curveSkeletonProperties} oder die durch down-sampling davon abgeleiteten Knochenskelette, die vor allem in der Charakteranimation \cite{wang2007envelopingRotiationalRegression} und Meshdeformation \cite{weber2007contextAwareSkeletalShapeDeformation} eingesetzt werden.
-Um Skelette aus Oberflächendaten zu berechnen, kommen zum Beispiel Voronoidiagramme zum Einsatz, mit denen der Raum in Regionen aufgeteilt wird und die mediale Oberflächen aus den inneren Kanten und Flächen des Diagramms extrahieren \cite{dey2006CurveSkeletonsMedialGeodesicFunction}. Eine Alternative ist die Nutzung des Reebgraphen, dessen Knoten die kritischen Punkte einer auf die Oberfläche angewandten reellwertigen Funktion sind, welche Topologieänderungen der Oberfläche entsprechen \cite{pascucci2007computationReebGraph}. Der Graph liegt etwa der Laplaceglättung zugrunde, bei der mehrerer Vertices eines Meshes zu einem Vertex zusammengefasst werden und so das Objekt verkleinert wird \cite{au2008skeletonExtractionbyMeshContraction}. Weitere Methoden sind das Ausdünnen beim Vorliegen von binären Daten (Daten mit nur zwei Intensitätszuständen, wie z.B. schwarz-weiß Bilder) durch schrittweises Entfernen der äußeren Datenpunkte \cite{palagyi2008parallelSurfaceThinning}, die Berechnung mittels mittleren Krümmungsflusses, wo die Bewegungsgeschwindigkeit der Normalen eines Punktes auf der Oberfläche vom Krümmungsradius der Oberfläche an diesem Punkt abhängt \cite{tagliasacchi2012meanCurvatureSkeletons} oder Meshzerlegungen unter Beachtung der geodätischen Abstände sowie von konvexen Verläufen und Verlinken der Komponenten \cite{katz2003meshDecomposition}.
+\section{Skelettextraktion}
+Skelettextraktionsverfahren nutzen Oberflächen oder Volumen dazu, eine (volumenlose) 1D Skelettkurve zu erstellen, die die Oberfläche oder das Volumen eines 3D Objektes durch ihren Bogenverlauf abbildet und zusätzliche Eigenschaften als Metadaten enthält wie z.B. die Volumendicke \cite{au2008skeletonExtractionbyMeshContraction}. Palágyi vergleicht die Kurve mit einem brennenden Gegenstand, der von allen Seiten gleichmäßig niederbrennt. Die Stellen, an denen sich das Feuer auslöscht, bilden das Skelett des Gegenstandes \cite{palagyi2008parallelSurfaceThinning}. Blum nennt sie Medialachsenskelette \cite{blum1967descriptorsOfShape}. Daneben gibt es, abhängig vom Skelettermittlungsverfahren weitere Skeletttypen wie z.B. Kurvenskelette \cite{dey2006CurveSkeletonsMedialGeodesicFunction} \cite{cornea2007curveSkeletonProperties} oder die durch down-sampling davon abgeleiteten Knochenskelette, die vor allem in der Charakteranimation \cite{wang2007envelopingRotiationalRegression} und Netzdeformation \cite{weber2007contextAwareSkeletalShapeDeformation} eingesetzt werden.
+Um Skelette aus Oberflächendaten zu berechnen, kommen zum Beispiel Voronoidiagramme zum Einsatz, mit denen der Raum in Regionen aufgeteilt wird und die mediale Oberflächen aus den inneren Kanten und Flächen des Diagramms extrahieren \cite{dey2006CurveSkeletonsMedialGeodesicFunction}. Eine Alternative ist die Nutzung des Reebgraphen, dessen Knoten die kritischen Punkte einer auf die Oberfläche angewandten reellwertigen Funktion sind, welche Topologieänderungen der Oberfläche entsprechen \cite{pascucci2007computationReebGraph}. Der Graph liegt etwa der Laplaceglättung zugrunde, bei der mehrere Eckpunkte eines Netzes zu einem Vertex zusammengefasst werden und so das Objekt verkleinert wird \cite{au2008skeletonExtractionbyMeshContraction}. Weitere Methoden sind das Ausdünnen beim Vorliegen von binären Daten (Daten mit nur zwei Intensitätszuständen, wie z.B. schwarz-weiß Bilder) durch schrittweises Entfernen der äußeren Datenpunkte \cite{palagyi2008parallelSurfaceThinning}, die Berechnung mittels mittleren Krümmungsflusses, wo die Bewegungsgeschwindigkeit der Normalen eines Punktes auf der Oberfläche vom Krümmungsradius der Oberfläche an diesem Punkt abhängt \cite{tagliasacchi2012meanCurvatureSkeletons} oder Netzzerlegungen unter Beachtung der geodätischen Abstände sowie von konvexen Verläufen und Verlinken der Komponenten \cite{katz2003meshDecomposition}.
 Die Berechnung von Skeletten aus Volumendaten erfolgt ebenfalls durch Ausdünnung, etwa von Voxeln durch schrittweises Entfernen der äußeren Voxel \cite{ma2002TopologyPreservingReduction}, durch vorherige Verkleinerung der Volumenmodelle \cite{wang2008curveSkeletonExtraction} oder durch Distanzfeldmethoden, bei denen ein Distanzfeld für jeden inneren Punkt aufgebaut wird, das die Entfernung zum Rand des Objektes enthält und daraus bestimmte Voxel ausgewählt werden, die bei einer Verbindung untereinander eine mediale Oberfläche erzeugen \cite{hassouna2005robustCenterlineExtraction}. Andere Feldmethoden nutzen einen Potentialwert für innere Punkte durch Einbeziehung mehrerer Randvoxel und sind somit weniger anfällig für Rauschen, jedoch aufwändiger in der Berechnung \cite{cornea2005hierarchicalCurveSkeletons}. Diese Liste ist nur ein Auszug von üblichen Methoden. Für Kurvenskelette gibt \cite{cornea2007curveSkeletonProperties} eine umfassende Methodenübersicht.
 
-Den Methoden ist gemeinsam, dass sie die vorhandenen Oberflächen- oder Volumendaten diskretisieren müssen, sollten sie als kontinuierliche Funktionen vorliegen, und die Daten durch eine Bewegung von außen nach innen reduzieren, wodurch eine ursprünglich große Datenmenge durch wenige Knoten repräsentiert werden kann und somit ein Einsatz vor allem in Echtzeitanwendungen findet. Die Verfahren haben dabei mit Problemen wie fehlende Wiedergabe von Oberflächenbeschaffenheiten, insbesondere bei Ausdünnungsverfahren, mit Rauschen oder mit numerischen Instabilitäten bei schlechter Datendiskretisierung zu kämpfen und benötigen teilweise umfangreiche Pre- oder Postprocessingverfahren etwa zum Entfernen von Artefakten oder zum nachträglichen Zentrieren des Skeletts \cite{cornea2007curveSkeletonProperties}.
+Den Methoden ist gemeinsam, dass sie die vorhandenen Oberflächen- oder Volumendaten diskretisieren müssen, sollten sie als kontinuierliche Funktionen vorliegen, und die Daten durch eine Bewegung von außen nach innen reduzieren, wodurch eine ursprünglich große Datenmenge durch wenige Knoten repräsentiert werden kann und somit ein Einsatz vor allem in Echtzeitanwendungen findet. Die Verfahren haben dabei mit Problemen wie fehlender Wiedergabe von Oberflächenbeschaffenheiten, insbesondere bei Ausdünnungsverfahren, mit Rauschen oder mit numerischen Instabilitäten bei schlechter Datendiskretisierung zu kämpfen und benötigen teilweise umfangreiche Pre- oder Postprocessingverfahren etwa zum Entfernen von Artefakten oder zum nachträglichen Zentrieren des Skeletts \cite{cornea2007curveSkeletonProperties}.
 
-Die Distanzfeldmethoden bieten Möglichkeiten, den Partikelabstand zum Rand des Clusters zu bestimmen.
+%Die Distanzfeldmethoden bieten Möglichkeiten, den Partikelabstand zum Rand des Clusters zu bestimmen.
 
-Absatz falsch --
-Für die Bestimmung der Zugehörigkeit von Partikeln zu Clustern können die in der Skelettextraktion verwendeten Methoden jedoch nicht übernommen werden, da sie Fokus auf die Bewahrung der Oberflächentopologie legen, die bei der Erkennung von Strukturereignissen eine geringere Rolle spielt (nicht wahr, da Löcher etc doch interessieren!) und zudem Daten aus der Oberfläche und dem Volumen entfernen und damit die für die Ereigniserkennung notwendige Wanderung von Partikeln nicht verfolgt werden kann.
--- /Absatz falsch!
+Für die Bestimmung der Zugehörigkeit von Partikeln des dieser Arbeit vorliegenden Partikeldatensatzes zu Agglomerationen können diese in der Skelettextraktion verwendeten Methoden nicht übernommen werden. Zum Einen basieren viele auf Netzdaten, bei denen die Punkte des Datensatzes im Gegensatz zum Datensatz dieser Arbeit miteinander in Beziehung stehen. Zum Anderen sind auch solche Verfahren ungeeignet, die als Datengrundlage vollständige Punktmengen \cite{wang2008curveSkeletonExtraction} \cite{sharf2007onTheFlyCurveSkeleton} oder bei Laserscanverfahren unvollständig ermittelte Punktmengen \cite{tagliasacchi2009curveIncompletePointCloud} verwenden. Denn die Daten werden derart reduziert, dass die für die Ereigniserkennung notwendige Wanderung von Partikeln nicht verfolgt werden kann. Hingegen ist die Idee des Reebgraphen \cite{pascucci2007computationReebGraph}, die eine auf kritische Punkte beschränkte Struktur darstellt, ein guter Ansatz für eine mögliche Einteilung der Strukturen in Cluster.
 
-\subsection*{Agglomerationen}
+%da sie Fokus auf die Bewahrung der Oberflächentopologie legen, die bei der Erkennung von Strukturereignissen eine geringere Rolle spielt (nicht wahr, da Löcher etc doch interessieren!) und zudem Daten aus der Oberfläche und dem Volumen entfernen und damit die für die Ereigniserkennung notwendige Wanderung von Partikeln nicht verfolgt werden kann.
 
-%Zusammenhangskomponenten -> Laserscanzeug, Punktwolken
 
-Es existiert eine Implementation für MolCloud für die Zuordnung von Teilchen zu Agglomerationen und die Verfolgung der Wanderung zwischen den Agglomerationen. Die Berechnungen basieren auf zwei Varianten. Eine Variante berücksichtigt nur die geometrische Position der Partikel, eine andere ihre energetischen Eigenschaften (vgl Potentialfeld). Sie liefern jedoch unzureichende Ergebnisse, so werden beispielsweise zu viele oder zu große Cluster erkannt \cite{vis07grottel}. Auch besitzt der Benutzer keine Möglichkeit, Einfluss auf die Clustererkennung zu nehmen.
+\section{Zusammenhangskomponenten und Konturbäume}
 
-Die vollständige Zuordnung von Partikeln zu Agglomerationen als auch eine benutzergesteuerte Eingabe für die Kontrolle eines Schwellwertes, ab wann Cluster als solche erkannt werden, bieten Konturbäume.
+Um die Bewegung der Partikel verfolgen zu können, ist die Bildung von Zusammenhangskomponenten sinnvoll. Dabei werden Partikel zu Gruppen zusammengefasst, so dass die Wanderung von Partikeln im Verlauf der Zeit von einer zur nächsten Gruppe sichtbar wird. Diese Gruppen können mit den eingangs erwähnten Agglomerationen gleichgesetzt werden.
 
-\subsection*{Konturbäume}
+Zusammenhangskomponenten können bei Daten, die in einem Gitter angeordnet sind, durch Einteilung der Daten in Segmente parallel verarbeitet und damit schneller gefunden werden \cite{trevor2013efficient}. Die Erzeugung von Zusammenhangskomponenten aus Punktdaten ist über die Herstellung von Nachbarschaftsinformationen dieser Punkte möglich. Klasing et al. nutzen dabei einen definierten Maximalabstand, in dem Punkte noch als Nachbarn gelten und beschreiben eine effektive Implementation ohne die Nutzung von Baumstrukturen \cite{klasing2008efficientSegmentationOf3DLaserData}. Dies kann hier aufgrund der Erfordernis einer vollständigen Datenstruktur nicht angewandt werden. Jedoch wird in dieser Arbeit die radienbasierte Nachbarschaftssuche als Grundlage für die Clusterbildung verwendet (siehe \autoref{sec:nachbarschaftssuche}).
+%Fortsetzung in Nachbarschaftssuche
 
-Konturbäume sind für beliebige Dimensionen geeignet, setzen jedoch wie die Skelettextraktionsverfahren diskrete Wertefelder oder Meshes voraus.
+%TODO Zusammenhang zwischen den anderen Abschnitten nicht klar: Es existiert eine Implementation für MolCloud, dem Vorgänger des zugrundeliegenden Frameworks MegaMol, für die Zuordnung von Teilchen zu Zusammenhangskomponenten und die Verfolgung der Wanderung zwischen diesen Komponenten. Die Berechnungen basieren auf zwei Varianten. Eine Variante berücksichtigt nur die geometrische Position der Partikel, eine andere ihre energetischen Eigenschaften, vergleichbar zum Potentialfeld bei Skelettextraktionen \cite{cornea2005hierarchicalCurveSkeletons}.
+%TODO Doof Begründung, vorhergehender Abschnitt zu unklar formuliert: Sie liefern jedoch unzureichende Ergebnisse, so werden beispielsweise zu viele oder zu große Cluster erkannt \cite{vis07grottel}. Auch besitzt der Benutzer keine Möglichkeit, Einfluss auf die Clustererkennung zu nehmen.
 
--> nur ganz grob Konturbaum erklären, kommt in den Grundlagen; eher auf die Nutzungsart eingehen! -> Der Konturbaum ist ein Graph, der die Konturen der Niveaumengen im Verbinden und Erscheinen oder Trennen und Sterben verfolgt.
--> die Graphknoten werden wie beim Reebgraph auch aus kritischen Punkten heraus gebildet, vgl zur Skelettexktraktion aus Oberflächen mittels Reebgraphen erwähnen! Ein Konturbaum ist nichts anderes als eine spezielle Version des Reebgraphen für reellwertige Skalarfelder (beliebiger Dimensionen) == simple scalar fields whose domain is homologous to R \cite[S.~44]{carr2010flexibleIsosurfaces}.
--> hier keine Zeitabhängigkeit, deswegen Algo von 2001 iO
--> \cite{chiang2005contourTreesUsingMonotonePaths} geben mit dem Monotonpfadalgorithmus einen Vorschlag für einen schnelleren und vor allem speichersparenderen Algorithmus an, indem für die Berechnung der Verbindungs- und Teilungsbäume nur die kritischen Punkte wie Minima, Maxima und Sattelpunkte genutzt werden. Allerdings ist für die Erkennung der Strukturereignisse jeder Partikel relevant, die in den Zusammenhangskomponenten des Monotonpfadalgorithmus jedoch nicht vollständig vorhanden sind.
+\contours{Konturbäume}{Konturbaum} bieten die Möglichkeit, Datenelemente anhand ihres Funktionswertes zu gruppieren und für verschiedene Funktionswerte Zusammenhangskomponenten erkennen zu können \cite{vanKreveld1997isosurfaceTraversal} \cite{bajaj1997contourSpectrum}. Diese Flexibilität ist ihr Vorteil. Weiterhin kann mit ihnen festgestellt werden, wann die Zusammenhangskomponenten entstehen, wann sie verschwinden, sich verbinden und sterben, analog zu den mit dieser Arbeit zu erkennenden Strukturereignissen.
+%Die vollständige Zuordnung von Partikeln zu Agglomerationen als auch eine benutzergesteuerte Eingabe für die Kontrolle eines Schwellwertes, ab wann Cluster als solche erkannt werden, bieten Konturbäume.
+Sie sind für beliebige Dimensionen geeignet, setzen jedoch wie die Skelettextraktionsverfahren Daten in einer Netz- oder Gitterstruktur voraus, denen ein Skalarfeld zugeordnet ist. Dieses weist jedem Punkt einen Funktionswert zu.
 
-Wo verwendet:
-\blockcquote[1]{carr2009representingInterpolantTopology}{the contour tree, which has been used for isosurface extraction [31, 5], for abstract representation of the field [1, 24, 7], to index individual contours [3, 14, 5] and their geometric properties [7], to guide simplification of input meshes [10], and to compare scalar fields [33].
-Although recent algorithms for computing the contour tree are efficient, they were originally defined only for simplicial meshes [1, 6], then extended to trilinear meshes [24] and digital images [18].}
+Der \contour{Konturbaum} ist ein Graph, der die \contours{Konturen}{Kontur} von Niveaumengen im Verbinden und Entstehen oder Trennen und Sterben verfolgt. Eine Niveaumenge ist die Menge aller Punkte einer Funktion bzw. eines Skalarfeldes, denen ein gleicher Wert zugeordnet ist. Dieser Wert wird nach \cite[S.~1]{carr2010flexibleIsosurfaces} als \contour{Isowert} bezeichnet. Im Zweidimensionalen werden damit \contours{Isolinien}{Isolinie} erzeugt, im Dreidimensionalen sind es \contours{Isooberflächen}{Isooberfläche}. Sie finden zum Beispiel bei der Visualisierung von Höhendaten auf topografischen \cite{hurni2010landform} \cite{openstreetmapContours}, von Temperatur-, Wind- und Luftdruckdaten auf meteorologischen Landschaftskarten \cite{hopkins1996weather} oder von Gewebestrukturen auf Computertomographieaufnahmen \cite{tang2014ctImages} Verwendung.
+Der dieser Arbeit zugrundeliegende Datensatz befindet sich in einem dreidimensionalen Raum, so dass sich auf \contours{Isooberflächen}{Isooberfläche} beschränkt wird. Diese Oberflächen schließen ein Volumen ein. Die Partikel innerhalb des Volumens bilden eine oder mehrere Zusammenhangskomponenten, die als \contours{Konturen}{Kontur} bezeichnet werden \cite[S.~2]{carr2001computingCountourTrees}.
 
-Dateigröße von Datensätzen, Echtzeitdarstellung
+\subsection*{Kritische Funktionswerte zur Erkennung von Konturveränderungen}
+Um die Entwicklung dieser \contours{Konturen}{Kontur} zu verfolgen, ist die Erkennung sogenannter kritischer Funktionswerte notwendig, die bei einem derartigen \contour{Isowert} auftreten, bei dem sich die Topologie oder Anzahl der \contours{Konturen}{Kontur} ändert. In der Morsetheorie ist ein Punkt dann ein kritischer Punkt, wenn kein Gradient vorhanden ist  \cite{milnor1963morse} \cite{shinagawa1991surfaceBasedOnMorse}. Damit setzen die Theoreme voraus, dass sich an diesen Punkten die Topologie der Niveaumenge ändert. Bei einer abschnittsweisen linearen Funktion heißt das, wenn der \contour{Isowert} durch den Funktionswert verläuft und sich dabei die Topologie der Niveaumenge ändert, dann ist es ein kritischer Funktionswert. Alle anderen sind reguläre Funktionswerte \cite{carr2010flexibleIsosurfaces} \cite{chiang2005contourTreesUsingMonotonePaths}.
 
-\section{Visualisierung}
+\subsection*{Abtastalgorithmus}\label{sec:related:konturAbtast}
+Konturbäume enthalten Funktionswerte in Form von Minima, Maxima und Sattelpunkten. Nicht jeder dieser Werte ist ein kritischer Funktionswert. Der Konturbaum wird mit einem Algorithmus in vier Schritten gebildet.
 
-TODO Diagramme vielleicht
-TODO Juxtaposition etc
-TODO Glyphdesign
+Da die Daten in einem Gitter oder Netz vorliegen und ihnen ein Skalarfeld zugeordnet ist, werden sie als erstes nach ihrem des im Skalarfeld enthaltenem Funktionswert sortiert. Anschließend werden in jeweils einem Schritt zwei Bäume erstellt, indem die Punkte einmal vom kleinsten zum größten Funktionswert und ein zweites Mal vom größten zum kleinsten Wert durchlaufen werden. Die Knoten des Baumes bilden \contours{Isowerte}{Isowert}, bei denen Niveaumengen entstehen, teilen, verbinden oder verschwinden. Geschlechtsänderungen werden nicht beachtet. Die Kanten bilden äquivalente \contours{Konturen}{Kontur}. Dabei entstehen ein Verbindungs- und ein Teilungsbaum \cite{carr2001computingCountourTrees_web}. Schließlich werden im vierten Schritt beide Bäume zusammengefügt, wobei alle Knoten mit dem Grad zwei entfernt werden. Dieser resultierende Baum wird Konturbaum genannt und die Methodik als Abtastalgorithmus bezeichnet \cite{carr2001computingCountourTrees} \cite[S.~176]{chiang2005contourTreesUsingMonotonePaths}.
 
-\chapter{Überblick über die Arbeit}
+%TODO Bilder Konturbaumalgorithmus: \cite[S.~1]{chiang2005contourTreesUsingMonotonePaths} Fig. 1, \cite[S.~44]{carr2010flexibleIsosurfaces} Fig. 2
+
+Da die Konturbäume nur kritische Funktionswerte beinhalten, sind sie eine spezielle Version der auch bei Skelettextraktionsverfahren verwendeten Reebgraphen \cite{pascucci2007computationReebGraph} für reellwertige Skalarfelder \cite[S.~44]{carr2010flexibleIsosurfaces}. Diese speziellen Reebgraphen finden auch Anwendung bei Varianten des Konturbaums. Beispielsweise bietet das Multi-Resolution-Verfahren umfangreichere Filtermöglichkeiten durch Erweiterung des Konturbaumes, ist jedoch auch langsamer \cite{pascucci2004multiResolutionComputation}. Hingegen ist ist ein schnelleres und speichersparenderes Verfahren der Monotonpfadalgorithmus, der nur eine für die aktuelle Betrachtung interessante Teilmenge der kritischen Werte im Baum speichert \cite{chiang2005contourTreesUsingMonotonePaths}.
+
+Dem Abtastalgorithmus des Konturbaums, der davon abgeleiteten Varianten sowie einiger Skelettextraktionsverfahren ist gemeinsam, dass sie kritische Werte des über den Daten liegenden Skalarfeldes nutzen, um räumliche Strukturen zu analysieren und zu speichern. Leider können diese Methoden auf den dieser Arbeit zugrundeliegenden Datensatz nicht angewandt werden. Zwar enthält der Partikeldatensatz ebenfalls ein Skalarfeld, das jedem Datenpunkt bzw. Partikel einen Funktionswert zuweist, jedoch sind keine Zusammenhänge zwischen den Partikeln bekannt. Dagegen sind die vorgestellten Methoden für in Gittern oder Netzen vorliegende Daten ausgelegt bzw. sie werden aus kontinuierlichen Flächen in beispielsweise simpliziale Netze umgewandelt. Carr fast dies in einer Arbeit zusammen:
+\blockcquote[1]{carr2009representingInterpolantTopology}{[The contour tree] has been used for isosurface extraction, for abstract representation of the field, to index individual contours and their geometric properties, to guide simplification of input meshes, and to compare scalar fields.
+Although recent algorithms for computing the contour tree are efficient, they were originally defined only for simplicial meshes, then extended to trilinear meshes and digital images.}
+
+Dennoch kann ein Teil des Abtastalgorithmus als Ideengeber verwendet werden. Die Bildung des Verbindungsbaumes lässt sich auf das Ablaufen der Partikel bei der Clustersuche übertragen, indem der ihnen zugewiesene Funktionswert genutzt wird und indem zuvor Nachbarschaftsverhältnisse gebildet werden (siehe \autoref{sec:fast-depth}).
+
+\subsection*{Temporale Betrachtungen bei Konturbäumen}\label{sec:related:konturbaumTemporal}
+Der vorliegende Partikeldatensatz enthält einen Zeitverlauf über 150 Zeitschritte, der zur Ermittlung der Strukturereignisse verwendet wird. Für Konturbäume gibt es eine Beschreibung von Laney et al über ein temporales Verfolgen von räumlichen, in einer regelmäßigen Gitterstruktur angeordneten Daten mit einem geometrischen Ansatz, der die kritischen Punkte von aufeinanderfolgenden \contours{Isooberflächen}{Isooberfläche} miteinander vergleicht \cite[S.~1056]{laney2006turbulentMixingLayer}.
+
+Sohn und Bajaj hingegen berechnen Ähnlichkeiten von Konturbäumen bei aufeinanderfolgenden Zeitschritten durch einen Volumenvergleich \cite{silver1997trackingTurbulent3DFeatures}. Dabei wird das von \contours{Isooberflächen}{Isooberfläche} eingeschlossene Volumen von aufeinanderfolgenden Zeitschritten verglichen, wodurch für einen festen \contour{Isowert} Änderungen der zugehörigen \contour{Isooberfläche} verfolgt werden können, die in einem sogenannten topologischem Änderungsgraph gespeichert werden \cite{sohn2006timeVaryingContourTopology}. Diese Idee kann auf den Vergleich der Cluster und die damit verbundene Ereigniserkennung angewandt werden (siehe \autoref{sec:clusterzusammenhaenge}).
+
+Die Arbeiten von Edelsbrunner et al \cite{edelsbrunner2004timeVaryingReebGraphs} und Szymczak \cite{szymczak2005contourEvolutionInTimeDependentScalarFields} beinhalten topologische Analysen, um Zeitdaten mit Hilfe der Evolution von zeitveränderlichen Reebgraphen bzw. Konturbäumen zu analysieren. Sie nutzen ebenfalls kontinuierliche Daten bzw. ein zeitabhängiges Skalarfeld über einem Gitter, so dass dieselben Einschränkungen für die Übertragung auf den vorliegenden Partikeldatensatz wie bei den bereits erwähnten Arbeiten über die Skelettextraktion und Konturbäume gelten.
+
+\section{Visualisierung großer Datensätze}
+
+%TODO Molekularsimulation/Visualisierung als Diagramm
+%TODO Juxtaposition etc
+
+Molekularvisualisierungen
+
+Zeitgraphen
+
+Juxtaposition: Hier verwendet
+
+\subsection*{Glyphdesign}
+
+siehe Quellen oder auch Grundlagen aus Kaptiel zwei
+
+
+\chapter{Überblick}
+
+Diese Arbeit stellt eine auf den Ideen der Skelettextraktion und Konturbäumen aufbauende Möglichkeit vor, um aus Punktdaten Strukturen zu erkennen. Diese Strukturen werden genutzt, um daraus Strukturereignisse abzuleiten.
+
+Weiterhin werden %TODO, verwandte Arbeiten Visualisierung heranziehen
+
+%TODO Nach Fertigstellung der Einleitung anpassen: %Die Arbeit behandelt zwei voneinander unabhängige Bereiche. Zum Einen werden Elemente eines Vektorraumes in Gruppen zusammengefasst und anhand dieser Gruppen heuristische Bestimmungen durchgeführt, zum Anderen werden diese Ergebnisse innerhalb des Vektorraumes dargestellt. Der erste Abschnitt dieses Kapitels beinhaltet Arbeiten zur Erkennung von Strukturen, der Zweite die Erstellung grafischer Elemente.
+
+Die Schwerpunkte werden der Reihenfolge nach behandelt, wobei die Erkennung der Cluster- und Strukturereignisse zusammengefasst werden. Anschließend wird die Visualisierung der Ereignisse betrachtet.
 
 Erklärung der Abschnitte, Module, Visualisierung.
 
+Dateigröße von Datensätzen, Echtzeitdarstellung
+
 \chapter{Erkennung der Cluster und Strukturereignisse}
 
-\section{Grundlagen}
-\subsection{Konturbaum}\label{sec:grundlagen:konturbaum}
-Trotzdem noch drauf eingehen, da der Algorithmus davon abgeleitet ist.
+\section{Datengrundlage}
 
-Eine Niveaumenge ist die Menge aller Punkte einer Funktion bzw. eines Skalarfeldes, denen ein gleicher Wert zugeordnet ist. Dieser Wert wird nach \cite[S.~1]{carr2010flexibleIsosurfaces} als \contour{Isowert} bezeichnet. Im Zweidimensionalen werden damit \contours{Isolinien}{Isolinie} erzeugt, im Dreidimensionalen sind es \contours{Isooberflächen}{Isooberfläche}. Sie finden zum Beispiel bei der Visualisierung von Höhendaten auf topografischen \cite{hurni2010landform} \cite{openstreetmapContours}, von Temperatur-, Wind- und Luftdruckdaten auf meteorologischen Landschaftskarten \cite{hopkins1996weather} oder von Gewebestrukturen auf Computertomographieaufnahmen \cite{tang2014ctImages} Verwendung.
+%Das zum Konturbaum vergleichbare Skalarfeld wird aus den Abstandswerten der Partikel zum Rand desjenigen Clusters gebildet, in dem sie sich befinden. Daher wird die Bezeichnung \contour{Tiefenwert} für die Werte des Skalarfeldes verwendet. Sämtliche Partikel des Datensatzes sind Teil des Skalarfeldes, auch diejenigen der Gasphase außerhalb von Clustern.
 
-Eine \contour{Isooberfläche} kann aus mehreren Zusammenhangskomponenten bestehen, die entsprechend \cite[S.~2]{carr2001computingCountourTrees} als \contours{Konturen}{Kontur} bezeichnet werden.
+Es liegen diskrete Eingangsdaten mit Partikeln mit definierten und disjunkten Positionen vor. Bis auf die räumliche Nähe weisen sie keine Zusammenhänge auf.
 
-Das Skalarfeld wird dabei aus den Abstandswerten der Partikel zum Rand desjenigen Clusters gebildet, in dem sie sich befinden. Daher wird die Bezeichnung \contour{Tiefenwert} für die Werte des Skalarfeldes verwendet. Sämtliche Partikel des Datensatzes sind Teil des Skalarfeldes, auch diejenigen der Gasphase außerhalb von Clustern.
+Weiterhin existiert ein Funktionswert für jeden Partikel in Form einer vorzeichenbehafteten Entfernungsangabe. Dieser wurde mit Hilfe der Grenzen zwischen der flüssigen Phase und dem Vakuum bzw. der Gasphase bestimmt. Anschließend wird auf dieser Basis eine vorzeichenbehaftete Distanzfunktion aufgestellt, die für alle Partikel die Entfernung zum Rand bestimmt. Somit gibt der Funktionswert die Distanz zum nächsten Partikel an, welcher auf dem Rand eines Clusters liegt. Im Folgenden wird diese Größe als \contour{Tiefenwert} eines Partikels bezeichnet.
 
-Die \contour{Isooberfläche} schließt ein Volumen ein. Die Partikel innerhalb des Volumens bilden eine Zusammenhangskomponente, eine \contour{Kontur}.
+Partikel innerhalb von Clustern besitzen einen positiven \contour{Tiefenwert}, Partikel auf dem Rand weisen den Abstand null auf, Partikel in der Gasphase, d.h. außerhalb von Clustern, haben eine negative \contours{Tiefe}{Tiefenwert}.
 
-\subsubsection{Kritische Punkte der Morsetheorie}
+%TODO Nachbarschaftsuchkapitel direkt hier folgen lassen.
 
-In der Morsetheorie \cite{chiang2005contourTreesUsingMonotonePaths}[28,35] ist ein Punkt dann ein kritischer Punkt, wenn kein Gradient vorhanden ist. Damit setzen die Theoreme voraus, dass sich an diesen Punkten die Topologie der Niveaumenge ändert. Bei einer abschnittsweisen linearen Funktion heißt das, wenn der \contour{Isowert} durch den Punkt verläuft und sich dabei die Topologie der Niveaumenge ändert, dann ist es ein kritischer Punkt. Alle anderen sind reguläre Punkte \cite{carr2010flexibleIsosurfaces} \cite{chiang2005contourTreesUsingMonotonePaths}.
+\section{Speicherung der Partikel- und Clusterdaten}
 
-
-
-Contour/Isolinie -> Join and Split Tree -> Merge -> Contour Tree \cite[S.~1]{carr2001computingCountourTrees}
-
-Join: von oben nach unten, Split: von unten nach oben \cite{carr2001computingCountourTrees_web}
-
-Bilder:
-\cite[S.~1]{chiang2005contourTreesUsingMonotonePaths} Fig. 1
-\cite[S.~44]{carr2010flexibleIsosurfaces} Fig. 2
-
-\subsubsection{Algorithmus}
-\cite{carr2001computingCountourTrees} \cite[S.~176]{chiang2005contourTreesUsingMonotonePaths}
-(1) Sort all n vertices of the mesh by their function values.
-(2) Perform a sweep of the n vertices from the smallest function value to the largest function value, and build the join tree.
-(3) Perform another sweep of the n vertices, now from the largest function value to the smallest function value, and build the split tree.
-(4) Merge the join tree and split tree together and remove all degree-two nodes in the resulting tree to obtain the contour tree.
-
-\section{Vorgehen}
-
-\subsection{Datengrundlage}
-
-Oft werden Konturbäume bei kontinuierlichen Flächen verwendet (QUELLEN) und es ist eine Diskretisierung dieser etwa mit simplizialen Meshes (QUELLE) notwendig. Hier liegen diskrete Eingangsdaten mit Partikeln mit definierten und disjunkten Positionen bereits vor, allerdings sind keine Zusammenhänge zwischen diesen Partikeln gespeichert.
-
-Weiterhin existiert ein \contour{Tiefenwert} für jeden Partikel in Form einer vorzeichenbehafteten Entfernungsangabe. Dieser wurde mit Hilfe der Grenzen zwischen der flüssigen Phase und dem Vakuum bzw. der Gasphase bestimmt. Anschließend wird auf dieser Basis eine vorzeichenbehaftete Distanzfunktion aufgestellt, die für alle Partikel die Entfernung zum Rand bestimmt. Somit gibt der \contour{Tiefenwert} die Distanz zum nächsten Partikel an, welches auf dem Rand eines Clusters liegt.
-
-\subsection{Speicherung der Partikel- und Clusterdaten}
+%TODO Kapitel entfernen und in die Nachbarschaftssuche respektive Speicherung/Lesen/Call einfügen.
 
 Die Partikeldaten werden als dichtgepacktes Structure gespeichert. So werden nur Datentypen mit vier und acht Byte verwendet, so dass der Compiler die Struktur wegen Ausrichtungsbeschränkungen im Speicher nicht auffüllt, wie es etwa bei ein Byte großen Datentypen passieren kann \cite{raymond1994cAlignment}.
 
@@ -176,7 +213,7 @@ Die Verlinkung der Partikeln zu Cluster kann nicht über Referenzen verfolgen, d
 *http://stackoverflow.com/a/11370042/4566599
 
 
-\subsection{Bestimmung der Cluster ohne Nachbarschaftskenntnisse}
+\section{Bestimmung der Cluster ohne Nachbarschaftskenntnisse}
 %TODO hinten anstellen oder als Alternative Variante nach Bestimmung der nächsten Nachbarn intergrieren
 Der Abstand eines Partikels zum Rand seines Clusters wird mit einem vorzeichenbehafteten \contour{Tiefenwert} gekennzeichnet. Innerhalb von Clustern weisen Partikel eine positive \contour{Tiefe}{Tiefenwert} auf. Partikel auf dem Rand besitzen den Abstand null, Partikel in der Gasphase, d.h. außerhalb von Clustern, haben einen negativen \contour{Tiefenwert}.
 
@@ -192,13 +229,16 @@ Jede Liste enthält einen Offset. Dort befindet sich der Listenidentifikator. Al
 
 Dieser Algorithmus ist wegen der Entfernungsbestimmung über den Radius sehr langsam. Daher wird diese Methode nicht weiter verfolgt und stattdessen werden andere Methoden zur Nachbarschaftsbestimmung untersucht und ausgehend von diesen eine Clusterbestimmung vorgenommen.
 
-\subsection{Bestimmung der nächsten Nachbarn}\label{sec:nachbarschaftssuche}
+\section{Bestimmung der nächsten Nachbarn}\label{sec:nachbarschaftssuche}
+
+%TODO vorhergehenden Bereich hier stark gekürzt einfügen, Fortsetzung von Einleitung, Abschnitt Herausforderung 
+
 Beschleunigungsvarianten:
 - eine Liste (wie ohne Beschleunigung): Einschränkung der Entfernungsbestimmung bei den Partikeln auf solche mit ähnlichen Tiefenwerten $O(n^2 - k | k = n_{SignedDistance} > intervall)$
 - mehrere Listen: Einteilung des Raumes in ein Gitter, nur die Nachbarzellen (jede Zelle entspricht einer Liste) durchsuchen: voraussichtlich wesentlich weniger Partikel als mit Entfernungsbestimmung
 - k-d-Baum, da statt $O(n^2)$ nur noch $O(n \log n)$. Bibliotheken: ANN, FLANN (http://www.cs.ubc.ca/research/flann/): evtl auch so schnell wie grid
 
-\subsubsection{kD-Baum}
+\subsection{kD-Baum}
 
 Speicherplatzreservierung der particleListe mit Einbeziehung der maximalen Anzahl möglicher Nachbarn.
 
@@ -222,20 +262,25 @@ Der Wert für maxNeighbours wird abhängig von Radius automatisch gesetzt. Die p
 	/// 20, 3270
 
 
-\subsection{Fast-Depth-Algorithmus zur Bestimmung der Cluster}\label{sec:fast-depth}
-Begriff für diesen Algorithmus ausgehend von der Nutzung des \contours{Tiefenwertes}{Tiefenwert}, angelehnt an Depth-first
+\section{Fast-Depth-Algorithmus zur Bestimmung der Cluster}\label{sec:fast-depth}
+
+Da auch Verschmelzungen und Teilungen innerhalb von Zusammenhangskomponenten erkannt werden sollen, genügt es nicht, wenn die Clusterbildung alle benachbarten Partikel einer Gruppe zuordnet. Vielmehr sollen auch Zusammenhangskomponenten selbst unterteilt werden.
+%TODO Bilder vom Vortrag einfügen
+Dabei wird die Idee des Reebgraphen sowie die Bildung des Verbindungsbaumes beim Abtastalgorithmus der Konturbäume (siehe \autoref{sec:related:konturAbtast}) aufgegriffen und es werden kritische Punkte im Skalarfeld aller Partikel gesucht. Im Gegensatz zu den beiden genannten Ansätzen wird die Suche auf lokale Maxima beschränkt. Dies erfüllt die Anforderung, Partikel einer Zusammenhangskomponente in Gruppen zu unterteilen und ermöglicht zudem eine hohe Geschwindigkeit.
 
 Gaspartikel werden übersprungen, Flüssigkeitspartikel ohne Nachbarn werden übersprungen
 
+Keine Sortierung wie beim vorgestellten Konturbaum. Sie ist teuer und würde den \CFDterm{Fast-Depth-Algorithmus} nicht beschleunigen. Stattdessen werden auf dem Pfad getroffene Partikel zum Cluster mit hinzugefügt.
+
 Sobald die umliegenden Partikel nur noch den gleichen oder einen höheren Tiefenwert aufweisen, gilt die Suche als abgeschlossen und der aktuelle Partikel ist gefunden.
 
-Bild analog zum Vortrag
-
+%TODO Schema analog zum Vortrag
 
 Zur Beschleunigung werden alle Partikel, die beim Suchen entlang des Pfades getroffen wurden, ebenfalls zum Cluster hinzugefügt.
 
+Der Begriff dieses Algorithmus wurde ausgehend von der Nutzung des \contours{Tiefenwertes}{Tiefenwert} gewählt, angelehnt an die Depth-First Suche in Baumstrukturen.
 
-\subsection{Reduzierung der kleinen Cluster}\label{sec:clusterreduktion}
+\section{Reduzierung der kleinen Cluster}\label{sec:clusterreduktion}
 
 Sehr kleine Cluster in den Zusammenhangskomponenten können unerwünschtes Rauschen in der Ereigniserkennung verursachen, so dass deren Partikel benachbarten, größeren Clustern zugewiesen werden. Ausgenommen sind diejenigen Cluster, die alleinig eine Zusammenhangskomponente bilden, auch wenn sie die Mindestgröße unterschreiten.
 
@@ -269,26 +314,30 @@ Sucht maximal den drittentferntesten Nachbarn nach Clustern
 
 Da die Partikel voneinander unabhängig sind, können sie parallel durchlaufen werden. Weiterhin wird die Winkelberechnung zu jedem benachbarten Partikel mit OpenMP parallelisiert.
 
-\subsection{Bestimmung der Clusterzusammenhänge}\label{sec:clusterzusammenhaenge}
+\section{Bestimmung der Clusterzusammenhänge}\label{sec:clusterzusammenhaenge}
 Die bestehenden Nachbarschaftsbeziehungen der Partikel können zum Vergleich der Clusterbeziehungen zwischen zwei Zeitschritten genutzt werden, so dass keine neuen Datenstrukturen zur Bestimmung erstellt werden müssen. 
 
 \gls{secc}
 
 Einfärbung der Cluster parallelisiert.
 
-\subsubsection{Nachbarschaftsgraph}
+\subsection{Nachbarschaftsgraph}
 Eine Variante ist die Erzeugung eines Graphen, der den Zusammenhang zwischen den Clustern zeigt. Dazu kann die Clusterzugehörigkeit der Nachbarn jedes Partikel untersucht werden. Sollte ein Nachbar einem anderen Cluster angehören, als der aktuelle Partikel, so sind der Cluster des aktuellen und der Cluster des benachbarten Partikels zusammengehörig.
 
 Problem: Clusteridentifizierung schwierig, da sie über den root Partikel läuft und dieser sich mit großer Wahrscheinlichkeit im nächsten Frame ändert. Es müsste ein neues System zur Clusterbestimmung eingeführt werden (z.B. Durchschnittswert der enthaltenen Partikel IDs mit einer Toleranzgrenze, die experimentell bestimmt werden müsste).
 
-\subsubsection{Frameübergreifender Vergleich der Partikelzugehörigkeit}
-Ein direkteres Vorgehen, das unabhängig der Nachbarschaftsbeziehungen von Clustern ist, bietet der Vergleich der Partikelmengen der Cluster. Zu jedem Cluster ist eine disjunkte Menge an Partikeln zugeordnet. Um diese Mengen über zwei Zeitschritte hinweg miteinander zu vergleichen, wird eine Matrix aufgebaut, deren Zeilen die Cluster des neuen Zeitschrittes enthalten und deren Spalten die Cluster des alten Zeitschrittes. Ein Partikel wird in diese \SECterm{Clustervergleichsmatrix} eingetragen, indem die Clusterzugehörigkeit des aktuellen Zeitschrittes sowie die Clusterzugehörigkeit des vorherigen Zeitschrittes ermittelt wird.
+\subsection{Frameübergreifender Vergleich der Partikelzugehörigkeit}
+Ein direkteres Vorgehen, das unabhängig der Nachbarschaftsbeziehungen von Clustern ist, bietet der Vergleich der Partikelmengen der Cluster. Diese Methode greift die Idee des Volumenvergleichs für \contours{Isooberflächen}{Isooberfläche} von Konturbäumen auf \autoref{sec:related:konturbaumTemporal}. Die Cluster nehmen dabei die Position der \contours{Konturen}{Kontur} ein und die Partikel die Position des Gitters, da sie über ihren Identifikator eindeutig zugeordnet werden können. Weil hier keine kontinuierliche Fläche existiert, wird nicht von eingeschlossenem Volumen, sondern von Mengen gesprochen.
+
+Zu jedem Cluster ist eine disjunkte Menge an Partikeln zugeordnet. Um diese Mengen über zwei Zeitschritte hinweg miteinander zu vergleichen, wird eine Matrix aufgebaut, deren Zeilen die Cluster des neuen Zeitschrittes enthalten und deren Spalten die Cluster des alten Zeitschrittes. Ein Partikel wird in diese \SECterm{Clustervergleichsmatrix} eingetragen, indem die Clusterzugehörigkeit des aktuellen Zeitschrittes sowie die Clusterzugehörigkeit des vorherigen Zeitschrittes ermittelt wird.
 
 Anschließend werden zwei Schritte übernommen, um die für die Auswertung und schließlich die für die Eventerkennung notwendigen Werte zu ermitteln. In jedem Schritt werden alle Cluster eines Zeitschrittes betrachtet. Für jeden dieser Cluster werden Cluster des anderen Zeitschrittes gesucht, die mit dem betrachteten Cluster gemeinsame Partikel aufweisen. Diese werden als \SECterm{Partnercluster} bezeichnet. Im ersten Schritt werden alle derzeitigen Cluster mit jedem des vorherigen Zeitschrittes verglichen (vorwärtsgerichteter Vergleich), im zweiten Schritt alle vorherigen mit jedem Cluster des aktuellen Zeitschrittes (rückwärtsgerichteter Vergleich).
 
 Beide Schritte geben die Anzahl der gemeinsamen Partikel für jeden vorhergehenden Cluster und jeden aktuellen aus, woraus sich die weiteren für die Analyse notwendigen Werte ermitteln lassen.
 
-\subsubsection{Auswertung der Parameter}
+\section{Erkennung von Ereignissen}\label{sec:ereigniserkennung}
+
+Es wird jeweils ein Cluster und seine \SECterm{Partnercluster} betrachtet.
 
 Heuristisches Vorgehen:
 
@@ -333,13 +382,9 @@ a) 0 gemeinsame (keine Partikel in vorhergehenden Clustern): Birth
 b) Schritt (c) von (a) noch machen.
 Death so nicht feststellbar.
 
-\subsection{Erkennung von Ereignissen}\label{sec:ereigniserkennung}
 
-Es wird jeweils ein Cluster und seine \SECterm{Partnercluster} betrachtet.
-
-Heuristik
-
-\subsection{Speicherung der Daten}
+\section{Speicherung der Daten}
+%TODO raus hier
 Umwandlung von framebehafteten MMPLD in frameloses MMSE.
 
 Das \gls{mmse} enthält die berechneten Ereignisse in einem Bytecode fest. Der Vorteil im Vergleich zu JSON/XML oder anderen textbasierten Speicherverfahren ist die höhere Performance beim Lesen und Schreiben sowie die kleinere Dateigröße. Die Ereignisdaten sind dabei sequentiell abgelegt
@@ -352,8 +397,8 @@ Das \gls{mmse} enthält die berechneten Ereignisse in einem Bytecode fest. Der V
 	\caption{Datentypen}\label{fig:mmse:format}
 \end{figure}
 
-\subsection{Programmaufbau für die Berechnung}
-%TODO evtl in Anhang
+\section{Programmaufbau für die Berechnung}
+%TODO raus hier, evtl in Anhang
 %TODO Bild writer mmprj Aufbau
 
 Speicherung der Clustervisualisierung durch MMPDC.
@@ -368,6 +413,11 @@ Call zur intermodularen Kommunikation. Sämtliche Listenelemente, auf die mit Ze
 \chapter{Visualisierung}
 
 \section{Grundlagen}
+
+\subsection{Glyphdesign}
+
+%TODO Glyphdesign
+
 \subsection{Gestaltgesetze}\label{sec:gestaltgesetze}
 Die Gestaltgesetze, formuliert von Wertheimer und erweitert von Stephen Palmer (QUELLEN), sind eine Möglichkeit der Einteilung für die Fähigkeit der menschlichen Wahrnehmung, in Sinneseindrücken Strukturen und Ordnungen zu erkennen. Für diese Arbeit spielt einerseits die Erkennung von Zusammengehörigkeit zwischen Partikeln und Ereignissen als auch die Unterscheidungsmöglichkeit der Ereignisarten voneinander eine Rolle. Beides kann durch die Berücksichtigung der Gestaltgesetze gezielter erreicht werden.
 
@@ -771,7 +821,9 @@ Nutzung der glm Bibliothek, da dadurch die Datentypen in C++ und in GLSL konsist
 - Begrenzung auf Zeitpunkte.
 - Begrenzen auf Eventarten.
 
-Die Texturen haben einen festgelegten Pfad im Ordner der ausführenden Datei, da der Nutzer sie nicht ändern können soll. Dies liegt darin begründet, dass der Shader zur Darstellung des Zeitpunktes eines Ereignisses auf bestimmte Farben in der Textur angewiesen ist.
+Die Texturen haben einen festgelegten Pfad im Ordner der ausführenden Datei, da der Nutzer sie nicht ändern können soll. Dies liegt darin begründet, dass der Shader zur Darstellung des Zeitpunktes eines Ereignisses auf bestimmte Farben in der Textur angewiesen ist. So wird die Farbe lila (rgb 255, 0, 255) durch 
+
+Der Renderer wird bei einer hohen Anzahl von Ereignissen langsam, da für jedes Ereignis je nach Renderereinstellungen Berechnungen durchgeführt werden. Da sie für jedes Ereignis unabhängig voneinander erfolgen, können sie parallel ausgeführt werden. Aufgrund des Zugriffs auf die Quelldaten über das Inkrementieren von Zeigern, muss eine Einteilung der Berechnungen in eine feste Anzahl von Threads geschehen, deren Ermittlung mit der C++11 Standardbibliothek \programmingElement{thread} erfolgt. 
 
 
 \subsection{Visualisierung der Clusterberechnung}
@@ -803,16 +855,16 @@ keine Bestimmung der Güte der Heuristik bei der Ereigniserkennung
 
 \subsection{Einfluss der Nachbarschaftssuche}\label{sec:eva:nachbarschaftssuche}
 
-\subsubsection{Fehlende Flüssigkeitspartikel und erhöhtes Ereignisrauschen bei zu kleiner Nachbarschaftssuche}
+\subsubsection{Flüssigkeitspartikel ohne Cluster und erhöhtes Ereignisrauschen bei zu kleiner Nachbarschaftssuche}
 
 Bei kleinen Radien (dreifacher Radius oder kleiner) ist das Volumen für die Nachbarschaftssuche so klein %TODO nicht in Clustern befindliche Partikel der Flüssigkeitsphase!
 
 Daher ist der in der Benutzeroberfläche zugelassene Minimalwert für den Radiusmultiplikator auf vier gesetzt. Ein weiterer Grund ist, dass ein sehr kleines Suchvolumen das Aufkommen winziger Cluster stark erhöht, da die Partikel der flüssigen Phase nicht dicht gepackt sein müssen und so nebeneinanderliegende Partikel nicht als solche erkannt werden. %TODO Daten der Clusteranzahl für 3*r, 4*r, 5*r einfügen
-Damit ist es wahrscheinlicher, dass der Fast-Depth-Algorithmus \autoref{sec:fast-depth} sie unterschiedlichen Clustern zuordnet, weil räumlich benachbarte, aber bei der Nachbarschaftssuche nicht als Nachbarn erkannte Partikel bei der Suche nach dem nächsten, tiefer liegenden Partikel nicht beachtet werden. Eine erhöhte Clusteranzahl innerhalb von Zusammenhangskomponenten führt zu einer erhöhten Anzahl von detektierten Ereignissen. Wenn der Nutzer den Einfluss kleiner Cluster ignorieren möchte und sie als Rauschen statt als gewinnbringende Information betrachtet, so ist ein kleiner Radius bei der Nachbarschaftssuche von Nachteil. %TODO visueller oder Datenvergleich der Radieneinstellungen
+Damit ist es wahrscheinlicher, dass der \CFDterm{Fast-Depth-Algorithmus} \autoref{sec:fast-depth} sie unterschiedlichen Clustern zuordnet, weil räumlich benachbarte, aber bei der Nachbarschaftssuche nicht als Nachbarn erkannte Partikel bei der Suche nach dem nächsten, tiefer liegenden Partikel nicht beachtet werden. Eine erhöhte Clusteranzahl innerhalb von Zusammenhangskomponenten führt zu einer erhöhten Anzahl von detektierten Ereignissen. Wenn der Nutzer den Einfluss kleiner Cluster ignorieren möchte und sie als Rauschen statt als gewinnbringende Information betrachtet, so ist ein kleiner Radius bei der Nachbarschaftssuche von Nachteil. %TODO visueller oder Datenvergleich der Radieneinstellungen
 
 \subsubsection*{Gaspartikelcluster bei der Clusterreduktion}  %MergeClusters produces adjacent gas particle clusters theory
 
-Wenn andererseits der Radius zu groß gewählt wird (fünffacher Radius oder höher), können auch Partikel der Gasphase Nachbarn erhalten und werden im Fast-Depth-Algorithmus Clustern zugeordnet. Dies wiederrum kann dazu führen, dass beim Reduzieren der kleinen Cluster \autoref{sec:clusterreduktion} diese Partikel in Clustern mit nur diesem einen Partikel zurückbleiben. Das liegt darin begründet, dass die Clusterreduktion begrenzte Iterationsschritte aufweist. Falls der von den umliegenden Cluster am Weitesten entfernte Partikel als erstes ausgewählt wird, weisen die umliegenden Partikel noch denselben Cluster auf. Wenn die Suche nach drei Nachbarschaftsebenen abbricht und die durchsuchten Partikel alle denselben Cluster aufweisen, verbleibt der Partikel im aktuellen Cluster. Hingegen werden die umliegenden Partikel aufgrund der geringeren Entfernung zu den benachbarten, größeren Clustern in diese aufgenommen. So verbleibt der zuerst ausgewählte Partikel als einziger im Cluster. Das führt in der Ereigniserkennung \autoref{sec:ereigniserkennung} zu falschen Birth und Death Erkennungen.
+Wenn andererseits der Radius zu groß gewählt wird (fünffacher Radius oder höher), können auch Partikel der Gasphase Nachbarn erhalten und werden im \CFDterm{Fast-Depth-Algorithmus} Clustern zugeordnet. Dies wiederrum kann dazu führen, dass beim Reduzieren der kleinen Cluster \autoref{sec:clusterreduktion} diese Partikel in Clustern mit nur diesem einen Partikel zurückbleiben. Das liegt darin begründet, dass die Clusterreduktion begrenzte Iterationsschritte aufweist. Falls der von den umliegenden Cluster am Weitesten entfernte Partikel als erstes ausgewählt wird, weisen die umliegenden Partikel noch denselben Cluster auf. Wenn die Suche nach drei Nachbarschaftsebenen abbricht und die durchsuchten Partikel alle denselben Cluster aufweisen, verbleibt der Partikel im aktuellen Cluster. Hingegen werden die umliegenden Partikel aufgrund der geringeren Entfernung zu den benachbarten, größeren Clustern in diese aufgenommen. So verbleibt der zuerst ausgewählte Partikel als einziger im Cluster. Das führt in der Ereigniserkennung \autoref{sec:ereigniserkennung} zu falschen Birth und Death Erkennungen.
 Allerdings ist dieser Fehler nicht aufgetreten, es werden keine einzelnen Partikel oder kleine Partikelgruppen durch die Clusterbildung erzeugt. %TODO Verifizieren für alle Frames
 Das kann durch den Vergleich der Einpartikel- sowie der minimalen Cluster direkt nach der Clusterbildung mit deren Anzahl nach der Clusterreduktion überprüft werden. Da die Anzahl in allen Messungen gleich oder geringer ist, %TODO Datenauswertung MinSizeClusters, SizeOneClusters
 %Umgangen wird dieser mögliche Fehler bei der Bestimmung der Clusterzusammenhänge \autoref{sec:clusterzusammenhaenge} durch das Herausfiltern von Clustern mit einer Partikelanzahl von eins.
@@ -820,19 +872,18 @@ Das Ausbleiben dieses Fehlers lässt sich auf die verwendete minimale Clustergr�
 
 \subsubsection*{Gaspartikel in Clustern bei großen Radien}
 
-Zur Beschleunigung des Fast-Depth-Algorithmus' \autoref{sec:fast-depth} werden alle Partikel, die beim Suchen entlang des Pfades getroffen wurden, ebenfalls zum Cluster hinzugefügt. Diese Beschleunigung kann Fehler verursachen, wenn der Radius bei der Nachbarschaftssuche \autoref{sec:nachbarschaftssuche} groß gewählt wurde, da so auch Gaspartikel am Rand von Clustern mit hinzugefügt werden. Diese Fehler sind jedoch vernachlässigbar, da die Heuristik der Ereigniserkennung \autoref{sec:ereigniserkennung} Mengen betrachtet und somit einzelne Gaspartikel in der Clustergruppe einen geringen Einfluss auf das Ergebnis haben.
+Zur Beschleunigung des \CFDterm{Fast-Depth-Algorithmus}' \autoref{sec:fast-depth} werden alle Partikel, die beim Suchen entlang des Pfades getroffen wurden, ebenfalls zum Cluster hinzugefügt. Diese Beschleunigung kann Fehler verursachen, wenn der Radius bei der Nachbarschaftssuche \autoref{sec:nachbarschaftssuche} groß gewählt wurde, da so auch Gaspartikel am Rand von Clustern mit hinzugefügt werden. Diese Fehler sind jedoch vernachlässigbar, da die Heuristik der Ereigniserkennung \autoref{sec:ereigniserkennung} Mengen betrachtet und somit einzelne Gaspartikel in der Clustergruppe einen geringen Einfluss auf das Ergebnis haben.
 
 \subsubsection*{Nulltiefenwert Einpartikelcluster Phänomen} %zero signed distance one size clusters phenomenon 
 
-Aufgrund der Abbruchbedingung der Traversierung über die Tiefenwerte kann es passieren, dass Partikel mit denselben Tiefenwerten in einzelne, separate Cluster eingeteilt werden, die alle nur diesen einen Partikel enthalten. Da Gaspartikel vom Fast-Depth-Algorithmus aussortiert werden und der Algorithmus für das Eintreten dieses Falls keine tieferen Nachbarn finden darf, müssen die Partikel einen Tiefenwert von null aufweisen. Damit nebeneinander angeordnete Partikel diesen Tiefenwert aufweisen können, muss der Cluster sehr klein sein. %TODO evtl Häufigkeit mit CFDTest bestimmen
+Aufgrund der Abbruchbedingung der Traversierung über die Tiefenwerte kann es passieren, dass Partikel mit denselben Tiefenwerten in einzelne, separate Cluster eingeteilt werden, die alle nur diesen einen Partikel enthalten. Da Gaspartikel vom \CFDterm{Fast-Depth-Algorithmus} aussortiert werden und der Algorithmus für das Eintreten dieses Falls keine tieferen Nachbarn finden darf, müssen die Partikel einen Tiefenwert von null aufweisen. Damit nebeneinander angeordnete Partikel diesen Tiefenwert aufweisen können, muss der Cluster sehr klein sein. %TODO evtl Häufigkeit mit CFDTest bestimmen
 Die Überprüfung der Positionen der betroffenen Einpartikelcluster bestätigt diese Annahme. %TODO Daten der CFDTest einfügen
-Weiterhin tritt dieses Phänomen erst ab vierfachem Clusterradius in der Nachbarschaftssuche auf, da bei kleineren Radien die nebeneinanderliegenden Partikel mit einem Tiefenwert von null nicht als Nachbarn erkannt werden. Da diese Partikel somit nachbarlos sind, werden sie vom Fast-Depth-Algorithmus ignoriert und nicht in Cluster eingeteilt.
- %TODO Auftreten auch mit Radiuswert 3 OneSizeCluster überprüfen
+Dieses Phänomen tritt ab dreifachem Clusterradius in der Nachbarschaftssuche auf, Bei kleineren Radien werden die nebeneinanderliegenden Partikel mit einem Tiefenwert von null nicht als Nachbarn erkannt. Da diese Partikel somit nachbarlos sind, werden sie vom \CFDterm{Fast-Depth-Algorithmus} ignoriert und nicht in Cluster eingeteilt.
 
 \section{Auswertung der Visualisierung}
 
 \subsection{Glyphdesign}
-- qualitative Umfrage Erkennung der Symbole: Tester (Vorstellung im Bekannten- und Freundeskreis, Klavierschülerin) haben gezeigt, dass sie den Symbolen die korrekte Semantik zuordnen, bei der abstrakten Vorstellung viel die Zuordnung wesentlich ungenauer aus. %TODO Quantitative Umfrage Glyphdesign wäre schön, falls zuviel Zeit
+- qualitative Umfrage Erkennung der Symbole: Tester (Vorstellung im Bekannten- und Freundeskreis) haben gezeigt, dass sie den Symbolen die korrekte Semantik zuordnen, bei der abstrakten Vorstellung fiel die Zuordnung wesentlich ungenauer aus. %TODO Quantitative Umfrage Glyphdesign wäre schön, falls zuviel Zeit
 
 \subsection{Glyphdarstellung im Partikelraum}
 
@@ -898,12 +949,12 @@ Verbesserung der Berechnungen:
 		
 		\item Parallelisierung bei Clusterbildung: Mehrere Partikel parallel verarbeiten. Dazu muss die Clusterliste eine vordefinierte Größe aufweisen, was bereits durch die Speicherplatzreservierung implementiert ist. Des Weiteren müssen die Sprünge in der Schleife durch Abfragen ersetzt werden, was einen geringen Einfluss auf die Geschwindigkeit hat. Jedoch muss die Clustererstellung sequentiell erfolgen, um eine mehrfache Clusterzuweisung auf denselben Partikel zu vermeiden, was zu einer Verringerung der Parallelisierungseffizienz führt, da die Prozesse gegenseitig aufeinander warten müssen, bis die Clusterzuordnung des Wurzelpartikels abgeschlossen ist. Weiterhin müsste das Hinzufügen der traversierten Partikel zum Cluster entfernt werden, was ebenfalls die Effizienz senkt.
 	\end{itemize}
-	\item Speicherplatzverringerung MMSE Datenformat: Eventeinteilung nach Typ oder Zeit in Unterlisten
+	\item Performanceerhöhung beim Lesen (und Speicherplatzverringerung) MMSE Datenformat: Eventeinteilung nach Zeit in Unterlisten (so dass beim Auslesen direkt auf den Zeitschritt gesprungen werden kann) und dort auch Einteilung nach Typ.
 \end{itemize}
 
 Verbesserung der Visualisierung
 \begin{itemize}
-	\item Sichtbarkeit der Glyphen verbessern: Senken der Partikelopazität, damit die sich hinter Partikeln befindlichen Glpyhen leichter sichtbar werden.
+	\item Bessere Juxtaposition von Glyphen und Partikeln ermöglichen: Senken der Partikelopazität, damit die sich hinter Partikeln befindlichen Glpyhen leichter sichtbar werden.
 \end{itemize}
 
 Weitere Untersuchungsmöglichkeiten der Visualisierung:
@@ -917,7 +968,7 @@ Weitere Untersuchungsmöglichkeiten der Visualisierung:
 
 Verbesserungen Plugin und MegaMol
 \begin{itemize}
-	\item Calculation: Annahme von MPDC mit Clustereinfärbung: Dadurch sind die Auswirkungen der Parameter für die Ereignisberechnung viel schneller sichtbar (wenige Sekunden)!
+	\item Calculation: Annahme von MPDC mit Clustereinfärbung, so dass die Nachbarschaftssuche und die Clusterberechnung wegfallen. Dadurch sind die Auswirkungen der Parameter für die Ereignisberechnung viel schneller sichtbar (wenige Sekunden)!
 	\item Renderer: Ausgabe von quantitativen Ereigniswerten, analog zur Calculation.
 	\item SimpleSphereRenderer: Filtern (Ausblenden) nach Partikelfarben.
 	\item Globales Kennzeichen für die Logausgabe (vgl. Kennzeichen Calculation).
