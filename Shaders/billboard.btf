@@ -42,7 +42,6 @@ uniform float quadSizeModificator;
         <snippet name="main" type="string">
             <![CDATA[
 void main(void) {
-
     // Pass texture coordinates to fragment shader.
     f_texUV = texUV;
     // Pass event type to fragment shader.
@@ -56,23 +55,6 @@ void main(void) {
     // Pass relative time to fragment shader.
     f_relativeTime = relativeTime;
 
-    // gl_Position.w = 1.0f; // Homogener Vektor: 1 = normalisierter Punkt (Position) im Raum, 0 = Vektor/Richtung (kein Punkt)
-
-    ///
-    /// Create quad in projected space. Not needed anymore.
-    ///
-    /*
-    // Set position.
-    vec4 position = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4(eventPosition, 1.0f); // w = 1 since its a point
-    
-    // Reposition the vertice to create a quad.
-    // @TODO: Make translated position independent from window ratio (quad should be quadratic and not stretched!)
-    position += vec4(spanQuad, 0.0f, 0.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 0.0f); // w = 0, since spanQuad is a direction.
-    
-    // Finalize.
-    gl_Position = position;
-    */
-    
     ///
     /// Create quad in view space.
     ///
@@ -83,9 +65,9 @@ void main(void) {
     // Reposition the vertice to create a quad.
     position += vec4(spanQuad, 0.0f, 0.0f) * vec4(quadSizeModificator, quadSizeModificator, 0.0f, 0.0f); // w = 0, since spanQuad is a direction.    
     
-    // If this is the time quad, move it a little back so it is behind the textured event quad.
-    if (eventType < 4.9f)
-      position -= vec4(0.0f, 0.0f, 0.01f, 0.0f);
+    // If this is the time quad, move it a little back so it is behind the textured event quad. Obsolete.
+    //if (eventType < 4.9f)
+    //  position -= vec4(0.0f, 0.0f, 0.01f, 0.0f);
 
     // Finalize.
     gl_Position = gl_ProjectionMatrix * position;

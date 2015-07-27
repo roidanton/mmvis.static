@@ -219,6 +219,7 @@ namespace megamol {
 
 			/// Controls the time of the structure events that are shown. Correspondences to time set by the view.
 			core::param::ParamSlot timeModeSlot;
+			core::param::ParamSlot timeSpanSlot;
 
 			/// Controls the event types to show.
 			core::param::ParamSlot eventTypeModeSlot;

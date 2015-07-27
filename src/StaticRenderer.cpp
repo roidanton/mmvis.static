@@ -11,12 +11,13 @@
 
 #include "lodepng/lodepng.h"
 #include "mmcore/CoreInstance.h"
+#include "mmcore/misc/PngBitmapCodec.h"
+#include "mmcore/param/FilePathParam.h"
+#include "mmcore/param/IntParam.h"
+#include "mmcore/param/FloatParam.h"
 #include "mmcore/view/CallClipPlane.h"
 #include "mmcore/view/CallGetTransferFunction.h"
 #include "mmcore/view/CallRender3D.h"
-#include "mmcore/param/FilePathParam.h"
-#include "mmcore/misc/PngBitmapCodec.h"
-#include "mmcore/param/FloatParam.h"
 #include "vislib/assert.h"
 #include "vislib/graphics/gl/IncludeAllGL.h"
 
@@ -131,6 +132,7 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 	eventTypeVisAttrSlot("VisAttr::eventType", "The visual attribute for the event type."),
 	eventTimeVisAttrSlot("VisAttr::eventTime", "The visual attribute for the event time."),
 	timeModeSlot("timeMode", "The time of the structure events that are shown. Correspondences to time set by the view."),
+	timeSpanSlot("timeSpan", "Time mode »Current +/-« uses this for displaying an amount of next and previous frames."),
 	eventTypeModeSlot("eventTypeMode", "The event types to show."),
 	glyphSizeSlot("glyphSize", "Size of event glyphs."),
 	/* MegaMol configurator doesn't like those (mmvis_static::StaticRenderer is invalid then).
@@ -173,12 +175,15 @@ mmvis_static::StaticRenderer::StaticRenderer() : Renderer3DModule(),
 
 	core::param::EnumParam *timeModeParam = new core::param::EnumParam(0);
 	timeModeParam->SetTypePair(0, "All");
-	timeModeParam->SetTypePair(1, "Current +1");
-	timeModeParam->SetTypePair(2, "Current");
+	timeModeParam->SetTypePair(1, "Current +1"); // +1 since Death/Split events occur one frame later than visible with spheres.
+	timeModeParam->SetTypePair(2, "Current +/-");
 	timeModeParam->SetTypePair(3, "All following");
 	timeModeParam->SetTypePair(4, "All previous");
 	this->timeModeSlot << timeModeParam;
 	this->MakeSlotAvailable(&this->timeModeSlot);
+
+	this->timeSpanSlot.SetParameter(new core::param::IntParam(0, 0, 75));
+	this->MakeSlotAvailable(&this->timeSpanSlot);
 
 	core::param::EnumParam *eventTypeModeParam = new core::param::EnumParam(0);
 	eventTypeModeParam->SetTypePair(0, "All");
@@ -407,6 +412,11 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 		recreateVertexBuffer = true;
 	}
 
+	if (this->timeSpanSlot.IsDirty()) {
+		this->timeSpanSlot.ResetDirty();
+		recreateVertexBuffer = true;
+	}
+
 	if (this->eventTypeModeSlot.IsDirty()) {
 		this->eventTypeModeSlot.ResetDirty();
 		recreateVertexBuffer = true;
@@ -500,8 +510,9 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 						*timePtrf < floor(callRender->Time()))
 						continue;
 					break;
-				case 2: // Current.
-					if (*timePtrf != floor(callRender->Time()))
+				case 2: // Current +/-.
+					if (*timePtrf > floor(callRender->Time()) + this->timeSpanSlot.Param<param::IntParam>()->Value() ||
+						*timePtrf < floor(callRender->Time()) - this->timeSpanSlot.Param<param::IntParam>()->Value())
 						continue;
 					break;
 				case 3: // All following
@@ -555,7 +566,7 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				GLfloat timeTextureType = 0.0f; ///< 0 := No time texture. 1 := texture type 1.
 				GLfloat relativeTime = 0.0f; ///< Time from 0 to 1, calculated in cpp.
 
-				float minValueColor = .4f; // Minimal value for brightness and opacity.
+				float colorOffset = .4f; // Minimal value for brightness and opacity.
 
 				// Position.
 				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventLocationVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Position) {
@@ -565,11 +576,12 @@ bool mmvis_static::StaticRenderer::Render(Call& call) {
 				}
 
 				// Time.
-				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue)
-					colorHSV = { *timePtrf / events.getMaxTime(), 1.0f, 1.0f }; // Brightness 100%.
-
+				if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Hue) {
+					float hueOffset = 30.f / 360.f;
+					colorHSV = { *timePtrf / events.getMaxTime() * (1.f - hueOffset) + hueOffset, 1.0f, 1.0f }; // Brightness 100%.
+				}
 				else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Brightness)
-					colorHSV = { 208.f / 360.f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - minValueColor) + minValueColor };  // Defined color, brightness from minValue-100%.
+					colorHSV = { 208.f / 360.f, 1.0f, *timePtrf / events.getMaxTime() * (1.f - colorOffset) + colorOffset };  // Defined color, brightness from minValue-100%.
 
 				// Opacity for time is stupid and deactivated in User Interface anyway.
 				//else if (mmvis_static::VisualAttributes::getAttributeType(&this->eventTimeVisAttrSlot) == mmvis_static::VisualAttributes::AttributeType::Opacity)
