@@ -495,19 +495,26 @@ namespace megamol {
 			/// Writes the data from a single MultiParticleDataCall frame into particleList.			 
 			void setData(core::moldyn::MultiParticleDataCall& data);
 
+			/// Build the particle list from the call.
 			void buildParticleList(core::moldyn::MultiParticleDataCall& data,
 				uint64_t& globalParticleIndex, float& globalRadius, uint8_t (&globalColor)[4], float& globalColorIndexMin, float& globalColorIndexMax);
 
-			/// Set neighbours in particleList.
+			/// Set neighbours in the particle list.
 			void findNeighboursWithKDTree(megamol::core::moldyn::MultiParticleDataCall& data);
 
-			/// Set neighbour with highest depth as next path object.
+			///
+			/// CFD: Cluster Fast Depth
+			/// Create clusters using particle list neighbourhood and signed distance.
+			///
 			void createClustersFastDepth();
 
 			/// Merge small clusters into bigger ones.
 			void mergeSmallClusters();
 
-			/// Compare clusters of two frames.
+			///
+			/// SECC: Structure Event Cluster Comparison.
+			/// Compares clusters of two frames.
+			///
 			void compareClusters();
 
 			/// Using heuristic to set the StructureEvents.
