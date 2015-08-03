@@ -27,11 +27,11 @@
 		section=chapter,% bestimmt die Gliederungsebene der Überschrift
 	]{glossaries}
 	\makeglossaries
-	
-\newglossarystyle{acrotabu}{%
-	\renewenvironment{theglossary}{%
-		\begin{tabu}spread 0pt{@{}lX<{\strut}l@{}}%
-	}{%
+
+	\newglossarystyle{acrotabu}{%
+		\renewenvironment{theglossary}{%
+			\begin{tabu}spread 0pt{@{}lX<{\strut}l@{}}%
+			}{%
 		\end{tabu}\par\bigskip%
 	}%
 	\renewcommand*{\glossaryheader}{}%
@@ -68,39 +68,43 @@
 	\renewenvironment{theglossary}{%
 		\begin{longtabu}spread 0pt[l]{ccX<{\strut}l}%
 		}{%
-		\end{longtabu}%
-	}%
-	\renewcommand*{\glossaryheader}{%
-		\toprule
-		\bfseries Symbol & \bfseries Einheit &
-		\bfseries Name & \bfseries Seite(n)
-		\tabularnewline\midrule\endhead%
-		\bottomrule\endfoot%
-	}%
-	\renewcommand*{\glsgroupheading}[1]{}%
-	\renewcommand*{\glsgroupskip}{}%
-	\renewcommand*{\glossentry}[2]{%
-		\glsentryitem{##1}% Entry number if required
-		\glstarget{##1}{\glossentrysymbol{##1}} &
-		\glsentryuseri{##1} &
-		\glossentryname{##1} &
-		##2\tabularnewline%
-	}%
+	\end{longtabu}%
+}%
+\renewcommand*{\glossaryheader}{%
+	\toprule
+	\bfseries Symbol & \bfseries Einheit &
+	\bfseries Name & \bfseries Seite(n)
+	\tabularnewline\midrule\endhead%
+	\bottomrule\endfoot%
+}%
+\renewcommand*{\glsgroupheading}[1]{}%
+\renewcommand*{\glsgroupskip}{}%
+\renewcommand*{\glossentry}[2]{%
+	\glsentryitem{##1}% Entry number if required
+	\glstarget{##1}{\glossentrysymbol{##1}} &
+	\glsentryuseri{##1} &
+	\glossentryname{##1} &
+	##2\tabularnewline%
+}%
 }
+
 }% Ende von AfterPackage*
 
 %%%
 % Zitate
 %
 \usepackage{csquotes}
+\MakeAutoQuote{»}{«}
 \usepackage[backend=biber,style=alphabetic]{biblatex}
 \addbibresource{bib/allgemein.bib}
 \addbibresource{bib/countourTree.bib}
 \addbibresource{bib/glyphen.bib}
 \addbibresource{bib/grottel.bib}
+\addbibresource{bib/molekularvisualisierung.bib}
 \addbibresource{bib/programmierung.bib}
 \addbibresource{bib/polyeder.bib}
 \addbibresource{bib/skeletonExtraction.bib}
+\addbibresource{bib/visualisierung.bib}
 \addbibresource{bib/zusammenhangskomponenten.bib}
 
 %%%

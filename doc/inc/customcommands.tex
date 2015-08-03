@@ -1,20 +1,32 @@
 %%%
 % Index
 %
+\newcommand{\CFD}{\gls{cfd}\index{CFD-Algorithmus}}
+\newcommand{\SECC}{\gls{secc}\index{SECC-Algorithmus}}
+
+%Allgemein
+\newcommand{\tool}[1]{\textit{#1}\index{#1}} %und libs. Wg vieler Abkürzungen evtl ins Glossar! (z.B. ANN, OpenMP, PPL)
+\newcommand{\tools}[2]{\textit{#1}\index{#2}}
+\newcommand{\propername}[1]{\textit{#1}\index{#1}} % Allgemein.
+\newcommand{\propernames}[2]{\textit{#1}\index{#2}} % Allgemein.
+\newcommand{\SEPlugin}[1]{\textit{#1}\index{#1}} % Programmaufbau, evtl in Glossar umwandeln!
+\newcommand{\SEPlugins}[2]{\textit{#1}\index{#2}} % Programmaufbau.
+
+%Visualisierung
 \newcommand{\visattr}[1]{\textit{#1}\index{#1}}
 \newcommand{\visattrs}[2]{\textit{#1}\index{#2}}
 \newcommand{\vis}[1]{\textit{#1}\index{#1}} %Visuelles
 \newcommand{\viss}[2]{\textit{#1}\index{#2}} %Visuelles
 \newcommand{\dataparam}[1]{\textit{#1}\index{#1}}
 \newcommand{\dataparams}[2]{\textit{#1}\index{#2}}
-\newcommand{\tool}[1]{\textit{#1}\index{#1}}
-\newcommand{\tools}[2]{\textit{#1}\index{#2}}
-\newcommand{\propername}[1]{\textit{#1}\index{#1}} % Allgemein.
-\newcommand{\propernames}[2]{\textit{#1}\index{#2}} % Allgemein.
+
+% Berechnung
 \newcommand{\contour}[1]{\textit{#1}\index{#1}}
 \newcommand{\contours}[2]{\textit{#1}\index{#2}}
 \newcommand{\SECterm}[1]{\textit{#1}\index{#1}}
 \newcommand{\SECterms}[2]{\textit{#1}\index{#2}}
+\newcommand{\CFDterm}[1]{\textit{#1}\index{#1}}
+\newcommand{\CFDterms}[2]{\textit{#1}\index{#2}}
 
 %%%
 % Auszeichnungen
@@ -22,6 +34,7 @@
 \newcommand{\wichtig}[1]{\textit{#1}}
 \newcommand{\mrkg}[1]{\textcolor{orange}{#1}} % Markierung, etwa in Gleichungen
 \newcommand{\mrkgb}[1]{\textcolor{magenta}{#1}} % Markierung, etwa in Gleichungen
+\newcommand{\libNoIndex}[1]{\textit{#1}}
 
 %%%
 % Tabelle
