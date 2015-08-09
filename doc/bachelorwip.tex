@@ -428,25 +428,81 @@ Zu jedem Cluster ist eine disjunkte Menge an Partikeln zugeordnet. Um diese Meng
 
 Anschließend werden zwei Schritte durchgeführt, um die für die Auswertung und schließlich die für die Eventerkennung notwendigen Werte zu ermitteln. In jedem Schritt werden alle Cluster eines Zeitschrittes betrachtet und für jeden werden Cluster des anderen Zeitschrittes gesucht, die mit dem betrachteten Cluster gemeinsame Partikel aufweisen. Diese werden als \SECterm{Partnercluster} oder Partner bezeichnet. Im ersten Schritt werden alle Cluster des vorherigen Schrittes mit jedem des aktuellen Zeitschrittes verglichen (vorwärtsgerichteter Vergleich), im zweiten Schritt alle derzeitigen mit jedem Cluster des vorherigen Zeitschrittes (rückwärtsgerichteter Vergleich). 
 
-Zur Speicherung der Vergleichsergebnisse wird eine Partnerclusterstruktur eingeführt. Diese enthält eine Liste der \SECterm{Partnercluster} zusammen mit den jeweils gemeinsamen Partikeln sowie Methoden zur Berechnung von Gesamt- und Durchschnittswerten. Für beide Vergleichsrichtungen werden diese Strukturen in separate Listen geschrieben. Damit lassen sich die Anzahl der gemeinsamen Partikel für jeden vorhergehenden Cluster und jeden aktuellen bestimmen, woraus sich die weiteren für die Analyse notwendigen Werte ermitteln lassen.
+\subsection*{Partnerclusterstrukturlisten}\label{sec:partnerclusterstrukturlisten}
+Zur Speicherung der Vergleichsergebnisse wird eine Partnerclusterstruktur eingeführt. Diese enthält eine Liste der \SECterm{Partnercluster} zusammen mit den jeweils gemeinsamen Partikeln sowie Methoden zur Berechnung von Gesamt- und Durchschnittswerten. Für beide Vergleichsrichtungen werden diese Strukturen in separate Listen geschrieben, so dass eine \SECterms{vorwärtsgerichtete}{Partnerclusterstrukturliste} und eine \SECterms{rückwärtsgerichtete Partnerclusterstrukturliste}{Partnerclusterstrukturliste} entstehen. Damit lassen sich die Anzahl der gemeinsamen Partikel für jeden vorhergehenden Cluster und jeden aktuellen bestimmen, woraus sich die weiteren für die Analyse notwendigen Werte ermitteln lassen.
 
 \section{Schritt 4: Erkennung von Ereignissen}\label{sec:ereigniserkennung}
 
 Es werden jeweils ein Cluster und seine \SECterm{Partnercluster} betrachtet. Dies geschieht sowohl für den vorwärtsgerichteten als auch den rückwärtsgerichteten Vergleich.
 
-Zur Analyse der durch die Partnerclusterstruktur zurückgegeben Daten wird ein heuristisches Vorgehen genutzt. Tests haben gezeigt, dass die Partikel selten in Clustern mit derselben Clusternummer bleiben. Das lässt sich damit erklären, dass die Clusterzuweisung stark von der Position der Partikel und ihrer Nachbarschaftsverhältnisse abhängen und diese sich durch die sich bewegenden Partikel von Zeitschritt zu Zeitschritt stark ändern. Somit ist der intuitiv wirkende Vergleich über den Clusteridentifikator für die Beobachtung von Veränderungen nicht möglich und kann ausgeschlossen werden. %TODO-- Testdaten Änderung Clusternummern
+Zur Analyse der durch die Partnerclusterstruktur zurückgegebenen Daten wird ein heuristisches Vorgehen genutzt. Tests haben gezeigt, dass die Partikel selten in Clustern mit derselben Clusternummer bleiben. Das lässt sich damit erklären, dass die Clusterzuweisung stark von der Position der Partikel und ihrer Nachbarschaftsverhältnisse abhängen und diese sich durch die sich bewegenden Partikel von Zeitschritt zu Zeitschritt stark ändern. Somit ist der intuitiv wirkende Vergleich über den Clusteridentifikator für die Beobachtung von Veränderungen nicht möglich und kann ausgeschlossen werden. %TODO-- Testdaten Änderung Clusternummern
 Dagegen kann ein Vergleich der Anteile von Partikeln in den Clustern erkennen lassen, ob sich der Zusammenhang zwischen den Partikeln verändert hat. Die für die Betrachtung relevante Clustereigenschaft ist die Anzahl der Partikel eines Clusters und wird als \SECterm{Clustergröße} bezeichnet.
 
-Die Größe eines Clusters hat für die Gewichtung von Ereignissen keine Bedeutung, da sie durch die Vorgehensweise der \CFD stark von der Topologie der Strukturen abhängt. Ein durch einen kleinen Cluster an einer Engstelle eines Filaments ausgelöstes Ereignis kann für die Analyse bedeutender sein als ein Ereignis innerhalb der Flüssigkeitsfront, ausgelöst durch große Cluster. Um die Abhängigkeit der Ereigniserkennung von der \SECterm{Clustergröße} zu eliminieren, werden relative Werte verwendet. Das heißt, die Methoden der Strukturen des \SECC geben Werte im Verhältnis zur Größe der Cluster an. Dazu zählen der Anteil der gemeinsamen Partikel aller \SECterm{Partnercluster}, der Anteil für jeden einzelnen Partner, der Durchschnittsanteil der gemeinsamen Partikel für alle Partner sowie Maxima, Minima und die Anzahl der Partner.
+Die Größe eines Clusters hat für die Gewichtung von Ereignissen keine Bedeutung, da sie durch die Vorgehensweise der \CFD stark von der Topologie der Strukturen abhängt. Ein durch einen kleinen Cluster an einer Engstelle eines Filaments ausgelöstes Ereignis kann für die Analyse bedeutender sein als ein Ereignis innerhalb der Flüssigkeitsfront, ausgelöst durch große Cluster. Um die Abhängigkeit der Ereigniserkennung von der \SECterm{Clustergröße} zu eliminieren, werden relative Werte verwendet. Das heißt, die Methoden der Strukturen des \SECC geben Werte im Verhältnis zur Größe der Cluster an. Dazu zählen der Anteil der gemeinsamen Partikel aller \SECterm{Partnercluster} $a_\text{gesamt}$, der Anteil für jeden einzelnen Partner $a_\text{partner}$, der Durchschnittsanteil der gemeinsamen Partikel für alle Partner $a_\text{durchschnitt}$ sowie Maxima ($a_\text{max}$ $p_\text{max}$), Minima ($a_\text{min}$ $p_\text{min}$) und die Anzahl der Partner $p$.
 
-Um festzustellen, ob ein Cluster einen ähnlichen Vorgänger oder Nachfolger hat, können der durchschnittliche Anteil der gemeinsamen Partikel über alle Partner, der Anteil des größten Partners im Vergleich dazu sowie die Gesamtanzahl der Partner herangezogen werden. Sollten die ersten beiden Werte hoch und der dritte Wert klein sein, kann mit einer zu bestimmenden Wahrscheinlichkeit in Abhängigkeit von den drei Werten davon ausgegangen werden, dass es sich um denselben Cluster handelt. Für die Erkennung der Ereignisse ist es aufgrund der oben genannten Fluktuation der Partikel zwischen Clustern jedoch nicht relevant, ob ein Cluster einen direkten Vorgänger hat. Es zeigt jedoch ein schlechtes Beispiel, das von drei verschiedenen, wenig intuitiven Werten abhängig ist.
+Um festzustellen, ob ein Cluster einen ähnlichen Vorgänger oder Nachfolger hat, können der durchschnittliche Anteil der gemeinsamen Partikel über alle Partner, der Anteil des größten Partners im Vergleich dazu sowie die Gesamtanzahl der Partner herangezogen werden. Sollten die ersten beiden Werte hoch und der dritte Wert klein sein, kann mit einer, von diesen Werten abhängigen, Wahrscheinlichkeit davon ausgegangen werden, dass es sich um denselben Cluster handelt. Dies ist eine undurchsichtige Methode zur Erkennung von Ereignissen, da sie von drei verschiedenen, wenig intuitiven Werten abhängig ist. Sie dient als schlechtes Beispiel. Darüber hinaus ist es für die Erkennung der Ereignisse, aufgrund der zuvor genannten Fluktuation der Partikel zwischen Clustern, nicht relevant, ob ein Cluster einen direkten Vorgänger hat.
 
-\ereignis{Birth} und \ereignis{Death} bieten die einfachste Herangehensweise, da nur eine Überprüfung auf einen Übergang der Partikel von oder in die Gasphase vorgenommen werden muss. Auf die \SECterm{Partnercluster} übertragen bedeutet das, im vorwärtsgerichteten Vergleich resultiert ein Cluster ohne Partner in einem \ereignis{Death}, im rückwärtsgerichteten Vergleich in einem \ereignis{Birth}. Um Phänomene untersuchen zu können, wird dem Nutzer ein Parameter bereitgestellt, mit dem auch Cluster mit einem benutzerdefiniertem Anteil an gemeinsamen Partikeln als \ereignis{Birth} oder \ereignis{Death} erkannt werden.
+\subsection*{Ermittlung von \wichtig{Birth} und \wichtig{Death}}
+Wie eingangs erwähnt, werden die Ereignisse ermittelt, indem die Cluster in den beiden \SECterms{Partnerclusterstrukturlisten}{Partnerclusterstrukturliste} (siehe \autoref{sec:partnerclusterstrukturlisten}) nacheinander betrachtet und die genannten Verhältnisse sowie Absolutwerte der \SECterm{Partnercluster} berücksichtigt werden. In den folgenden formalen Ausdrücken steht der Index $v$ für die Nutzung des vorwärtsgerichteten und der Index $r$ für die Nutzung des rückwärtsgerichteten Vergleichs.
 
+\ereignis{Birth} und \ereignis{Death} bieten die einfachste Herangehensweise, da nur eine Überprüfung auf einen Übergang der Partikel von oder in die Gasphase vorgenommen werden muss. Auf die \SECterm{Partnercluster} übertragen bedeutet das, im vorwärtsgerichteten Vergleich resultiert ein Cluster ohne Partner ($p_{\text{gesamt}_\text{v}} = 0$) in einem \ereignis{Death}, im rückwärtsgerichteten Vergleich (mit $p_{\text{gesamt}_\text{r}} = 0$) in einem \ereignis{Birth}. Um Phänomene untersuchen zu können, wird dem Nutzer ein Parameter $s_\text{bd}$ bereitgestellt, mit dem auch Cluster mit einem benutzerdefiniertem Anteil an gemeinsamen Partikeln ($a_\text{gesamt}$) als \ereignis{Birth} oder \ereignis{Death} erkannt werden.
+
+Damit muss für die Erkennung eines \ereigniss{Birthereignisses}{Birth} eine der in \autoref{eq:birth} formulierten und für die Erkennung eines \ereigniss{Deathereignisses}{Death} eine der in  \autoref{eq:death} formulierten Gleichungen erfüllt sein.
+\begin{equation}
+	\begin{aligned}\label{eq:birth}
+		p_{\text{gesamt}_\text{r}} &= 0 &(B)\\
+		s_\text{bd} &\le a_{\text{gesamt}_r} &(C)
+	\end{aligned}
+\end{equation}
+
+\begin{equation}
+	\begin{aligned}\label{eq:death}
+		p_{\text{gesamt}_\text{v}} &= 0 &(D)\\
+		s_\text{bd} &\le a_{\text{gesamt}_v} &(E)
+\end{aligned}
+\end{equation}
+
+\ereignis{Birth} wird erkannt, wenn $(B \lor C) = \top$ und \ereignis{Death} wird erkannt, wenn $(D \lor E) = \top$.
+
+\subsection*{Ermittlung von \wichtig{Merge} und \wichtig{Split}}
 \ereignis{Merge} und \ereignis{Split} können von vielen Faktoren abhängen. Etwa einer Kombination aus einem hohen durchschnittlichen Anteil gemeinsamer Partikel aller \SECterm{Partnercluster} und damit einhergehend einer kleinen Anzahl an Partnern, um auszuschließen, dass das Ereignis als Rauschen einzuordnen ist. Rauschen kann entstehen, wenn ein Cluster zahlreiche kleine Partner besitzt.
-Der Nachteil darin liegt, dass diese Parameter wenig intuitiv sind und es daher zahlreicher Messungen bedarf, ab welchem Grenzwert des durchschnittlichen Anteils beziehungsweise der Partner solch ein Ereignis auftritt. Aus diesem Grund wurde der Begriff des \SECterms{Großen Partners}{Großer Partner} eingeführt. \SECterms{Große Partner}{Großer Partner} sind solche \SECterm{Partnercluster}, die einen bestimmten Schwellwert des Anteils gemeinsamer Partikel überschreiten. Damit kann der Nutzer bestimmen, ob zwei, drei, vier oder mehr Partner als \ereignis{Merge} beziehungsweise \ereignis{Split} erkannt werden sollen und er kann den jeweiligen Anteil an gemeinsamen Partikeln festlegen.
+Der Nachteil darin liegt, dass diese Parameter wenig intuitiv sind und es daher zahlreicher Messungen bedarf, ab welchem Grenzwert des durchschnittlichen Anteils beziehungsweise der Partner solch ein Ereignis auftritt.
+
+Aus diesem Grund wird der Begriff des \SECterms{Großen Partners}{Großer Partner}
+eingeführt. \SECterms{Große Partner}{Großer Partner} sind solche \SECterm{Partnercluster}, die einen bestimmten Schwellwert des Anteils gemeinsamer Partikel überschreiten. Diesen Schwellwert kann der Anwender durch den Parameter $s_a$ festlegen. Dieser Parameter wird zur Ermittlung der Anzahl der \SECterms{Großen Partner}{Großer Partner} $p_\text{groß}$ genutzt. Diese Anzahl wird für jeden Cluster sowohl der \SECterms{vorwärtsgerichteten}{Partnerclusterstrukturliste} als auch der \SECterms{rückwärtsgerichteten Partnerclusterstrukturliste}{Partnerclusterstrukturliste} separat ermittelt. Dazu werden die jedem Cluster zugehörigen \SECterm{Partnercluster} durchlaufen. Beim Prüfen der Cluster der \SECterms{vorwärtsgerichteten Liste}{Partnerclusterstrukturliste} muss ein \SECterm{Partnercluster} die in \autoref{eq:bigPartner:split} formulierte Bedingung erfüllen, damit $p_{\text{groß}_v}$ inkrementiert wird.
+\begin{equation}
+	\begin{aligned}\label{eq:bigPartner:split}
+		a_{\text{partner}_v} &\ge s_a
+	\end{aligned}
+\end{equation}
+
+Beim rückwärtsgerichteten Vergleich ist die in \autoref{eq:bigPartner:merge} aufgeführte Bedingung für die \SECterm{Partnercluster} zur Inkrementation von $p_{\text{groß}_r}$ analog. 
+
+\begin{equation}
+	\begin{aligned}\label{eq:bigPartner:merge}
+		a_{\text{partner}_r} &\ge s_a
+	\end{aligned}
+\end{equation}
+
+Über den Vergleich ihrer Anzahl $p_\text{groß}$ mit einem bereitgestellten Parameter $s_p$ kann der Nutzer bestimmen, ob zwei, drei, vier oder mehr Partner mit der zu erfüllenden Bedingung in \autoref{eq:merge} als \ereignis{Merge} beziehungsweise der zu erfüllenden Bedingung in \autoref{eq:split} als \ereignis{Split} erkannt werden sollen.
+
+\begin{equation}
+\begin{aligned}\label{eq:merge}
+p_{\text{groß}_r} &\ge s_p &(M)
+\end{aligned}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}\label{eq:split}
+p_{\text{groß}_v} &\ge s_p &(S)
+\end{aligned}
+\end{equation}
+
+\ereignis{Merge} wird erkannt, wenn $M = \top$ und \ereignis{Split} wird erkannt, wenn $S = \top$.
+
 So kann der Nutzer zwei Eigenschaften von Verschmelzungen beziehungsweise Abspaltungen festlegen. Zum einen die Anzahl der beteiligten Cluster. Zum anderen können durch das Setzen niedrigerer Anteile an gemeinsamen Partikeln auch Abspaltungen oder Verschmelzungen kleiner Cluster von oder mit großen Clustern registriert werden. Durch die Betrachtung der \SECterms{Großen Partner}{Großer Partner} muss keine separate Behandlung des bereits erwähnten Rauschens erfolgen. Rauschen entsteht durch ständiges Hinzufügen und Lösen von Randpartikeln eines Clusters, was sich in vielen kleinen Partnern äußern kann.
 %Da dieses Rauschen mit zunehmender Clustergröße durch die höhere Anzahl an Randpartikeln verstärkt wird, werden die Betrachtungen mit prozentualen Werten durchgeführt. Andererseits können so große Cluster verstärkt in das Rauschen eingeteilt werden, so dass auch große \SECterm{Partnercluster} mit Werten kleiner als der festgelegte Grenzwert für \ereignis{Split} und \ereignis{Merge} Ereignisse in Betracht gezogen werden. Dabei wird getCommonPercentage auf hohe Werte untersucht. %Evtl in Diskussion.
+
 
 \section{Protokollierung und Datenspeicherung}
 
@@ -1309,13 +1365,13 @@ Um einen zielgerichteten Wert für die Mindestclustergröße zu finden, können 
 
 Neben dem Problem des \SECterms{Ereignisrauschens}{Ereignisrauschen} tritt das Problem der Verdeckung auf. Dies ist durch die Zielstellung der Arbeit bedingt, da die Partikel als auch die Daten der Strukturereignisse im selben Raum visualisiert werden. Dies kann zu Verdeckungsproblemen der Glyphen untereinander sowie der Verdeckung durch die Partikel führen (siehe \autoref{sec:diskussion}). Zur Lösung können die in \autoref{sec:related-visAnordnung} vorgestellten Kategorien genutzt werden, um die überlagerte Darstellung beispielsweise durch eine \vis{explizite Verschlüsselung} in Verbindung mit der \vis{Gegenüberstellung} zu ersetzen. Dies würde dem Verdecken entgegenwirken und könnte zudem eine quantitative Erfassung der einzelnen Ereignisarten etwa durch eine Einstellung der Dicke der Verbindungselemente zwischen dem Partikelraum und dem Ereignisraum erleichtern. Die \vis{Strukturereignistaxonomie} aus \autoref{sec:strukturereignistaxonomie} unterstützt dabei die \vis{explizite Verschlüsselung}, etwa durch eine freie Anordnung der Glyphen, angepasst an die Anforderungen der Anzeige der Verbindungselemente zwischen beiden Ansichten.
 
-Zusätzliche Erkenntnisse für die Strukturveränderungen können durch, in dieser Arbeit nicht betrachtete, Zusammenhänge zwischen Clustern gebildet werden. Die \SECterm{Ereignisheuristik} kann so erweitert werden, dass Cluster über mehrere oder alle Zeitschritte verglichen werden. Dies kann über die Nutzung der im \SECC gebildeten Partnerclusterstrukturen erfolgen. In einer neuen Struktur können die \SECterms{Großen Partner}{Großer Partner} von Clustern permanent gespeichert werden. So können die Cluster und damit die zugehörigen Ereignisse über einen längeren Zeitraum zueinander in Beziehung gestellt werden. Eine Visualisierung dieser Ereignisbeziehungen kann durch die eben vorgeschlagene Nutzung weiterer Visualisierungsarten für den Vergleich von \vis{Ereignisobjekt} und \vis{Partikelobjekt} erfolgen. So kann das \vis{Ereignisobjekt} als Zeitverlaufsdiagramm dargestellt werden und trotzdem mit Hilfe der \viss{expliziten Verschlüsselung}{explizite Verschlüsselung} auf die Positionen im \vis{Partikelobjekt} verweisen, indem zum Beispiel Linien von den Ereigniselementen zu den entsprechenden Positionen im \vis{Partikelobjekt} gezogen werden.
+Zusätzliche Erkenntnisse für die Strukturveränderungen können durch, in dieser Arbeit nicht betrachtete, Zusammenhänge zwischen Clustern gebildet werden. Für die derzeitige Funktionsweise der \SECterm{Ereignisheuristik} sind Clusterzusammenhänge nicht relevant (siehe vorgeführtes Negativbeispiel in \autoref{sec:ereigniserkennung}). Sie kann jedoch damit erweitert werden, dass Cluster über mehrere oder alle Zeitschritte verglichen werden. Dies kann über die Nutzung der im \SECC gebildeten Partnerclusterstrukturen erfolgen. In einer neuen Struktur können die \SECterms{Großen Partner}{Großer Partner} von Clustern permanent gespeichert werden. So können die Cluster und damit die zugehörigen Ereignisse über einen längeren Zeitraum zueinander in Beziehung gestellt werden. Eine Visualisierung dieser Ereignisbeziehungen kann durch die eben vorgeschlagene Nutzung weiterer Visualisierungsarten für den Vergleich von \vis{Ereignisobjekt} und \vis{Partikelobjekt} erfolgen. So kann das \vis{Ereignisobjekt} als Zeitverlaufsdiagramm dargestellt werden und trotzdem mit Hilfe der \viss{expliziten Verschlüsselung}{explizite Verschlüsselung} auf die Positionen im \vis{Partikelobjekt} verweisen, indem zum Beispiel Linien von den Ereigniselementen zu den entsprechenden Positionen im \vis{Partikelobjekt} gezogen werden.
 	
 %Animationen zu trivial: Position Ereignisglyph an die Ereigniszeit gekoppelt: wozu?
 	
 Neben der weiteren Untersuchung und Verbesserung der in dieser Arbeit entwickelten Algorithmen können auch die bei der Nachbarschaftssuche entstandenen Strukturen genutzt werden, um eine mögliche, direktere Anwendung der in \autoref{sec:related:connectedContour} zitierten \contours{Konturbaumalgorithmen}{Konturbaum} zu überprüfen.
 
-Damit können die in dieser Arbeit entstandenen Algorithmen, Strukturen und Visualisierungsmethoden für verschiedene, auf ihnen aufbauende Weiterentwicklungen sowie für weitere Strukturuntersuchungen von Molekulardynamikdaten verwendet werden.
+Damit können die in dieser Arbeit entstandenen Algorithmen, Strukturen und Visualisierungsmethoden für verschiedene, auf ihnen aufbauende Weiterentwicklungen sowie für weitere Strukturuntersuchungen von Molekulardynamikdaten genutzt werden.
 
 %Weitere Untersuchungsmöglichkeiten der Visualisierung:
 %\begin{itemize}
