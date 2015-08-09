@@ -45,15 +45,15 @@
 	}
 }
 
-\newcommand*{\newsymbol}[5][]{%
+\newcommand*{\glossarysymbol}[5][]{%First one is newline! Yay!
 	\newglossaryentry{#2}{%
 		type=symbols,%
-		description={},%
-		name={#3},%
-		symbol={\ensuremath{#4}},%
-		user1={\ensuremath{\mathrm{#5}}},%
+		description={#4}, % Für Auflistung
+		name={\ensuremath{#3}},% Für Auflistung
+		symbol={\ensuremath{#3}},% Für Fließtext \glssymbol
+		user1={\ensuremath{\mathrm{#5}}},% Einheit
 		sort={#2},%
-		#1%
+		#1%damit die Newline verwendet wird?
 	}%
 }
 
@@ -73,7 +73,7 @@
 \renewcommand*{\glossaryheader}{%
 	\toprule
 	\bfseries Symbol & \bfseries Einheit &
-	\bfseries Name & \bfseries Seite(n)
+	\bfseries Beschreibung & \bfseries Seite(n)
 	\tabularnewline\midrule\endhead%
 	\bottomrule\endfoot%
 }%
@@ -83,7 +83,7 @@
 	\glsentryitem{##1}% Entry number if required
 	\glstarget{##1}{\glossentrysymbol{##1}} &
 	\glsentryuseri{##1} &
-	\glossentryname{##1} &
+	\glossentrydesc{##1} &
 	##2\tabularnewline%
 }%
 }

@@ -42,9 +42,11 @@
 
 \confirmation \tableofcontents %\listoffigures \listoftables
 
-%\printglossaries %uncomment for using makeglossaries.exe
-%\printglossary
-\printacronyms[style=acrotabu] \printsymbols[style=symblongtabu]
+\printglossaries %uncomment for using makeglossaries.exe
+\printacronyms[style=acrotabu]
+\printsymbols[style=symblongtabu]
+
+%\printglossary % Not needed
 
 %\mainmatter %Hauptteil: Normale Seitennummerierung
 
@@ -182,7 +184,7 @@ Die Glyphdarstellung und die Darstellung der Partikel der vorliegenden Arbeit k�
 \subsection*{Filterung von Datenobjekten}\label{sec:related-visFilter}
 Um Objekte mit vielen Datenelementen auswerten zu können, bieten Informationsvisualisierungen Werkzeuge wie Filter- und Zoomtechniken. Aus Mangel an verbindlichen Regeln für Darstellungen leitet Lima, losgelöst von einschränkenden Taxonomien zur grafischen Präsentation von Daten \cite{brinton1914graphicMethods}, anhand der Analyse zahlreicher Darstellungen \cite{lima2015visualComplexity_web} Prinzipien zur Herangehensweise an Visualisierungen großer Datensätze ab \cite[S.~81-95]{lima2013visualComplexity}. Trotz dessen, dass sich diese Prinzipien auf Netzwerke konzentrieren, werden zeitliche Änderungen über die Bewegung und Veränderung von Knoten und Verbindungen vorgeschlagen analog zur Bewegung der Partikel. Genauso lässt sich die Betrachtung der Sichten übertragen. Dort betont der Autor, dass die Umsetzung einer Makrosicht und einer Mikrosicht dabei hilft, dem Nutzer sowohl eine quantitative als auch eine qualitative Erfassung zu ermöglichen. Die quantitative Erfassung dient zum Erkennen von zusammengehörigen und alleinstehenden Elementen sowie der Struktur im Ganzen. Individuelle Verbindungen zwischen den Elementen sind dabei nicht relevant. Die qualitative Erfassung dient zur Bewertung einzelner Elemente, zu detaillierten Informationen über sie und damit zur Darstellung von Fakten. %für Eva
 
-Die Unterstützung beider Sichten wird durch die Bewegungs- und Zoomfähigkeit der Kamera des verwendeten \tool{MegaMol} Viewmoduls (siehe \autoref{sec:pluginaufbau}) grundsätzlich ermöglicht. Um dem Nutzer auch in die Lage zu versetzen, die Daten sowohl quantitativ als auch qualitativ zu erfassen, wird eine Anpassung der Größe der \viss{Ereignisglyphen}{Ereignisglyph} erlaubt.
+Die Unterstützung beider Sichten wird durch die Bewegungs- und Zoomfähigkeit der Kamera des verwendeten \tool{MegaMol}-Viewmoduls (siehe \autoref{sec:pluginaufbau}) grundsätzlich ermöglicht. Um dem Nutzer auch in die Lage zu versetzen, die Daten sowohl quantitativ als auch qualitativ zu erfassen, wird eine Anpassung der Größe der \viss{Ereignisglyphen}{Ereignisglyph} erlaubt.
 
 Auch erwähnt Lima eine Beziehungssicht zur Analyse des Systems, welche die Existenz und Stärke von Verbindungen aufzeigt. Dafür wird die Nutzung mehrerer Perspektiven empfohlen. Dies kann beispielsweise mit der Kombination von Gegenüberstellung und expliziter Verschlüsselung erreicht werden (siehe \autoref{sec:related-visAnordnung}, \autoref{sec:diskussion}). %für Diskussion/Aussicht
 
@@ -215,7 +217,7 @@ Trotz der in \autoref{sec:related:connectedContour} beschriebenen Schwierigkeit,
 
 Die Entwicklung und Berechnungen erfolgen auf handelsüblichen Computern (siehe \autoref{sec:hardware}). \tool{MegaMol} dient als Framework und bietet Klassen für das Benutzerinterface, für die Behandlung großer Daten sowie für ihre Modifizierung, Visualisierung und Speicherung. Insbesondere die annähernd verzögerungsfreie Darstellung großer Datenmengen durch Streamingmethoden sowie das Pluginsystem sind hervorzuheben. Letzteres ermöglicht eine Kombination verschiedener Datenquellen, Berechnungs- und Ausgabemodulen. Im Rahmen dieser Arbeit entstand ein Plugin unter der \gls{MIT}. Es enthält vier Module und eine Kommunikationsklasse. Das \MMStruktur{StructureEventsCalculation Modul} führt sämtliche, in \autoref{sec:cluster-ereignisse} beschriebenen Berechnungen durch, das \MMStruktur{StaticRenderer Modul} dient zur Visualisierung der Ereignisse (siehe \autoref{sec:renderer}), das \MMStruktur{StructureEventsDataSource Modul} sowie das \MMStruktur{StructureEventsWriter Modul} dienen zum Lesen und Schreiben der Ereignisdaten. Für den Datentransfer der Ereignisdaten zwischen den Modulen wird der \MMStruktur{StructureEventsDataCall} verwendet. Calls sind spezielle Klassen zur intermodularen Kommunikation der \tool{MegaMol} Module. Beispielhafte Programmaufbauten können in \autoref{sec:pluginaufbau} betrachtet werden. Zur effizienten Erstellung der Aufbauten dient das dem \tools{MegaMolprojekt}{MegaMol} zugehörige Werkzeug \tool{MegaMol Configurator}.
 
-Zur Berechnung wird das Jobsystem von \tool{MegaMol} verwendet, welches es ermöglicht, die Zeitschritte eines \gls{mmpld} (das Dateiformat, in dem der dieser Arbeit zugrundliegende Datensatz vorliegt) sequentiell nacheinander und automatisiert aufzurufen. Zur Ausführung der Jobs werden \gls{XML} Dateien genutzt, die einen Aufbau von Modulen, ihrer Eigenschaften sowie von Kommunikationsklassen beschreiben. Sämtliche verwendete Bibliotheken und Werkzeuge sind thematisch in \autoref{sec:werkzeuge} aufgeführt.
+Zur Berechnung wird das Jobsystem von \tool{MegaMol} verwendet, welches es ermöglicht, die Zeitschritte eines \gls{mmpld} (das Dateiformat, in dem der dieser Arbeit zugrundliegende Datensatz vorliegt) sequentiell nacheinander und automatisiert aufzurufen. Zur Ausführung der Jobs werden \gls{xml} Dateien genutzt, die einen Aufbau von Modulen, ihrer Eigenschaften sowie von Kommunikationsklassen beschreiben. Sämtliche verwendete Bibliotheken und Werkzeuge sind thematisch in \autoref{sec:werkzeuge} aufgeführt.
 
 %Trotz ihrer Funktionalität 
 
@@ -314,12 +316,12 @@ Diese Identifikatoren werden genutzt, um zur Referenzierung auf die Listenzeiger
 
 Ausgehend von der in \autoref{sec:related:connectedContour} referenzierten Bestimmung von Zusammenhangskomponenten über einen Maximalabstand zwischen Punkten im Netz, der ohne Baumstrukturen auskommt, könnte hier ebenfalls eine radialbasierte Nachbarschaftsbeziehung verwendet werden. Diese wurde geprüft und aufgrund des hohen Zeitaufwandes, verursacht durch die Entfernungsbestimmung zwischen Partikeln, verworfen (siehe \autoref{sec:cluster-radial}).
 
-Eine Einteilung des Raumes in ein Gitter abhängig des Partikelradius wäre eine weitere Option. Einen ähnlichen Ansatz nutzt der kD-Baum, der die Partikel abhängig von ihrer Position in seine Äste verteilt und dadurch die Suche nach benachbarten Partikeln stark beschleunigt. Die Nutzung des Baumes bietet sich an, da die Anzahl der Partikel und ihre Positionen sich während eines Zeitschrittes nicht verändern und der Baum somit nicht modifiziert werden muss. Der Baum hat aufgrund der drei Raumrichtungen die Dimension $k=3$. Die Identifikation der Partikel erfolgt über den im kD-Baum eingetragenen Index, der der Position der Partikel in der Partikelliste entspricht. Daher wird während der Laufzeit über den beim Partikel gespeicherten Identifikator überprüft, ob die Reihenfolge der Liste modifiziert wurde, um Falschzuweisungen registrieren zu können.
+Eine Einteilung des Raumes in ein Gitter abhängig des Partikelradius wäre eine weitere Option. Einen ähnlichen Ansatz nutzt der \CFDterm{kD-Baum}, der die Partikel abhängig von ihrer Position in seine Äste verteilt und dadurch die Suche nach benachbarten Partikeln stark beschleunigt. Die Nutzung des Baumes bietet sich an, da die Anzahl der Partikel und ihre Positionen sich während eines Zeitschrittes nicht verändern und der Baum somit nicht modifiziert werden muss. Der Baum hat aufgrund der drei Raumrichtungen die Dimension $k=3$. Die Identifikation der Partikel erfolgt über den im \CFDterm{kD-Baum} eingetragenen Index, der der Position der Partikel in der Partikelliste entspricht. Daher wird während der Laufzeit über den beim Partikel gespeicherten Identifikator überprüft, ob die Reihenfolge der Liste modifiziert wurde, um Falschzuweisungen registrieren zu können.
 
 Die periodischen Randbedingungen des Datensatzes werden standardmäßig beachtet, indem die Nachbarschaftssuche für jeden Partikel achtmal durchgeführt wird. Dabei wird die Position des Partikels für jede Raumrichtung auf die gegenüberliegende Seite des Simulationsvolumens versetzt, was bei drei Raumrichtungen acht Kombinationen ergibt.
 Für Datensätze ohne periodische Randbedingungen kann der Nutzer dieses Vorgehen deaktivieren, so dass nur die Originalposition des Partikels verwendet wird.
 
-\tool{MegaMol} stellt mit der \ANN eine Bibliothek für die Nutzung von kD-Bäumen bereit. Von dieser wird die radienbasierte Suche annkFRsearch verwendet, da sich so eine Reichweite bestimmen lässt (siehe \autoref{sec:related:connectedContour}). Als Suchparameter werden neben des Radius' selbst auch eine maximale Anzahl von zu prüfenden Nachbarn festgelegt. Dies ist nötig, da die \ANN die Größe des Containers zur Speicherung der Identifikatoren der festgestellten Nachbarn (Nachbarschaftsliste) im Voraus festlegt. Dieser Wert wird abhängig vom Radius durch die Berechnung automatisch gesetzt. Die passenden, in \autoref{tab:maxNeighbours} aufgeführten Werte wurden experimentell bestimmt und erfüllen die beiden Voraussetzungen, dass alle im durch den Radius definierten Volumen befindlichen Artikel in die Nachbarschaftsliste aufgenommen werden können und andererseits möglichst wenig zusätzlicher, unnötiger Speicherplatz für den bei der Suche verwendeten Container für das Aufnehmen der Nachbarn reserviert wird. 
+\tool{MegaMol} stellt mit der \ANN eine Bibliothek für die Nutzung von \CFDterms{kD-Bäumen}{kD-Baum} bereit. Von dieser wird die radienbasierte Suche annkFRsearch verwendet, da sich so eine Reichweite bestimmen lässt (siehe \autoref{sec:related:connectedContour}). Als Suchparameter werden neben des Radius' selbst auch eine maximale Anzahl von zu prüfenden Nachbarn festgelegt. Dies ist nötig, da die \ANN die Größe des Containers zur Speicherung der Identifikatoren der festgestellten Nachbarn (Nachbarschaftsliste) im Voraus festlegt. Dieser Wert wird abhängig vom Radius durch die Berechnung automatisch gesetzt. Die passenden, in \autoref{tab:maxNeighbours} aufgeführten Werte wurden experimentell bestimmt und erfüllen die beiden Voraussetzungen, dass alle im durch den Radius definierten Volumen befindlichen Artikel in die Nachbarschaftsliste aufgenommen werden können und andererseits möglichst wenig zusätzlicher, unnötiger Speicherplatz für den bei der Suche verwendeten Container für das Aufnehmen der Nachbarn reserviert wird. 
 
 \begin{table}
 	\begin{tabularx}{\textwidth}{@{}LL@{}}
@@ -343,7 +345,7 @@ Der Suchradius wird durch den Nutzer einstellbar gestaltet, da mit der Reichweit
 
 Die Suche wird für jeden Partikel durchgeführt. Dabei werden die Identifikatoren der gefundenen Nachbarn in die dafür vorgesehene Liste jedes Partikelobjekts hinzugefügt (siehe \autoref{sec:datenbehandlung}). Zuvor werden alle Partikel des \gls{mmpld} aus dem eingehenden \gls{mpdc} in diese Partikelobjekte umgewandelt und in die Partikelliste geschrieben. Da die Anzahl der im \gls{mmpld} enthaltenen Elemente bekannt ist, findet eine Speicherplatzreservierung der Partikelliste statt, um eine Reallokation während der Eintragung der Partikel zu vermeiden.
 
-Mit der Erzeugung dieser Partikelliste, der Eintragung aller Partikel in den kD-Baum und der Eintragung der Nachbarn in die Partikelobjekte ist der erste Schritt für die Berechnung der Strukturereignisse abgeschlossen und es folgt die Clusterbestimmung.
+Mit der Erzeugung dieser Partikelliste, der Eintragung aller Partikel in den \CFDterm{kD-Baum} und der Eintragung der Nachbarn in die Partikelobjekte ist der erste Schritt für die Berechnung der Strukturereignisse abgeschlossen und es folgt die Clusterbestimmung.
 
 \section{Schritt 2a: Cluster-Fast-Depth Algorithmus zur Bestimmung der Cluster}\label{sec:fast-depth}
 
@@ -401,9 +403,9 @@ Damit ist der wesentliche Teil der Clusterbildung abgeschlossen. Der zweite Schr
 
 Sehr kleine Cluster in den Zusammenhangskomponenten können unerwünschtes Rauschen in der Ereigniserkennung verursachen, so dass deren Partikel benachbarten, größeren Clustern zugewiesen werden. Ausgenommen sind diejenigen Cluster, die alleinig eine Zusammenhangskomponente bilden, auch wenn sie die Mindestgröße unterschreiten.
 
-Es könnte eine Menge aus diesen sehr kleinen Clustern gebildet werden. Mit jedem Cluster diese Menge werden die naheliegensten ,,großen'' Cluster gesucht, zum Beispiel durch Anordnung der Rootpartikel der Cluster in einem kD-Baum. Allerdings ist eine Prüfung, ob sich die Cluster in einer Zusammenhangskomponente befinden, sehr aufwändig.
+Es könnte eine Menge aus diesen sehr kleinen Clustern gebildet werden. Mit jedem Cluster diese Menge werden die naheliegensten ,,großen'' Cluster gesucht, zum Beispiel durch Anordnung der Rootpartikel der Cluster in einem \CFDterm{kD-Baum}. Allerdings ist eine Prüfung, ob sich die Cluster in einer Zusammenhangskomponente befinden, sehr aufwändig.
 
-Aufgrund dessen, dass sich in der Arbeit auf eine kleine Mindestclustergrößen von zehn Partikeln beschränkt wird, kann eine iterative Prüfung auf benachbarte, große Cluster unter Nutzung der bestehenden Nachbarschaftsbeziehungen der Partikel genutzt werden. Dabei werden bei jedem Partikel, der ein Flüssigkeitspartikel mit Nachbarn ist und dessen referenzierter Cluster die Mindestclustergröße unterschreitet, die Nachbarn durchsucht. Sollten die Nachbarn alle keinem, dem selbem oder einem anderen sehr kleinen Cluster angehören, wird mit ihren Nachbarpartikeln die selbe Suche durchgeführt. In der aktuellen Implementation wird diese Suche maximal dreimal durchgeführt, so dass ausgehend vom ursprünglich betrachteten Partikel der maximal drittentfernteste Nachbar nach anderen Cluster durchsucht wird. Sollten zuvor schon andere Cluster gefunden worden sein, wird die Suche bereits dort abgebrochen. Nachbarpartikel, die keinem Cluster angehören (hier vor allem Gaspartikel, siehe \autoref{sec:fast-depth}), werden übersprungen.
+Aufgrund dessen, dass sich in der Arbeit auf eine kleine Mindestclustergrößen von zehn Partikeln ($\glssymbol{cminCG} = 10$) beschränkt wird, kann eine iterative Prüfung auf benachbarte, große Cluster unter Nutzung der bestehenden Nachbarschaftsbeziehungen der Partikel genutzt werden. Dabei werden bei jedem Partikel, der ein Flüssigkeitspartikel mit Nachbarn ist und dessen referenzierter Cluster die Mindestclustergröße unterschreitet, die Nachbarn durchsucht. Sollten die Nachbarn alle keinem, dem selbem oder einem anderen sehr kleinen Cluster angehören, wird mit ihren Nachbarpartikeln die selbe Suche durchgeführt. In der aktuellen Implementation wird diese Suche maximal dreimal durchgeführt, so dass ausgehend vom ursprünglich betrachteten Partikel der maximal drittentfernteste Nachbar nach anderen Cluster durchsucht wird. Sollten zuvor schon andere Cluster gefunden worden sein, wird die Suche bereits dort abgebrochen. Nachbarpartikel, die keinem Cluster angehören (hier vor allem Gaspartikel, siehe \autoref{sec:fast-depth}), werden übersprungen.
 
 Sollte nach Abschluss dieser Suche kein anderer, ,,großer'' Cluster gefunden sein, wird der sehr kleine Cluster bestehen gelassen, da dann davon ausgegangen wird, dass der Cluster eine Zusammenhangskomponente bildet und daher mit keinem anderen Cluster verschmolzen werden kann. Diese Annahme ist für eine Mindestclustergröße von zehn berechtigt, denn bei der dichten Struktur der Partikel in der Flüssigkeit erreicht spätestens die zweite Nachbarschaftsebene diese Anzahl an Partikeln. Der dritte Suchlauf dient als Puffer für etwas größere Mindestclustergrößeneinstellungen.
 
@@ -445,7 +447,7 @@ Um festzustellen, ob ein Cluster einen ähnlichen Vorgänger oder Nachfolger hat
 \subsection*{Ermittlung von \wichtig{Birth} und \wichtig{Death}}
 Wie eingangs erwähnt, werden die Ereignisse ermittelt, indem die Cluster in den beiden \SECterms{Partnerclusterstrukturlisten}{Partnerclusterstrukturliste} (siehe \autoref{sec:partnerclusterstrukturlisten}) nacheinander betrachtet und die genannten Verhältnisse sowie Absolutwerte der \SECterm{Partnercluster} berücksichtigt werden. In den folgenden formalen Ausdrücken steht der Index $v$ für die Nutzung des vorwärtsgerichteten und der Index $r$ für die Nutzung des rückwärtsgerichteten Vergleichs.
 
-\ereignis{Birth} und \ereignis{Death} bieten die einfachste Herangehensweise, da nur eine Überprüfung auf einen Übergang der Partikel von oder in die Gasphase vorgenommen werden muss. Auf die \SECterm{Partnercluster} übertragen bedeutet das, im vorwärtsgerichteten Vergleich resultiert ein Cluster ohne Partner ($p_{\text{gesamt}_\text{v}} = 0$) in einem \ereignis{Death}, im rückwärtsgerichteten Vergleich (mit $p_{\text{gesamt}_\text{r}} = 0$) in einem \ereignis{Birth}. Um Phänomene untersuchen zu können, wird dem Nutzer ein Parameter $s_\text{bd}$ bereitgestellt, mit dem auch Cluster mit einem benutzerdefiniertem Anteil an gemeinsamen Partikeln ($a_\text{gesamt}$) als \ereignis{Birth} oder \ereignis{Death} erkannt werden.
+\ereignis{Birth} und \ereignis{Death} bieten die einfachste Herangehensweise, da nur eine Überprüfung auf einen Übergang der Partikel von oder in die Gasphase vorgenommen werden muss. Auf die \SECterm{Partnercluster} übertragen bedeutet das, im vorwärtsgerichteten Vergleich resultiert ein Cluster ohne Partner ($p_{\text{gesamt}_\text{v}} = 0$) in einem \ereignis{Death}, im rückwärtsgerichteten Vergleich (mit $p_{\text{gesamt}_\text{r}} = 0$) in einem \ereignis{Birth}. Um Phänomene untersuchen zu können, wird dem Nutzer ein Parameter \glssymbol{ebd} bereitgestellt, mit dem auch Cluster mit einem benutzerdefiniertem Anteil an gemeinsamen Partikeln ($a_\text{gesamt}$) als \ereignis{Birth} oder \ereignis{Death} erkannt werden.
 
 Damit muss für die Erkennung eines \ereigniss{Birthereignisses}{Birth} eine der in \autoref{eq:birth} formulierten und für die Erkennung eines \ereigniss{Deathereignisses}{Death} eine der in  \autoref{eq:death} formulierten Gleichungen erfüllt sein.
 \begin{equation}
@@ -469,10 +471,10 @@ Damit muss für die Erkennung eines \ereigniss{Birthereignisses}{Birth} eine der
 Der Nachteil darin liegt, dass diese Parameter wenig intuitiv sind und es daher zahlreicher Messungen bedarf, ab welchem Grenzwert des durchschnittlichen Anteils beziehungsweise der Partner solch ein Ereignis auftritt.
 
 Aus diesem Grund wird der Begriff des \SECterms{Großen Partners}{Großer Partner}
-eingeführt. \SECterms{Große Partner}{Großer Partner} sind solche \SECterm{Partnercluster}, die einen bestimmten Schwellwert des Anteils gemeinsamer Partikel überschreiten. Diesen Schwellwert kann der Anwender durch den Parameter $s_a$ festlegen. Dieser Parameter wird zur Ermittlung der Anzahl der \SECterms{Großen Partner}{Großer Partner} $p_\text{groß}$ genutzt. Diese Anzahl wird für jeden Cluster sowohl der \SECterms{vorwärtsgerichteten}{Partnerclusterstrukturliste} als auch der \SECterms{rückwärtsgerichteten Partnerclusterstrukturliste}{Partnerclusterstrukturliste} separat ermittelt. Dazu werden die jedem Cluster zugehörigen \SECterm{Partnercluster} durchlaufen. Beim Prüfen der Cluster der \SECterms{vorwärtsgerichteten Liste}{Partnerclusterstrukturliste} muss ein \SECterm{Partnercluster} die in \autoref{eq:bigPartner:split} formulierte Bedingung erfüllen, damit $p_{\text{groß}_v}$ inkrementiert wird.
+eingeführt. \SECterms{Große Partner}{Großer Partner} sind solche \SECterm{Partnercluster}, die einen bestimmten Schwellwert des Anteils gemeinsamer Partikel überschreiten. Diesen Schwellwert kann der Anwender durch den Parameter \glssymbol{emsA} festlegen. Dieser Parameter wird zur Ermittlung der Anzahl der \SECterms{Großen Partner}{Großer Partner} $p_\text{groß}$ genutzt. Diese Anzahl wird für jeden Cluster sowohl der \SECterms{vorwärtsgerichteten}{Partnerclusterstrukturliste} als auch der \SECterms{rückwärtsgerichteten Partnerclusterstrukturliste}{Partnerclusterstrukturliste} separat ermittelt. Dazu werden die jedem Cluster zugehörigen \SECterm{Partnercluster} durchlaufen. Beim Prüfen der Cluster der \SECterms{vorwärtsgerichteten Liste}{Partnerclusterstrukturliste} muss ein \SECterm{Partnercluster} die in \autoref{eq:bigPartner:split} formulierte Bedingung erfüllen, damit $p_{\text{groß}_v}$ inkrementiert wird.
 \begin{equation}
 	\begin{aligned}\label{eq:bigPartner:split}
-		a_{\text{partner}_v} &\ge s_a
+		a_{\text{partner}_v} &\ge s_\text{msA}
 	\end{aligned}
 \end{equation}
 
@@ -480,21 +482,21 @@ Beim rückwärtsgerichteten Vergleich ist die in \autoref{eq:bigPartner:merge} a
 
 \begin{equation}
 	\begin{aligned}\label{eq:bigPartner:merge}
-		a_{\text{partner}_r} &\ge s_a
+		a_{\text{partner}_r} &\ge s_\text{msA}
 	\end{aligned}
 \end{equation}
 
-Über den Vergleich ihrer Anzahl $p_\text{groß}$ mit einem bereitgestellten Parameter $s_p$ kann der Nutzer bestimmen, ob zwei, drei, vier oder mehr Partner mit der zu erfüllenden Bedingung in \autoref{eq:merge} als \ereignis{Merge} beziehungsweise der zu erfüllenden Bedingung in \autoref{eq:split} als \ereignis{Split} erkannt werden sollen.
+Über den Vergleich ihrer Anzahl $p_\text{groß}$ mit einem bereitgestellten Parameter \glssymbol{emsP} kann der Nutzer bestimmen, ob zwei, drei, vier oder mehr Partner mit der zu erfüllenden Bedingung in \autoref{eq:merge} als \ereignis{Merge} beziehungsweise der zu erfüllenden Bedingung in \autoref{eq:split} als \ereignis{Split} erkannt werden sollen.
 
 \begin{equation}
 \begin{aligned}\label{eq:merge}
-p_{\text{groß}_r} &\ge s_p &(M)
+p_{\text{groß}_r} &\ge s_\text{msP} &(M)
 \end{aligned}
 \end{equation}
 
 \begin{equation}
 \begin{aligned}\label{eq:split}
-p_{\text{groß}_v} &\ge s_p &(S)
+p_{\text{groß}_v} &\ge s_\text{msP} &(S)
 \end{aligned}
 \end{equation}
 
@@ -508,7 +510,7 @@ So kann der Nutzer zwei Eigenschaften von Verschmelzungen beziehungsweise Abspal
 
 Zur Überprüfung der Funktionalität der einzelnen Berechnungsschritte sowie zu ihrer quantitativen Analyse wird ein umfangreiches Protokoll erstellt, das bei Bedarf deaktiviert werden kann. Dazu werden Text- und \gls{csv}-Dateien mit den Parametern und Berechnungsergebnissen erstellt.
 
-Da die Berechnungen eine gewisse Zeit andauern, sind sie für eine interaktive Visualisierung nicht geeignet. Daher werden die berechneten Ereignisse gespeichert, so dass auf sie schnell zugegriffen werden kann. Zur Speicherung wurde das Dateiformat \MMSE entwickelt. Dieses hält die berechneten Ereignisse in einem Bytecode analog zu existierenden \tool{MegaMol}-Formaten wie \gls{mmpld} fest, um zum einen Konsistenz im Aufbau zu den \tool{MegaMol}-Modulen zu wahren und zum anderen die Entwicklung der Ein- und Ausgabe zu beschleunigen. Der Vorteil im Vergleich zu \gls{XML} oder anderen textbasierten Speicherverfahren ist die höhere Performance beim Lesen und Schreiben sowie die kleinere Dateigröße.
+Da die Berechnungen eine gewisse Zeit andauern, sind sie für eine interaktive Visualisierung nicht geeignet. Daher werden die berechneten Ereignisse gespeichert, so dass auf sie schnell zugegriffen werden kann. Zur Speicherung wurde das Dateiformat \MMSE entwickelt. Dieses hält die berechneten Ereignisse in einem Bytecode analog zu existierenden \tool{MegaMol}-Formaten wie \gls{mmpld} fest, um zum einen Konsistenz im Aufbau zu den \tool{MegaMol}-Modulen zu wahren und zum anderen die Entwicklung der Ein- und Ausgabe zu beschleunigen. Der Vorteil im Vergleich zu \gls{xml} oder anderen textbasierten Speicherverfahren ist die höhere Performance beim Lesen und Schreiben sowie die kleinere Dateigröße.
 
 Im Kopf befinden sich Daten für die Identifizierung des Dateityps, die Abmessungen des Simulationsraumes, die Ereignisanzahl und für den höchsten gespeicherten Zeitschritt der Ereignisse (siehe \autoref{tab:mmse}). Nach den Kopfdaten sind die Ereignisdaten (siehe \autoref{sec:datenbehandlung}) sequentiell abgelegt.
 
@@ -790,7 +792,7 @@ Es wird eine annähernd rechteckige Form verwendet, um einen Kontrast zur runden
 
 Die Außenkante des Glyphs ist mit einem Rahmen versehen, um das \vis{Gesetz der Geschlossenheit} zu berücksichtigen und dabei im Inneren Platz für die Visualisierung der Ereignisart und -zeit zu erhalten. Dieser Rand wird nicht zu dünn gestaltet, um Aliasing an hochfrequenten (schmalen, nah beieinanderliegenden) Kanten und das damit verbundene Flimmern während der Anzeige zu verringern.
 
-\subsection*{Kodierung der Ereignisart}
+\subsection*{Kodierung der Ereignisart}\label{sec:vis:glyph-art}
 
 \begin{figure}
 	\ffigbox[\FBwidth] {
@@ -891,19 +893,22 @@ Durch die in der Aufgabenstellung formulierte Bedingung, die Daten der Partikel 
 Im Verhältnis zur Position des Ereigniselements wird der \vis{Ereignisglyph} genau oberhalb platziert. Aufgrund der in \autoref{sec:visualisierung:glyphen} beschriebenen äußeren Form wird angenommen, dass der Nutzer das Ereignis intuitiv unterhalb des Glyphen einordnet.
 
 
-\subsection*{Parameterslots} 
-Parameterslots bieten dem Nutzer die Möglichkeit, während der Laufzeit des Programms Parameter ändern zu können.
+\subsection*{Einstellungsparameter} 
+Einstellungsparameter oder Parameterslots -- diese Terminologie liegt näher an der in \tool{MegaMol} eingesetzten -- bieten dem Nutzer die Möglichkeit, während der Laufzeit des Programms Parameter ändern zu können.
 
-Um dem in \autoref{sec:strukturereignistaxonomie:haeufung} beschriebenen Problem der lokalen und temporalen Häufung zu begegnen, wird unter Berücksichtigung der in \autoref{tab:strukturereignistaxonomie:zuweisung} aufgeführten Zuweisungsmöglichkeiten ein änderbarer Parameter für die Glyphgröße bereitgestellt. Somit wird der Häufung die Größe als visuelles Attribut zugewiesen. Weiterhin unterstützt die veränderbare Glyphgröße den Wechsel zwischen der Makro- und Mikrosicht, indem der Parameter je nach Benutzerpräferenzen bei der Makrosicht große und bei der Mikrosicht kleine Werte annehmen kann.
+Um dem in \autoref{sec:strukturereignistaxonomie:haeufung} beschriebenen Problem der lokalen und temporalen Häufung zu begegnen, wird unter Berücksichtigung der in \autoref{tab:strukturereignistaxonomie:zuweisung} aufgeführten Zuweisungsmöglichkeiten ein änderbarer Parameter für die Glyphgröße \glssymbol{rglyph} bereitgestellt. Somit wird der Häufung die Größe als visuelles Attribut zugewiesen. Weiterhin unterstützt die veränderbare Glyphgröße den Wechsel zwischen der Makro- und Mikrosicht, indem der Parameter je nach Benutzerpräferenzen bei der Makrosicht große und bei der Mikrosicht kleine Werte annehmen kann.
 
-Ein zweiter Parameterslot wurde zur benutzerdefinierte Kontrolle über die Visualisierung der Zeit mit einer der drei in \autoref{sec:vis:glyh-zeit} vorgestellten Varianten implementiert. Auch gibt es einen dritten und vierten Slot für die Ereignisposition sowie die -art. Zwar bieten diese beiden nur jeweils eine Auswahlmöglichkeit, jedoch ist das \MMStruktur{StaticRenderer Modul} dadurch leicht erweiterbar.
+Ein zweiter Parameterslot \glssymbol{rvisZeit} wurde zur benutzerdefinierte Kontrolle über die Visualisierung der Zeit mit einer der drei in \autoref{sec:vis:glyh-zeit} vorgestellten Varianten implementiert. Auch gibt es einen dritten und vierten Slot für die Ereignisposition \glssymbol{rvisPos} sowie die -art \glssymbol{rvisArt}. Aufgrund der Zielstellung dieser Arbeit besitzt \glssymbol{rvisPos} nur eine Auswahlmöglichkeit. Der Parameter \glssymbol{rvisArt} wurde ebenfalls auf eine Einstellung festgelegt, obwohl zwei Symboldarstellungen entwickelt wurden (siehe \autoref{sec:vis:glyph-art}). Dies geschah aus implementationstechnischen Gründen. Ein Vorschlag zur Verwaltung von Assetdateien seitens des \tool{MegaMol}-Frameworks befindet sich in \autoref{sec:pluginaufbau-optimierung}.
 
-Ein fünfter Slot ermöglicht das gezielte Einblenden eines bestimmten Strukturereignisses oder aller.
+%Zwar bieten diese beiden nur jeweils eine Auswahlmöglichkeit, jedoch ist das \MMStruktur{StaticRenderer Modul} dadurch leicht erweiterbar. %Befindet sich in Zusammenfassung.
+
+Ein fünfter Slot \glssymbol{reaModus} ermöglicht das gezielte Einblenden eines bestimmten oder aller Strukturereignisse.
 
 %Slots für die Zeitsteuerung folgen in späteren Unterkapitel
 
 \subsection*{Parallelisierung der Anzeigeberechnungen}
 Bei der Zuweisung der \viss{visuellen Variablen}{visuelle Variable} zu den Ereignisparametern sind Berechnungen notwendig. Diese bewirken, dass die Anzeige bei einer hohen Anzahl von Ereignissen verzögert erfolgt, etwa nach Änderungen von Parametern des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}. Da die Berechnungen für jedes Ereignis unabhängig voneinander erfolgen, können sie parallel ausgeführt werden. Aufgrund des Zugriffs auf die Quelldaten über das Inkrementieren von Zeigern, muss eine Einteilung der Berechnungen in eine feste Anzahl von Threads geschehen, deren Ermittlung mit der C++11 Standardbibliothek \wichtig{thread} erfolgt. Eine andere Möglichkeit wäre gewesen, diese Berechnungen in den Geometrieshader der Grafikkarte zu verlegen.
+
 
 \section{Visualisierung der Cluster}\label{sec:visualisierung:cluster}
 Die \tool{MegaMol} Molekularsimulation der Partikel nutzt entweder nur die Position als \vis{visuelle Variable} oder zusätzlich die Farbe. Beide werden zur Visualisierung der Cluster verwendet.
@@ -977,7 +982,7 @@ In \autoref{fig:eva:cluster} ist deutlich zu sehen, dass bei zweifachem Partikel
 
 \begin{figure}
 	\includegraphics[width=1\textwidth]{eva/cluster-r}
-	\caption{Anzahl der erzeugten Cluster in Abhängigkeit des \CFDterms{Partikelradiusmultiplikators}{Partikelradiusmultiplikator} der Nachbarschaftssuche über alle Zeitschritte.}\label{fig:eva:cluster-r}
+	\caption{Anzahl der erzeugten Cluster in Abhängigkeit des \CFDterms{Partikelradiusmultiplikators}{Partikelradiusmultiplikator} \glssymbol{cradMod} der Nachbarschaftssuche über alle Zeitschritte.}\label{fig:eva:cluster-r}
 \end{figure}
 
 Der große Einfluss des gewählten Radiusmodifikators bei der Nachbarschaftssuche ist in \autoref{fig:eva:cluster-r} auch über den gesamten Simulationszeitraum sichtbar. Mit zunehmendem Suchradius nimmt die Anzahl an Clustern stark ab. Je größer die Suchreichweite desto höher ist die Anzahl der Nachbarn pro Partikel und auch Partikel, die etwas weiter entfernt sind, werden zu Nachbarn. Damit verringert sich effektiv die Anzahl an lokalen Maxima, denn wenn bei kleinerem Suchradius, wie dem fünffachen Partikelradius, zwei lokale Maxima nebeneinanderliegen, so werden diese bei größeren Suchradien während des \SECC zu einem zusammengefasst, da die beiden Maxima dann selbst direkte Nachbarn sind und so das tiefere, höhere Maximum das kleinere verdrängt.
@@ -1005,22 +1010,36 @@ Bei der Erkennung von \ereignis{Birth} und \ereignis{Death} Ereignissen wurde ei
 \end{figure}
 
 \subsection*{Abhängigkeit von der Nachbarschaftssuche}
-In \autoref{fig:eva:ereignis-r} ist zu sehen, dass \ereignis{Birth} und \ereignis{Death} weit weniger von der Radiuseinstellung bei der Nachbarschaftssuche abhängen als \ereignis{Merge} und \ereignis{Split}. Das kommt daher, dass diese Ereignisse vor allem bei kleinen Tröpfchenstrukturen vorkommen, bei denen die Anzahl von Clustern aufgrund der geringen Partikelanzahl unabhängig der Radiuseinstellung ist.
+In \autoref{fig:eva:ereignis-r} ist zu sehen, dass \ereignis{Birth} und \ereignis{Death} weit weniger von der Radiuseinstellung bei der Nachbarschaftssuche abhängen als \ereignis{Merge} und \ereignis{Split}. Das kommt daher, dass diese Ereignisse vor allem bei kleinen Tröpfchenstrukturen vorkommen, bei denen die Anzahl von Clustern aufgrund der geringen Partikelanzahl unabhängig der Einstellung des \CFDterms{Partikelradiusmultiplikators}{Partikelradiusmultiplikator} \glssymbol{cradMod} ist. Eine Ausnahme bilden Werte von $s_\text{radMod} \le 2$ (siehe \autoref{sec:eva:cluster}).
 
 \ereignis{Merge} und \ereignis{Split} hingegen zeigen eine starke Abnahme ihrer Anzahl mit zunehmendem Radius (Helligkeit in \autoref{fig:eva:merge-split-r}). Dies hängt mit der geringeren Clusteranzahl und der damit verbundenen, kleineren \SECterm{Clustervergleichsmatrix} zusammen, wodurch bei denselben Ereigniserkennungsparametern weniger Ereignisse erkannt werden können.
 
 \subsection*{Abhängigkeit vom Simulationsverlauf}\label{sec:eva:ereignis-verlauf}
 Die Anzahl der Ereignisse ändert sich in Abhängigkeit vom Simulationsverlauf stark (siehe \autoref{sec:simulation}). Dies korreliert mit der Anzahl der Cluster (siehe \autoref{fig:eva:cluster-r}) und fällt insbesondere bei der Trennung und dem Zusammenstoßen der Flüssigkeitsfronten ins Auge. Auf \ereignis{Merge} und \ereignis{Split} hat dieses Geschehnis einen großen und unmittelbaren Einfluss, auf \ereignis{Birth} und \ereignis{Death} einen kleineren.
-Daraus kann abgeleitet werden, dass viele \ereignis{Merge}- und \ereigniss{Splitereignisse}{Split} innerhalb der Fronten stattfinden, während \ereignis{Birth} und \ereignis{Death} eher bei Tröpfchen vorkommen. Weiterhin nehmen \ereignis{Merge} und \ereignis{Split} ab, je länger die Trennung bzw. der Zusammenstoß zurückliegen. Bei Zeitschritt 90 ist ihre Anzahl auf ein Fünftel im Vergleich zum Beginn der Frontentrennung zusammengeschrumpft. Dieses Verhältnis gilt für einen fünffachen Radius bei der Ermittlung der Nachbarn. Je höher dieser Suchradius gewählt wird, desto geringer sind die Differenzen bei der Anzahl der Strukturereignisse, da auch die Gesamtzahl der Ereignisse abnimmt.
+Daraus kann abgeleitet werden, dass viele \ereignis{Merge}- und \ereigniss{Splitereignisse}{Split} innerhalb der Fronten stattfinden, während \ereignis{Birth} und \ereignis{Death} eher bei Tröpfchen vorkommen. Weiterhin nehmen \ereignis{Merge} und \ereignis{Split} ab, je länger die Trennung beziehungsweise der Zusammenstoß zurückliegen. Bei Zeitschritt 90 ist ihre Anzahl auf ein Fünftel im Vergleich zum Beginn der Frontentrennung zusammengeschrumpft. Dieses Verhältnis gilt für einen fünffachen Radius bei der Ermittlung der Nachbarn. Je höher dieser Suchradius gewählt wird, desto geringer sind die Differenzen bei der Anzahl der Strukturereignisse, da auch die Gesamtzahl der Ereignisse abnimmt.
 
 Die \ereignis{Merge}- und \ereigniss{Splitereignisse}{Split} weisen eine ähnliche Anzahl bei der Trennung und beim Zusammenstoß auf. Die \ereignis{Birth}- und \ereigniss{Deathereignisse}{Death} ebenfalls. Als Besonderheit nehmen diese Ereignisse nach dem Zusammenstoß nicht ab, sondern stark zu. Das könnte daran liegen, dass sich viele sehr kleine Cluster bilden oder Phänomene wie der »Nulltiefenwert \CFDterm{Einpartikelcluster}« auftreten (siehe \autoref{sec:eva:ereignisse-quali-verlauf}, \autoref{sec:nulltiefenwert-einpartikel-cluster}). In \autoref{sec:eva:ressourcen} wird die Annahme über die Bildung kleiner Cluster untermauert.
 
 \subsection*{Abhängigkeit von den Ereignisparametern}\label{sec:eva:ereignis-param}
-Die durch den Nutzer einstellbaren Parameter für die Ereigniserkennung sind die Anzahl an \SECterms{Partnerclustern}{Partnercluster} und die Anteile an gemeinsamen Partikeln dieser Cluster. \ereignis{Birth} und \ereignis{Death} werden mit einer festen Anzahl von null Partnern erkannt, besitzen aber einen einstellbaren Anteil von gemeinsamen Partikeln. Wie am Anfang dieses Kapitels beschrieben, hat dieser keinen Einfluss auf die Ereignisanzahl bei relevanten, geringen Werten. Somit werden nur die \ereignis{Merge}- und \ereigniss{Splitereignisse}{Split} betrachtet.
+Die durch den Nutzer einstellbaren Parameter für die Ereigniserkennung sind die Anzahl an \SECterms{Partnerclustern}{Partnercluster} \glssymbol{emsP} und die Anteile an gemeinsamen Partikeln dieser Cluster \glssymbol{emsA}. \ereignis{Birth} und \ereignis{Death} werden mit einer festen Anzahl von null Partnern erkannt, besitzen jedoch einen einstellbaren Anteil von gemeinsamen Partikeln \glssymbol{ebd} (siehe \autoref{sec:ereigniserkennung}). Wie am Anfang dieses Kapitels beschrieben, hat dieser keinen Einfluss auf die Ereignisanzahl bei relevanten, geringen Werten. Somit werden nur die \ereignis{Merge}- und \ereigniss{Splitereignisse}{Split} betrachtet.
 
-Die in \autoref{fig:eva:split-param} abgebildeten Verläufe zeigen mit strikteren Parametereinstellung einen erwarteten Abfall der Ereignisanzahl. Insbesondere die Erhöhung der Mindestanzahl an benötigten \SECterms{Partnerclustern}{Partnercluster} schlägt sich enorm nieder. Drei \SECterm{Partnercluster} mit jeweils 30\% gemeinsamen Partikeln treten fast nie auf, eine Senkung auf 25\% bewirkt eine im Vergleich deutliche Erhöhung, liegt jedoch gerade einmal auf ähnlichem Niveau wie zwei Partner mit 45\% gemeinsamen Partikel. Eine mögliche Einstellung mit mindestens vier benötigten Partnern wird daher einen wesentlich geringeren Anteil erfordern, um mit der Heuristik \ereignis{Merge}- und \ereigniss{Splitereignisse}{Split} erkennen zu lassen.
+Die in \autoref{fig:eva:split-param} abgebildeten Verläufe zeigen mit strikteren Parametereinstellung einen erwarteten Abfall der Ereignisanzahl. Insbesondere die Erhöhung der Mindestanzahl an benötigten \SECterms{Partnerclustern}{Partnercluster} \glssymbol{emsP} schlägt sich enorm nieder. Drei \SECterm{Partnercluster} ($\glssymbol{emsP} = 3$) mit jeweils 30\% gemeinsamen Partikeln ($\glssymbol{emsA} = 30$) treten fast nie auf. Eine Senkung von \glssymbol{emsA} auf 25\% ($\glssymbol{emsA} = 25$) bewirkt zwar eine im Vergleich deutliche Erhöhung, liegt jedoch gerade einmal auf ähnlichem Niveau wie zwei Partner mit 45\% gemeinsamen Partikeln ($(\glssymbol{emsP} = 3) \land (\glssymbol{emsA} = 45)$). Eine mögliche Einstellung mit mindestens vier benötigten Partnern wird daher einen wesentlich geringeren Anteil erfordern, um mit der Heuristik \ereignis{Merge}- und \ereigniss{Splitereignisse}{Split} erkennen zu lassen.
 
-Trotz dieser Unterschiede ist die Verteilung der Ereignisanzahl über den Simulationsverlauf hinweg für alle Parametereinstellungen ähnlich. Insbesondere zeigt auch die Einstellung mit drei Mindestpartnern und 25\% Anteil ähnliche Ausschläge wie die Verläufe mit deren zwei, so zum Beispiel bei den Zeitschritten 95 und 97.
+Wenn $E$ eine Menge von Ereignissen und $P$ ein 2-Tupel von Werten mit der Zuweisung $(\glssymbol{emsP}, \glssymbol{emsA})$ ist und $E(P)$ die Menge der von der \SECterm{Ereignisheuristik} ermittelten Ereignisse unter den in $P$ gegebenen Parameterwerten ausdrückt, so gelten die Ausdrücke in \autoref{eq:eva-ereignisseQuant} für jeden Zeitpunkt $t_S$ der Simulation.
+\begin{equation}
+	\begin{aligned}\label{eq:eva-ereignisseQuant}
+		|E((2, 30))| &> |E((2, 35))|\\
+		|E((2, 35))| &> |E((2, 40))|\\
+		|E((2, 40))| &> |E((2, 45))|\\
+		|E((2, 45))| &> |E((3, 30))|\\
+		|E((2, 40))| &> |E((3, 25))|\\
+		|E((3, 25))| &> |E((3, 30))|
+	\end{aligned}
+\end{equation}
+
+Die Verknüpfung $>$ ist transitiv, so dass beispielsweise auch $\{|E((2, 30))| > |E((3, 30))| | \forall t_S\}$ gilt. Das Verhältnis von $|E((3, 25))|$ und $|E((2, 45))|$ ist unterschiedlich und abhängig vom Zeitpunkt $t_S$.
+
+Trotz dieser Unterschiede ist die Verteilung der Ereignisanzahl über den Simulationsverlauf hinweg für alle getesteten Parametereinstellungen ähnlich. Die größte Abweichung davon kann bei $P = (2, 45)$ festgestellt werden. Dagegen zeigt die Einstellung mit drei Mindestpartnern und 25\% Anteil ($P = (3, 25)$) ähnliche Ausschläge wie die Verläufe mit deren zwei ($\glssymbol{emsP} = 2$), so zum Beispiel bei den Zeitschritten $t_S = (95 \lor 97)$.
 
 \begin{figure}
 	\includegraphics[width=1\textwidth]{eva/split-param}
@@ -1036,10 +1055,10 @@ Aufgrund des Mangels eines optimalen Systems kann keine Bestimmung der Güte der
 
 \begin{figure}
 	\includegraphics[width=1\textwidth]{eva/EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small}
-	\caption{Alle Ereignisse visualisiert im Simulationsraum. Die Zeit ist über den Farbwert der Glyphen visualisiert. Die Glyphgröße beträgt 0,012. Der \CFDterm{Partikelradiusmultiplikator} beträgt fünf, die \SECterm{Ereignisheuristik} arbeitet mit zwei \SECterms{Partnerclustern}{Partnercluster} mit jeweils 40\% Anteil an gemeinsamen Partikeln.}\label{fig:eva:EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small}
+	\caption{Alle Ereignisse visualisiert im Simulationsraum. Die Zeit ist über den Farbwert der Glyphen visualisiert. Die Glyphgröße \glssymbol{rglyph} beträgt 0,012. Die weitere Parametereinstellungen sind $\glssymbol{cradMod} = 5$, $\glssymbol{cminCG} = 10$,  $\glssymbol{emsP} = 2$,  $\glssymbol{emsA} = 40$ und $\glssymbol{ebd} = 2$.}\label{fig:eva:EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small}
 \end{figure}
 
-In \autoref{fig:eva:EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small} sind alle Ereignisse bei einem \CFDterm{Partikelradiusmultiplikator} von fünf visualisiert. Die Zeit der Ereignisses ist mit der Farbe kodiert. Vor allem im zweiten und vierten Fünftel sind deutlich horizontal langgestreckte, perlenkettenartige Verläufe der \viss{Ereignisglyphen}{Ereignisglyph} zu sehen. Ihre Anordnung zeigt, dass die durch die Bewegung der Flüssigkeit nach außen entstehenden Filamentstrukturen, die meisten der Strukturereignisse verursachen. Auch werden Ereignisse durch die Tröpfchen oder die Flüssigkeitsfronten erzeugt, jedoch ist die Zahl der durch die Tröpfchen verursachten Ereignisse geringer. Dagegen sind die innerhalb der Fronten entstandenen Ereignisse verteilter angeordnet über die kurzen Achsen des Simulationsraumes. Dies kann nur während des Auftauchens der Glyphen während der Animation beurteilt werden, was ein \href{https://www.youtube.com/watch?v=0K7J3ISMrDM}{Video der Animation mit zufälliger Clustereinfärbung}\footnote{https://www.youtube.com/watch?v=0K7J3ISMrDM} zeigt.
+In \autoref{fig:eva:EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small} sind alle Ereignisse bei einem \CFDterm{Partikelradiusmultiplikator} \glssymbol{cradMod} mit $\glssymbol{cradMod} = 5$ visualisiert. Die Zeit der Ereignisses ist mit der Farbe kodiert. Vor allem im zweiten und vierten Fünftel sind deutlich horizontal langgestreckte, perlenkettenartige Verläufe der \viss{Ereignisglyphen}{Ereignisglyph} zu sehen. Ihre Anordnung zeigt, dass die durch die Bewegung der Flüssigkeit nach außen entstehenden Filamentstrukturen, die meisten der Strukturereignisse verursachen. Auch werden Ereignisse durch die Tröpfchen oder die Flüssigkeitsfronten erzeugt, jedoch ist die Zahl der durch die Tröpfchen verursachten Ereignisse geringer. Dagegen sind die innerhalb der Fronten entstandenen Ereignisse verteilter angeordnet über die kurzen Achsen des Simulationsraumes. Dies kann nur während des Auftauchens der Glyphen während der Animation beurteilt werden, was ein \href{https://www.youtube.com/watch?v=0K7J3ISMrDM}{Video der Animation mit zufälliger Clustereinfärbung}\footnote{https://www.youtube.com/watch?v=0K7J3ISMrDM} zeigt.
 
 Diese Eigenschaft der Berechnung wurde ebenfalls in der Umfrage behandelt, um zu überprüfen, ob die Visualisierung korrekte Rückschlüsse ziehen lässt. Dabei ist vor allem die Expertenbeurteilung von Belang. Aufgrund der kleinen Anzahl werden in \autoref{fig:eva:umfrage-letzte} auch die Antworten der Laien aufgeführt.
 
@@ -1076,15 +1095,15 @@ Diese Art von Ereignissen innerhalb von Strukturen ohne deren sichtbare Trennung
 			\vbox {%
 				\ffigbox[\FBwidth][\FBheight]
 				{\includegraphics[width=1\textwidth]{eva/EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small-birth}}
-				{\caption{\ereignis{Birth}ereignisse im gesamten Simulationsverlauf. Deutlich sind schnürenartige Verläufe zu erkennen. Die Zeit wird über den Farbwert wiedergegeben und die Glyphgröße beträgt 0,049. \ereignis{Death} verhält sich analog.}\label{fig:eva:birth-death-verlauf}}\vss
+				{\caption{\ereignis{Birth}ereignisse im gesamten Simulationsverlauf. Deutlich sind schnürenartige Verläufe zu erkennen. Die Zeit wird über den Farbwert wiedergegeben. Die Glyphgröße beträgt $\glssymbol{rglyph} = 0,049$. \ereignis{Death} verhält sich analog.}\label{fig:eva:birth-death-verlauf}}\vss
 				\ffigbox[\FBwidth][\FBheight]
 				%TODO{\includegraphics[width=1\textwidth]{eva/spliterkennung-ms2-45-f101}}
 				{}
-				{\caption{\ereignis{Birth} und \ereignis{Death} und die zugehörigen \CFDterm{Einpartikelcluster} in der Nahaufnahme mit einer Glyphgröße von TODO.}\label{fig:eva:birth-death}}\vss
+				{\caption{\ereignis{Birth} und \ereignis{Death} und die zugehörigen \CFDterm{Einpartikelcluster} in der Nahaufnahme mit einer Glyphgröße von $\glssymbol{rglyph} = TODO$ TODO.}\label{fig:eva:birth-death}}\vss
 			}
 		\end{subfloatrow}
 	}
-	{\caption{Kettenverläufe von \ereignis{Birth}- und \ereignis{Death}ereignissen bei einem \CFDterm{Partikelradiusmultiplikator} von fünf.}\label{fig:eva:birth-death-flow}}
+	{\caption{Kettenverläufe von \ereignis{Birth}- und \ereignis{Death}ereignissen mit einem \CFDterm{Partikelradiusmultiplikator} $\glssymbol{cradMod} = 5$.}\label{fig:eva:birth-death-flow}}
 \end{figure}
 
 %TODO Ketten an \ereignis{Birth}/\ereignis{Death} Mixen
@@ -1142,34 +1161,14 @@ Wenn die Cluster durch die Vererbung der Farben des vorhergehenden Zeitschrittes
 			}
 		\end{subfloatrow}
 	}
-	{\caption{Clustereinfärbung mit und ohne Vererbung bei Zeitschritt 101. Der \CFDterm{Partikelradiusmultiplikator} beträgt fünf. Partikel der Gasphase sind ausgeblendet.}\label{fig:eva:clusterfarbe}}
+	{\caption{Clustereinfärbung mit und ohne Vererbung bei Zeitschritt 101. Der \CFDterm{Partikelradiusmultiplikator} beträgt $\glssymbol{cradMod} = 5$. Partikel der Gasphase sind ausgeblendet.}\label{fig:eva:clusterfarbe}}
 \end{figure}
 
 In der Visualisierung als Animation ist der Verlauf der Cluster bei der Farbvererbung jedoch besser zu verfolgen, da bei der zufälligen Zuweisung ein starkes Farbflackern auftritt.
 
-\subsection*{Anordnung}
-
-% Diskussion Vis
-\autoref{sec:visualisierung}
-Die Komplexität der Ereignisvisualisierung (\vis{Ereignisobjekt}) ist dabei geringer ist als die der Partikel (\vis{Partikelobjekt}). Das hat drei Gründe. Erstens ist die Anzahl der Ereignisse um mehrere Größenordnungen kleiner und zweitens werden im Rahmen dieser Arbeit keine Verbindungen zwischen den Ereignissen analysiert und visualisiert, was die Differenz der Elementanzahl erhält. Schließlich ist drittens, was als Hauptgrund betrachtet werden sollte, die Visualisierung der Ereignisse statisch. Sie behalten im Gegensatz zu den Partikeln dieselbe Position, was sie für den Betrachter während der Animation einfacher erfassbar macht.
-Andererseits steigern die in den Glyphen gespeicherten Informationen über den Zeitpunkt und die Ereignisart den Komplexitätsgrad des \viss{Ereignisobjektes}{Ereignisobjekt}, worauf in der Auswertung eingegangen wird.
-
-%Evaluation Vis
-In der Übersichtsansicht Komplexitätsgrad Glyphen doof, rangezoom nicht.x
-
-
-
-
-\subsection*{Sichten}
-Die Makrosicht dient zur quantitativen Erfassung:
-%vorher erklärt, hier bewerten: zum Erkennen von zusammengehörigen und alleinstehenden Elemente, der Struktur im Ganzen. Individuelle Verbindungen sind dabei nicht relevant.
-
-Die Mikrosicht zur qualitativen Erfassung 
-
-(siehe \autoref{sec:related-visFilter})
-
 
 \subsection*{Glyphgestaltung}
+
 \begin{figure}
 	\ffigbox[\FBwidth] {
 		\begin{subfloatrow}
@@ -1193,12 +1192,28 @@ Die Mikrosicht zur qualitativen Erfassung
 	{\caption{Umfrageergebnisse zur korrekten Zuordnung der Visualisierung der Ereignisglyphen.}\label{fig:eva:ereignis}}
 \end{figure}
 
+Die Glyphgestaltung wird mit Hilfe der in \autoref{sec:umfrage} beschriebenen Umfrage bewertet. In \autoref{fig:eva:ereignis-art} ist zu sehen, dass die überwiegende Mehrheit die Semantik der Glyphen in beiden Darstellungsarten korrekt zugeordnet hat, was für eine hohe Qualität beider symbolischer Darstellungsarten und richtigen Entscheidungen bei der Gestaltung spricht. %Da muss ich selbst lachen. Selbstbeweihräucherung tut aber gut!! :-D
+
+Dagegen fällt die Zuordnungssicherheit der Glyphen zu einer bestimmten Zeit wesentlich differenzierter aus (siehe \autoref{fig:eva:ereignis-zeit}). Die Darstellungsweise der Zeit mittels Füllung (Texturkodierung) wurde für jeden Zeitpunkt von mehr als 90\% der Befragten korrekt zugeordnet und kann in der Disziplin der isolierten Sicht, was der Mikrosicht entspricht (siehe \autoref{sec:related-visFilter}), als die mit Abstand beste Variante der drei Zeitkodierungen betrachtet werden.
+
+Bei der Bewertung der Helligkeitskodierung wurde die Zuordnung zum mittleren Zeitpunkt ebenfalls mit sehr großer Sicherheit getroffen. Indes steht die Zuordnung der beiden Grenzwerte mit maximal 24\% im starken Gegensatz dazu. Das verwundert zunächst, kann jedoch mit einer entgegengesetzten Einschätzung der Helligkeit seitens des Großteils der Teilnehmer begründet werden. Durch eine Umkehrung der Zeitzuordnung bei der Helligkeitskodierung (rosafarbener Datensatz in \autoref{fig:eva:ereignis-zeit}) erhöht sich die korrekte Zuweisung auf 75\% und 77\%.
+
+Die Bewertung der Farbwertkodierung ist mit 42\% bis 70\% eng verteilt und ihr Mittelwert befindet sich mit 52\% nah am Durchschnitt aller Teilnehmer. Das lässt darauf schließen, dass die Befragten geraten haben und keine Anhaltspunkte für ein Urteil hatten (in \autoref{sec:disc:farbgebung} wird weiterführend darauf eingegangen). 
+
+Die Ergebnisse zeigen, dass die Farbwertkodierung zur Zuordnung konkreter Zeitpunkte mit durchschnittlich 52\% korrekter Antworten am Schlechtesten geeignet ist, die Helligkeitskodierung in umgekehrter Zeitzuweisung von hell nach dunkel mit 82\% zutreffend erkannt wird und die Farbwertkodierung mit im Schnitt 94\% exakter Zuordnung am Besten abschneidet. Diese Wertung gilt für die Mikrosicht. Die Makrosicht wird mit einer weiteren Frage  Letztere kann damit zur un
+
+Die Zu
+
+damit von der Mehrheit intuitiv eingeschätzt werden kann zur intuitiven Beurteilung des Zeitpunktes aufweist
+
 \begin{figure}
-	\includegraphics[width=1\textwidth]{eva/ressourcen}
-	\caption{Umfrageergebnis über die favorisierte, \vis{visuelle Variable} zur Zeitdarstellung in der Makrosicht.}\label{fig:eva:ressourcen}
+	\includegraphics[width=.33\textwidth]{eva/umfrage-zeitunterscheidung-kreis}
+	\hspace*{.04\textwidth}%
+	\includegraphics[width=.62\textwidth]{eva/umfrage-zeitunterscheidung-tab}
+	\caption{Umfrageergebnis über die favorisierte, \vis{visuelle Variable} zur Zeitdarstellung in der Makrosicht als Graph (links) und Rangübersicht (rechts, aus der Auswertungsübersicht der Umfragesoftware, siehe \autoref{sec:umfrage}.}\label{fig:eva:ereignis-zeitunterscheidung}
 \end{figure}
 
-Die überwiegende Mehrheit hat die korrekte Semantik 
+Um die Ereignisglyphen und ihren Zeitpunkt in der Makrosicht auseinander zu halten, bevorzugte die überwiegende Zahl der Teilnehmer die Zeitdarstellung mit dem Farbwert (siehe \autoref{fig:eva:ereignis-zeitunterscheidung}). Die anderen beiden Methoden haben zwar nur wenige favorisiert, jedoch mit jeweils sechs und sieben Befragten fast gleich viele. In der Rangübersicht ist eine leichte Bevorzugung der Textur gegenüber der Helligkeit zu erkennnen.
 
 Damit wurden die Annahmen bei der Glyphgestaltung bestätigt und sie kann als erfolgreich betrachtet werden.
 
@@ -1220,6 +1235,25 @@ Die in \autoref{sec:vis:glyph-pos} getroffene Annahme, dass die Positionierung d
 
 Ein Kommentar bewertet den hohen Komplexitätsgrad des \viss{Ereignisobjektes}{Ereignisobjekt} in der Makrosicht als negativ und spricht von einer »überladenen Glyphdarstellung, die unter Verdeckungen leidet«. Dies ist der Darstellung in der Umfrage geschuldet, da dort die Makrosicht gewählt wurde und aufgrund der statischen Darstellung als Bild mit begrenzter Zoommöglichkeit eine große Glyphgröße gewählt wurde. In der Anwendung können die Glyphen durch den Nutzer skaliert werden, da das \MMStruktur{StaticRenderer Modul} einen entsprechenden Parameter besitzt (siehe \autoref{sec:renderer}).
 
+
+\subsubsection*{Sichten}\label{sec:eva:sichten}
+Die Makrosicht dient zur quantitativen Erfassung:
+%vorher erklärt, hier bewerten: zum Erkennen von zusammengehörigen und alleinstehenden Elemente, der Struktur im Ganzen. Individuelle Verbindungen sind dabei nicht relevant.
+
+Die Mikrosicht zur qualitativen Erfassung 
+
+(siehe \autoref{sec:related-visFilter})
+
+
+% Diskussion Vis
+\autoref{sec:visualisierung}
+Die Komplexität der Ereignisvisualisierung (\vis{Ereignisobjekt}) ist dabei geringer ist als die der Partikel (\vis{Partikelobjekt}). Das hat drei Gründe. Erstens ist die Anzahl der Ereignisse um mehrere Größenordnungen kleiner und zweitens werden im Rahmen dieser Arbeit keine Verbindungen zwischen den Ereignissen analysiert und visualisiert, was die Differenz der Elementanzahl erhält. Schließlich ist drittens, was als Hauptgrund betrachtet werden sollte, die Visualisierung der Ereignisse statisch. Sie behalten im Gegensatz zu den Partikeln dieselbe Position, was sie für den Betrachter während der Animation einfacher erfassbar macht.
+Andererseits steigern die in den Glyphen gespeicherten Informationen über den Zeitpunkt und die Ereignisart den Komplexitätsgrad des \viss{Ereignisobjektes}{Ereignisobjekt}, worauf in der Auswertung eingegangen wird.
+
+%Evaluation Vis
+In der Übersichtsansicht Komplexitätsgrad Glyphen doof, rangezoom nicht.x
+
+
 - schlechte Sichtbarkeit bei gleichzeitiger Ansicht von Partikeln und Events, ClipPlane bei SimpleSphereRenderer hilft etwas %TODO Beispielscreenshot
 
 %TODO Qualitativ
@@ -1238,7 +1272,7 @@ Der Ressourcenverbrauch ist über den Zeitraum annähernd gleichbleibend, bis au
 
 \begin{figure}
 	\includegraphics[width=1\textwidth]{eva/ressourcen-berechnungsschritte}
-	\caption{Ressourcenverbrauchsverteilung der Berechungsschritte über den gesamten Zeitraum bei einem \CFDterm{Partikelradiusmultiplikator} von zehn. Die Speicherdaten für \SECC sowie für \gls{dse} wurden ausgeblendet, da ihre geringen Werte wie auch ihre Zeitdaten unerheblich sind.}\label{fig:eva:ressourcen-berechnungsschritte}
+	\caption{Ressourcenverbrauchsverteilung der Berechungsschritte über den gesamten Zeitraum bei einem \CFDterm{Partikelradiusmultiplikator} von $\glssymbol{cradMod} = 10$. Die Speicherdaten für \SECC sowie für \gls{dse} wurden ausgeblendet, da ihre geringen Werte wie auch ihre Zeitdaten unerheblich sind.}\label{fig:eva:ressourcen-berechnungsschritte}
 \end{figure}
 
 Nach dem Zusammenstoß beider Fronten kann eine leichte Abnahme der durchschnittlichen Nachbarn pro Partikel im Vergleich zur Zeit vor dem Zusammenstoß beobachtet werden. Das ist ein Indiz auf mehr Randpartikel mit weniger Nachbarn und damit ein erhöhtes Tröpfchenaufkommen. Diese Vermutung wird durch ein stark erhöhtes Aufkommen von \CFDterm{Mindestgrößencluster} nach dem Zusammenstoß in \autoref{fig:disk:merge-min-one-size} gestützt. Weiterhin könnten auch mehr Partikel in die Gasphase übergegangen sein als zuvor, was durch die Messungen in \autoref{fig:eva:gasparticles} bestätigt wird.
@@ -1252,14 +1286,14 @@ Der nahezu halbierte Speicherverbrauch der Partikelliste des aktuellen Zeitschri
 
 Diese Daten liefern eine wichtige Erkenntnis. Die Nachbarschaftssuche benötigt mit großem Abstand die meiste Zeit, danach folgt der \CFD mit etwa ein Viertel des Zeitverbrauchs. Die anderen Schritte liegen mit einer Dauer von maximale zwei Sekunden für den \SECC und wenigen Millisekunden für die Ereignisheuristik um zwei und mehr Größenordnungen darunter.
 
-Der Speicherverbrauch der Listen ist mit maximal 1,4 \gls{GiB} bei einem \CFDterm{Partikelradiusmultiplikator} von zehn überschaubar. Der in Stichproben registrierte wesentlich höhere Gesamtspeicherverbrauch des Berechnungsprozesses zwischen elf und 13 \gls{GiB} ist vor allem auf das Vorhalten des gesamten Datensatzes der Simulation in Form des \gls{mmpld} im Speicher zurückzuführen (über fünf \gls{GiB}) sowie auf den hohen Verbrauch bei der Durchsuchung des kD-Baums.
+Der Speicherverbrauch der Listen ist mit maximal 1,4 \gls{GiB} bei einem \CFDterm{Partikelradiusmultiplikator} von $\glssymbol{cradMod} = 10$ überschaubar. Der in Stichproben registrierte wesentlich höhere Gesamtspeicherverbrauch des Berechnungsprozesses zwischen elf und 13 \gls{GiB} ist vor allem auf das Vorhalten des gesamten Datensatzes der Simulation in Form des \gls{mmpld} im Speicher (über fünf \gls{GiB}) sowie auf den hohen Verbrauch bei der Durchsuchung des \CFDterms{kD-Baums}{kD-Baum} zurückzuführen.
 
 
 \chapter{Diskussion der Ergebnisse}\label{sec:diskussion}
 
 \section{Einfluss der Nachbarschaftssuche}\label{sec:eva:nachbarschaftssuche}
 
-Wie die Evaluation zeigt, hat die bei der Nachbarschaftssuche gewählte, maximale Reichweite einen maßgeblichen Einfluss auf alle Berechnungsschritte. Deswegen ist die Diskussion des \CFDterms{Partikelradiusmultiplikators}{Partikelradiusmultiplikator} und die damit verbundenen Phänomene bedeutend für diese Arbeit.
+Wie die Evaluation zeigt, hat die bei der Nachbarschaftssuche gewählte, maximale Reichweite einen maßgeblichen Einfluss auf alle Berechnungsschritte. Deswegen ist die Diskussion des \CFDterms{Partikelradiusmultiplikators}{Partikelradiusmultiplikator} \glssymbol{cradMod} und die damit verbundenen Phänomene bedeutend für diese Arbeit.
 
 \subsection*{Flüssigkeitspartikel ohne Cluster und erhöhtes Ereignisrauschen bei zu kleiner Nachbarschaftssuche}
 In \autoref{sec:eva:cluster} ist zu sehen, dass bei kleinem \CFDterm{Partikelradiusmultiplikator} nur sehr kleine Cluster erkannt werden, denn das Volumen für die Nachbarschaftssuche ist so klein, dass viele Partikel der Flüssigkeitsphase keine Nachbarn besitzen. Weiterhin ist die Berechnungsgeschwindigkeit bei einem vierfachen Modifikator 20\% geringer als bei einem dreifachen, so dass der in der Benutzeroberfläche zugelassene Minimalwert für den Radiusmultiplikator vier beträgt. Ein weiterer Grund ist, dass ein sehr kleines Suchvolumen das Aufkommen winziger Cluster stark erhöht, da die Partikel der flüssigen Phase nicht dicht gepackt sein müssen und so nebeneinanderliegende Partikel nicht als solche erkannt werden. 
@@ -1272,7 +1306,7 @@ Allerdings ist dieser Fehler nicht aufgetreten, es werden keine einzelnen Partik
 
 \begin{figure}
 	\includegraphics[width=1\textwidth]{eva/merge-min-one-size}
-	\caption{Anzahl der Mindestgrößencluster (grün) sowie der \CFDterm{Einpartikelcluster} (blau) vor und nach der Clusterreduktion bei einem \CFDterm{Partikelradiusmultiplikator} von fünf.}\label{fig:disk:merge-min-one-size}
+	\caption{Anzahl der Mindestgrößencluster (grün) sowie der \CFDterm{Einpartikelcluster} (blau) vor und nach der Clusterreduktion bei einem \CFDterm{Partikelradiusmultiplikator} von $\glssymbol{cradMod} = 5$.}\label{fig:disk:merge-min-one-size}
 \end{figure}
 
 %Umgangen wird dieser mögliche Fehler bei der Bestimmung der Clusterzusammenhänge \autoref{sec:clusterzusammenhaenge} durch das Herausfiltern von Clustern mit einer Partikelanzahl von eins.
@@ -1290,12 +1324,15 @@ Dieses Phänomen tritt ab dreifachem Partikelradius in der Nachbarschaftssuche a
 
 Diese Phänomen bewirkt die Bildung zahlreicher \ereignis{Birth}- und \ereigniss{Deathereignisse}{Death} (siehe \autoref{sec:eva:ereignisse-quali-verlauf}). Da diese Cluster jedoch korrekt erkannt werden, wird dies nicht als Fehler betrachtet. Eine Einordnung als \SECterm{Ereignisrauschen} kann hingegen vorgenommen werden.
 
-\section{Farbgebung der Glyphen}
+\section{Glyphgestaltung}
 DIESE SEKTION IST NOCH UNFERTIG!
 
-Die Umfrage über die Positionierung des Glyphen relativ zum Ereignis widerspricht der Implementation und scheint damit dem in \autoref{sec:related-praattentiveWirkung} formulierten Ziel zur Förderung der präattentiven Wahrnehmung entgegen zu wirken. Dem kann begegnet werden, indem entweder die Glyphdarstellung durch einen deutlich spitzer zulaufender Pfeil am unteren Rand eindeutiger gestaltet wird oder die Positionierung des Glyphs mittig über dem Ereignis erfolgt.
+Die Umfrage über die Positionierung des Glyph relativ zum Ereignis widerspricht der Implementation und scheint damit dem in \autoref{sec:related-praattentiveWirkung} formulierten Ziel zur Förderung der präattentiven Wahrnehmung entgegen zu wirken. Dem kann begegnet werden, indem entweder die Glyphdarstellung durch einen deutlich spitzer zulaufender Pfeil am unteren Rand eindeutiger gestaltet wird oder die Positionierung des Glyphs mittig über dem Ereignis erfolgt.
 
 %TODO Glyphdiskussion Feedback Umfrage
+\subsection*{Zeit als Farbe}\label{sec:disc:farbgebung}
+Die Evaluation ergab, dass die Zeit als Farbe gut zur Unterscheidung in der Makrosicht geeignet ist, jedoch keine intuitive Zuordnung zu bestimmten Zeitpunkten erlaubt. Das rührt daher, dass die Teilnehmer keinen Anhaltspunkt aus dem mit ihnen vertrauten Dingen für eine Zuordnung besitzen beziehungsweise diese sehr unterschiedlich ausfallen kann. Die persönlichen Erfahrungswerte sind mit einer Farbbewertung gekoppelt. So wurde seitens eines Teilnehmers vorgeschlagen, eine Farbgebung nach bekannten Mustern zu wählen, so zum Beispiel eine Verkehrsampel und Rottöne für niedrige, Gelbtöne für mittlere und Grüntöne für hohe Farbwerte. Die Zuordnung von rot und grün kann dabei vertauscht werden, wodurch 
+
 Farbverläufe: Feedback Umfrage
 Erfahrungswerte mit Farbe gekoppelt, so dass eine Farbgebung nach bekanntem Muster (z.B. Verkehrsampel) sinnvoller ist.
 
@@ -1309,7 +1346,7 @@ Eine optionale, automatisierte Abhängigkeit der Größe der Ereignisglyphen von
 Eine Senkung der Partikelopazität wäre ebenfalls eine Option, um Glyphen sichbar zu machen, die sich hinter Partikeln befinden. Allerdings wird eine Einstellung der Opazität von Partikeln durch \tool{MegaMol} derzeit nicht unterstützt.
 
 \section{Optimierung des Ressourcenverbrauchs durch Parallelisierung}\label{sec:disc:optimierung-para}
-Die Nachbarschaftssuche ist der zeit- und speicherintensivste Schritt. Eine Parallelisierung der Schleifen für die Partikel wäre wünschenswert, da die Partikel voneinander unabhängig behandelt werden und jeder einzelne Schleifendurchgang rechenaufwändig ist. Dies tritt bei der Beachtung der periodischen Randbedingungen und dem damit verbundenen, achtfachen Aufruf des Suchalgorithmus des kD-Baums umso stärker hervor. Allerdings haben Versuche mit \tool{OpenMP} als auch mit der \PPL gezeigt, dass die \ANN bei der Parallelisierung durch eines der beiden Verfahren trotz rein lesenden Zugriffs Zugriffsfehler aufweist, da jeder Thread auf denselben Baum und dessen Zeiger zugreift. Das Kopieren des Suchbaums für jeden Thread könnte eine mögliche Lösung sein, die unabhängigen Suchen würden mit steigender Partikel- und Threadanzahl jedoch sehr viel Speicher verbrauchen (siehe \autoref{sec:eva:ressourcen}).
+Die Nachbarschaftssuche ist der zeit- und speicherintensivste Schritt. Eine Parallelisierung der Schleifen für die Partikel wäre wünschenswert, da die Partikel voneinander unabhängig behandelt werden und jeder einzelne Schleifendurchgang rechenaufwändig ist. Dies tritt bei der Beachtung der periodischen Randbedingungen und dem damit verbundenen, achtfachen Aufruf des Suchalgorithmus des \CFDterms{kD-Baums}{kD-Baum} umso stärker hervor. Allerdings haben Versuche mit \tool{OpenMP} als auch mit der \PPL gezeigt, dass die \ANN bei der Parallelisierung durch eines der beiden Verfahren trotz rein lesenden Zugriffs Zugriffsfehler aufweist, da jeder Thread auf denselben Baum und dessen Zeiger zugreift. Das Kopieren des Suchbaums für jeden Thread könnte eine mögliche Lösung sein, die unabhängigen Suchen würden mit steigender Partikel- und Threadanzahl jedoch sehr viel Speicher verbrauchen (siehe \autoref{sec:eva:ressourcen}).
 Der Grund für die fehlende Parallelisierung der Schleifen, welche die \gls{ANN}-Suchmethoden\index{ANN-Bibliothek} enthalten, ist allerdings, dass die \ANN während der Programmlaufzeit für alle Suchstrukturen denselben Speicherbereich nutzt und ihn dadurch auch beim Löschen einzelner Suchstrukturen nicht deallokiert \cite[S.~8]{mount2010ann}. Somit ist \ANN für eine parallele Nutzung nicht geeignet und ein Wechsel zu einer anderen Bibliothek, wie beispielsweise zu \FLANN \cite{ohara2013annAlgo} \cite{wijewardena2014annPerformance}, ist empfehlenswert.
 
 Bei der Clusterbildung als zweitlängster Schritt kann die Verarbeitung für jeden Partikel parallelisiert werden. Allerdings wird die Beschleunigung nur gering oder sogar negativ ausfallen. Zum einen müssen die Clustererstellung sowie die Clusterzuordnung des \CFDterms{Wurzelpartikels}{Wurzelpartikel} threadsicher umgestaltet werden, zum Beispiel mittels Mutex-Verfahren, um eine mehrfache Clusterzuweisung auf denselben Partikel zu vermeiden. Das führt zu einer Verringerung der Parallelisierungseffizienz, da die Prozesse gegenseitig aufeinander warten müssen, bis die Erstellung und Zuordnung abgeschlossen ist. Zum anderen müsste das Hinzufügen der traversierten Partikel zum Cluster entfernt werden, wodurch die auch in vorhergehenden Schritten getroffenen Partikel untersucht werden müssen, was vor allem bei langen Traversierungspfaden aufgrund der sequentiell ablaufenden Traversierung die Effizienz stärker senken kann, als die durch die Parallelisierung hinzugewonnene.
@@ -1335,19 +1372,21 @@ Die Nützlichkeit der Visualisierung von Molekulardynamiksimulationen schätzen 
 
 Ein Experte begründete die große Relevanz von Visualisierungen in Molekulardynamiksimulationen mit drei Argumenten. So dienen seiner Ansicht nach die Visualisierungen dazu, um ,,Simulationsergebnisse [zu] validieren (erscheint das Verhalten des Systems plausibel?)'', um ,,Effekte sichtbar  [zu] machen, die bei naiver Auswertung oder Standardauswertung verborgen bleiben'' und um die ,,Simulationsergebnisse einer Zuhörerschaft verständlich [zu] präsentieren''.
 
+Die beiden letzten Punkte sind für diese Arbeit von Bedeutung. So konnte gezeigt werden, dass 
+
 
 \chapter{Zusammenfassung}
 %Kurzzusammenfassung/Abstract ausführlicher, auf Details eingehen
 
 Diese Arbeit stellt eine auf den Ideen der Skelettextraktion und \contours{Konturbäumen}{Konturbaum} aufbauende Möglichkeit vor, um aus Punktdaten Strukturen zu erkennen. Diese Strukturen werden genutzt, um daraus Strukturereignisse abzuleiten.
 
-Die Berechnungen lassen mit Hilfe ihrer sowohl quantitativen als auch qualitativen Ausgabe Erkenntnisse über die Veränderung der Strukturen während der Simulation zu, da die Anzahl der Cluster und die Verteilung der Partikel stark auf Topologieänderungen reagiert. Der Nutzer kann Parameter ändern, um etwa \SECterm{Ereignisrauschen} zu verringern und durch die Möglichkeit, die Berechnungen permanent zu speichern, auch schnell zwischen den Parametern für die einzelnen Berechnungsschritte wechseln und so die Nachteile der individuellen Einstellungen auszugleichen; beispielsweise die Erfassung aller wesentlichen Ereignisse durch einen kleinen \CFDterm{Partikelradiusmultiplikator} und einen niedrigen Schwellwert für die Anteile gemeinsamer Partikel mit dem Nachteil von starkem \SECterm{Ereignisrauschen}. Dagegen können restriktivere Einstellungen mit höheren Schwellwerten geringes \SECterm{Ereignisrauschen} verursachen mit dem Nachteil, einige wesentliche Ereignisse nicht zu erfassen (siehe \autoref{sec:eva:ereignis-param}, \autoref{eva:ereignis-quali-param}).
+Die Berechnungen lassen mit Hilfe ihrer sowohl quantitativen als auch qualitativen Ausgabe Erkenntnisse über die Veränderung der Strukturen während der Simulation zu, da die Anzahl der Cluster und die Verteilung der Partikel stark auf Topologieänderungen reagiert. Der Nutzer kann Parameter ändern, um etwa \SECterm{Ereignisrauschen} zu verringern und durch die Möglichkeit, die Berechnungen permanent zu speichern, auch schnell zwischen den Parametern für die einzelnen Berechnungsschritte wechseln und so die Nachteile der individuellen Einstellungen auszugleichen; beispielsweise die Erfassung aller wesentlichen Ereignisse durch einen kleinen \CFDterm{Partikelradiusmultiplikator} \glssymbol{cradMod} und einem niedrigen Schwellwert für die Anteile gemeinsamer Partikel \glssymbol{emsA} mit dem Nachteil von starkem \SECterm{Ereignisrauschen}. Dagegen können restriktivere Einstellungen mit höheren Schwellwerten \glssymbol{emsA} geringes \SECterm{Ereignisrauschen} verursachen mit dem Nachteil, einige wesentliche Ereignisse nicht zu erfassen (siehe \autoref{sec:eva:ereignis-param}, \autoref{eva:ereignis-quali-param}).
 
-Trotz dessen, dass die erhoffte Umsetzung der Berechnungen mit \contours{Konturbäumen}{Konturbaum} und ihren bereitgestellten Schwellwerten nicht erfolgen konnte, wurde die Zielstellung, Strukturveränderung mittels \viss{Ereignisglyphen}{Ereignisglyph} abzubilden, durch die Entwicklung eigener Algorithmen in Form des \CFD und der \SECC sowie der darauf aufbauenden \SECterm{Ereignisheuristik} erreicht. Diese geben dem Nutzer Mittel in die Hand, Schwellwerte zu setzen, die die Qualität und Anzahl der erkannten Ereignisse stark beeinflussen. Weiterhin ergab eine Umfrage unter Experten und Laien, dass die Bedeutung der Glyphen intuitiv eingeschätzt werden kann. Lediglich die Zuordnung der Helligkeit für die Darstellung der Ereigniszeit sollte vertauscht werden. Auch kann unter Berufung auf die Umfrageergebnisse die Empfehlung erfolgen, die Farbdarstellung für die Ereigniszeit nur in der Makrosicht zu nutzen und für die Mikrosicht stattdessen die Helligkeit oder den Füllstand zu verwenden.
+Trotz dessen, dass die erhoffte Umsetzung der Berechnungen mit \contours{Konturbäumen}{Konturbaum} nicht erfolgen konnte, wurde die Zielstellung, Strukturveränderung mittels \viss{Ereignisglyphen}{Ereignisglyph} abzubilden, durch die Entwicklung eigener Algorithmen in Form des \CFD und der \SECC sowie der darauf aufbauenden \SECterm{Ereignisheuristik} erreicht. Diese geben dem Nutzer Mittel in die Hand, die fünf Schwellwerte \glssymbol{cradMod}, \glssymbol{cminCG}, \glssymbol{emsA}, \glssymbol{emsP} und \glssymbol{ebd} zu setzen, die die Qualität und Anzahl der erkannten Ereignisse stark beeinflussen. Weiterhin ergab eine Umfrage unter Experten und Laien, dass die Bedeutung der Glyphen intuitiv eingeschätzt werden kann. Lediglich die Zuordnung der Helligkeit für die Darstellung der Ereigniszeit sollte vertauscht werden. Auch kann unter Berufung auf die Umfrageergebnisse die Empfehlung erfolgen, die Farbdarstellung für die Ereigniszeit nur in der Makrosicht zu nutzen und für die Mikrosicht stattdessen den Füllstand oder die Helligkeit zu verwenden. Neben diesem Parameter \glssymbol{rvisZeit} hilft der Parameter \glssymbol{rglyph} beim Wechsel zwischen Sichten und \glssymbol{reaModus} ist für die gezielte Analyse einer Ereignisart nützlich. Die zwei implementierten Parameter zur Veränderung der Zuweisung von \viss{visuellen Variablen}{visuelle Variable} zu Ereignisort \glssymbol{rvisPos} und Ereignisart \glssymbol{rvisArt} dienen für eine Weiterentwicklung des Plugins unter Nutzung anderer Anordnungen von \viss{Ereignis-}{Ereignisobjekt} und \vis{Partikelobjekt} (siehe \autoref{sec:ausblick}).
 
 Seitens der Experten wurde der Prozess, der zu den visualisierten Ereignissen führte, in der Mehrheit korrekt eingeschätzt. Hingegen fällt es schwer, ohne Hintergrundwissen allein durch die Visualisierung Prozesse richtig zu beurteilen (siehe \autoref{sec:eva:ereignisse-quali-verlauf}).
 
-Durch die Clustervisualisierung, die umfangreiche Bereitstellung quantitativer Ergebnisse, die vorgeschlagene \vis{Strukturereignistaxonomie}, mehrere Möglichkeiten zur Glyphdarstellung sowie durch die Auswertung unter Einbeziehung von Laien wurden die geplanten Ziele der Arbeit übertroffen. Die entstandene Software in Form des \tool{MegaMol}-Plugins (siehe \autoref{sec:pluginaufbau}) als auch des \viss{Glyphprototypen}{Glyphprototyp} (siehe \autoref{sec:glyphprototyp}) kann für Anwendungsfälle über diese Arbeit hinaus verwendet werden. So kann mit dem Plugin eine Strukturanalyse anderer Partikeldatensätze mit einem Skalarfeld für den \contour{Tiefenwert} erfolgen. Bei einer Lockerung der \vis{Strukturereignistaxonomie} durch die Entfernung der Bindung der Position an den Ereignisort, kann der \vis{Glyphprototyp} zur Überprüfung der Wirkung vieler Verknüpfungsvarianten der \viss{visuellen Variablen}{visuelle Variable} an die Parameter zum Einsatz kommen.
+Durch die Clustervisualisierung, die umfangreiche Bereitstellung quantitativer Ergebnisse, die vorgeschlagene \vis{Strukturereignistaxonomie}, mehrere Möglichkeiten zur Glyphdarstellung sowie durch die Auswertung unter Einbeziehung von Laien wurden die geplanten Ziele der Arbeit übertroffen. Die entstandene Software in Form des \tool{MegaMol}-Plugins (siehe \autoref{sec:pluginaufbau}) als auch des \viss{Glyphprototypen}{Glyphprototyp} (siehe \autoref{sec:glyphprototyp}) kann für Anwendungsfälle über diese Arbeit hinaus verwendet werden. So kann nach minimalen Anpassungen mit dem Plugin eine Strukturanalyse anderer Partikeldatensätze mit einem Skalarfeld für den \contour{Tiefenwert} erfolgen. Bei einer Lockerung der \vis{Strukturereignistaxonomie} durch die Entfernung der Bindung der Position an den Ereignisort, kann der \vis{Glyphprototyp} zur Überprüfung der Wirkung vieler Verknüpfungsvarianten der \viss{visuellen Variablen}{visuelle Variable} an die Parameter zum Einsatz kommen.
 
 Ein Problem der entwickelten Algorithmen stellt das \SECterm{Ereignisrauschen} dar, dass bei allen vier Arten der Strukturereignisse auftritt.
 %Weiterhin dauern die Berechnungen zu lang, um direkt angezeigt zu werden.
@@ -1355,10 +1394,10 @@ Auch gibt es Verdeckungen der Glyphen untereinander sowie durch die Partikel, wa
 
 
 \chapter{Ausblick}\label{sec:ausblick}
-In der Arbeit konnte nur eine Untermenge der Einstellungsmöglichkeiten der entwickelten Cluster- und Ereigniserkennung überprüft werden, da die Berechnungen sehr lang dauern (siehe \autoref{sec:eva:ressourcen}. Wenn das \SECalc mit der Fähigkeit erweitert werden würde, aus einem \gls{mpdc} mit Clustereinfärbungen direkt die Clusterlisten zu bilden, könnten die Nachbarschaftssuche und der \CFD einmalig für jeden ihrer Parameter durchgeführt werden. Anschließend wären Änderungen der Parameter der \SECterm{Ereignisheuristik} auch ohne Vorberechnungen der Ereignisse innerhalb weniger Sekunden sichtbar, so dass eine vollständige Überprüfung der Auswirkung aller Parameterkombinationen der \SECterm{Ereignisheuristik} stattfinden kann.
+In der Arbeit konnte nur eine Untermenge der Einstellungsmöglichkeiten der entwickelten Cluster- und Ereigniserkennung überprüft werden (siehe \autoref{sec:eva:ereignis-param}), da die Berechnungen sehr lang dauern (siehe \autoref{sec:eva:ressourcen}). Wenn das \SECalc mit der Fähigkeit erweitert werden würde, aus einem \gls{mpdc} mit Clustereinfärbungen direkt die Clusterlisten zu bilden, könnten die Nachbarschaftssuche und der \CFD einmalig für jeden ihrer Parameter durchgeführt werden. Anschließend wären Änderungen der Parameter der \SECterm{Ereignisheuristik} auch ohne Vorberechnungen der Ereignisse innerhalb weniger Sekunden sichtbar, so dass eine vollständige Überprüfung der Auswirkung aller Parameterkombinationen der \SECterm{Ereignisheuristik} stattfinden kann.
 
 In der Diskussion wurden Verbesserungen der Algorithmen vor allem hinsichtlich des Ressourcenverbrauchs aufgeführt (siehe \autoref{sec:disc:optimierung-para} und \autoref{sec:disc:optimierungAlg}). Zur Verringerung des starken \SECterms{Ereignisrauschens}{Ereignisrauschen} werden zwei weitere Modifikationen der Algorithmen vorgeschlagen, die in einer weiterführenden Arbeit implementiert und getestet werden könnten. So kann die \CFDterm{Clustergröße} desjenigen Clusters, der zusammen mit seinen \SECterms{Parnterclustern}{Parntercluster} zur Bildung des Ereignisses geführt hat, direkt im Ereignis abgespeichert werden. Damit wird dem Benutzer eine Gewichtung der Ereignisse abhängig von der Clustergröße ermöglicht und er kann beispielsweise die Auswirkungen kleiner Cluster dynamisch ausblenden.
-Darüberhinaus könnte die Nutzung einer Mindestclustergröße mit wesentlich höheren Werten (100 Partikel oder höher) zur Senkung des \SECterms{Ereignisrauschens}{Ereignisrauschen} beitragen. Voraussetzung dafür ist die Erhöhung der durchsuchten Nachbarschaftsebenen während der Clusterreduktion (siehe \autoref{sec:clusterreduktion}). Dies kann zum Beispiel durch Umwandlung des iterativen Vorgehens in ein Rekursives erreicht werden. Empfehlenswert ist die Skalierung der Rekursionschritte mit der Mindestclustergröße, um die Berechnungsdauer der Reduktion nicht unnötig zu erhöhen. Da kleinere Cluster, die nur eine Zusammenhangskomponente bilden, bei der Reduktion erhalten bleiben, gibt es keinen Verlust dieser Ereignisinformationen.
+Darüberhinaus könnte die Nutzung einer Mindestclustergröße mit wesentlich höheren Werten von $\glssymbol{cminCG}\ge 100$ zur Senkung des \SECterms{Ereignisrauschens}{Ereignisrauschen} beitragen. Voraussetzung dafür ist die Erhöhung der durchsuchten Nachbarschaftsebenen während der Clusterreduktion (siehe \autoref{sec:clusterreduktion}). Dies kann zum Beispiel durch Umwandlung des iterativen Vorgehens in ein Rekursives erreicht werden. Empfehlenswert ist die Skalierung der Rekursionschritte mit der Mindestclustergröße, um die Berechnungsdauer der Reduktion nicht unnötig zu erhöhen. Da kleinere Cluster, die nur eine Zusammenhangskomponente bilden, bei der Reduktion erhalten bleiben, gibt es keinen Verlust dieser Ereignisinformationen.
 Um einen zielgerichteten Wert für die Mindestclustergröße zu finden, können die im Berechnungsmodul vorhandenen Ausgaben der berechneten, quantitativen Daten für eine (statistische) Analyse genutzt werden, etwa durch die Ausgabe der Anzahl von Clustern bestimmter Größen.
 
 %Weiterhin kann die Einbeziehung von sowohl der Forward- als auch der Backwardsliste (siehe \autoref{sec:ereigniserkennung}) bei der Ermittlung von \ereignis{Merge} und \ereignis{Split} dazu dienen, Ereignisse gezielter zu filtern. So können die Durchschnittswerte der Verhältnisse der gemeinsamen Partikel der Elternpartner in der jeweiligen anderen Liste verglichen werden und daraus eine Gewichtung abgeleitet werden.
@@ -1383,7 +1422,7 @@ Damit können die in dieser Arbeit entstandenen Algorithmen, Strukturen und Visu
 
 %Benutzung von flexiblen Isooberflächen nach \cite{carr2010flexibleIsosurfaces}.
 
-
+\addchap{Danksagung}
 
 \appendix
 
@@ -1401,7 +1440,7 @@ Das \href{https://github.com/roidanton/mmvis_static}{Plugin}\footnote{https://gi
 
 Die Prämisse beim Entwerfen und Programmieren des Plugins lautete, nah bei den Kernmodulen von \tool{MegaMol} zu bleiben. Dies erhöht die Lesbarkeit für die mit \tool{MegaMol} Vertrauten und es können Performancevorteile genutzt werden. Im Besonderen beinhaltet dies die Verwendung von \tool{OpenGL} 2.1 im Renderer und im \vis{Billboard}-Shader, von Zeigern im Callmodul, von der Beschränkung auf Felder im Schreib- und Lesemodul sowie die Verwendung von Bytecode beim Dateiformat selbst.
 
-Das Werkzeug zum Erstellen der für das Betreiben der \tool{MegaMol} Konsole notwendigen \gls{XML} Dateien und zur Visualisierung dieser Aufbauten ist der \tool{MegaMol Configurator}.
+Das Werkzeug zum Erstellen der für das Betreiben der \tool{MegaMol} Konsole notwendigen \gls{xml} Dateien und zur Visualisierung dieser Aufbauten ist der \tool{MegaMol Configurator}.
 
 \subsection*{Aufbau der Ausgangsdaten}\label{sec:pluginaufbau-mmpld}
 %\begin{lstlisting}[language=c]
@@ -1442,14 +1481,14 @@ Für die Ausgabe wurden Kernmodule modifiziert. Die wichtigste Modifikation ist 
 	    discard;
 \end{lstlisting}
 
-\subsection*{Weiteres Optimierungspotential}\label{sec:pluginaufbau-optimierung}
+\subsection*{Weiteres Verbesserungspotential}\label{sec:pluginaufbau-optimierung}
 
 \begin{itemize}
-	\item \MMStruktur{SimpleSphereRenderer}: Filtern (Ausblenden) nach Partikelfarben wie oben vorgeschlagen.
 	\item \MMStruktur{StaticRenderer Modul}: Visuelle Ausgabe von quantitativen Ereigniswerten, analog zur Protokollierung in \SECalc.
-	\item Globales Kennzeichen für die Logausgabe analog zum Protokollkennzeichen in \SECalc.
-	\item WASD-QE-RF Steuerung, als Vorbild dienen die guten User Interfaces von Spielen wie Elite Dangerous.
 	\item Hinzufügen eines Pfades für Assets, indem zur megamol.cfg ein weiteres Element <assetdir> mit dem Attribut path hinzugefügt wird, analog zum Element <shaderdir>.
+	\item Globales Kennzeichen für die Logausgabe analog zum Protokollkennzeichen in \SECalc.
+	\item \MMStruktur{SimpleSphereRenderer}: Filtern von Partikelfarben mithilfe eines Slots zur Festlegung einer zu filternden oder exklusiven Farbe.
+	\item WASD-QE-RF Steuerung, als Vorbild dienen die User Interfaces von Spielen mit sechs Freiheitsgraden in der Bewegung, zum Beispiel Elite Dangerous oder Star Citizen.
 %	\item Hinzufügen eines Pfades für Logdateien zur Ausgabe von quantitativen Daten, indem zur megamol.cfg ein weiteres Element <outputFiledir> mit dem Attribut path hinzugefügt wird, analog zum Element <shaderdir>.
 \end{itemize}
 
@@ -1460,8 +1499,8 @@ Für die Ausgabe wurden Kernmodule modifiziert. Die wichtigste Modifikation ist 
 	\item
 	\begin{enumerate}
 		\item Aufbau der Partikelliste mit den Daten des \gls{mpdc}.
-		\item Erstellung von kD-Bäumen für die Nachbarschaftserkennung.
-		\item Nutzung des kD-Baum Suchalgorithmus der \ANN, um Nachbarn jedes Partikels zu diesem hinzuzufügen unter Berücksichtigung des \CFDterm{Partikelradiusmultiplikator}.
+		\item Erstellung von \CFDterms{kD-Bäumen}{kD-Baum} für die Nachbarschaftserkennung.
+		\item Nutzung des \CFDterm{kD-Baum} Suchalgorithmus der \ANN, um Nachbarn jedes Partikels zu diesem hinzuzufügen unter Berücksichtigung des \CFDterm{Partikelradiusmultiplikator}.
 	\end{enumerate}
 	\item
 	\begin{enumerate}
@@ -1582,10 +1621,215 @@ Da die Unterscheidung von Polyedern mit zunehmender Flächenanzahl schwieriger w
 \end{description}
 Die Abkürzungen folgen dem Vorschlag von Baierl \cite[S.~42]{KonvexePolyeder}. Bei der Modellierung in \tool{Blender} wurde für die Polygonnetze die maximale Dimension von $1$ (einheitenlos) entsprechend der Dimension der kugelförmigen Standardelemente in \tool{Unity3D} gewählt.
 
-\section{Umfrage}
-%TODO UMFRAGE arg!
+\section{Umfrage}\label{sec:umfrage}
+Für die Erstellung und Ausführung der Umfrage wurde die Webplattform \href{https://www.instant.ly/}{instantly}\footnote{https://www.instant.ly/} benutzt. Um ein größeres Publikum zu erreichen, wurde sie zweisprachig verfasst. Das Ziel der Umfrage ist die Bewertung der Visualisierung und richtet sich sowohl an Professionelle, mit der Molekularsimulation vertraute, wie auch an unbedarfte Laien. Sie sollen möglichst unvoreingenommen urteilen. Daher sind Einleitungstext und Erklärungen in den Fragestellungen kurz gehalten.
+
+\blockquote[Richard Hähne, Juli 2015]{
+Diese Umfrage handelt von Ereignisglyphen, welche die Art und den Zeitpunkt von Strukturereignissen in einer Molekulardynamiksimulation visualisieren. Sie markieren das Entstehen, Verbinden, Trennen und Sterben von Molekülclustern. Sie enthält eine Eingangsfrage und acht inhaltliche Fragen. In sieben von ihnen ist nach intuitiven Eindrücken gefragt, die letzte erfordert die Analyse eines Bildes. Der Zeitaufwand beträgt etwa vier bis acht Minuten.
+
+This survey's topic is about event glyphs which visualize structure events of a molecular simulation. There are four types (see image above). Please try to answer intuitively except for the last question. The survey takes about 4 - 8 minutes to solve. GLaDOS promised a cake!}
+
+Der Verweis auf den Antagonisten aus Portal dient zur Motivation einer Teilmenge der Teilnehmerschaft. Zur Vermittlung visueller Eindrücke wird sich auf \autoref{fig:partikel} beschränkt und mit Hilfe von \autoref{fig:strukturereignisse} (mit dem Untertitel ,,Gasphase: gelb, Flüssigkeitsphase/Cluster: blau'') die Strukturereignisse unterteilt.
+
+Die Umfrage besteht aus insgesamt neun Fragen. Um eine Differenzierung zwischen Professionellen (im weiteren Verlauf Experten genannt) und Laien vorzunehmen, wird zu Beginn eine Frage zur Selbsteinschätzung mit einer aus drei Antwortmöglichkeiten gestellt.
+
+\blockquote[Richard Hähne, Juli 2015]{
+	Wieviel Erfahrung hast Du mit Visualisierungen von Molekulardynamiksimulationen?
+	
+	How much experience do you have with visualizations of molecular dynamics simulations?
+	
+	\begin{itemize}
+		\item Gar keine. / None.
+		\item Schon einige Male gesehen. / Seen it before.
+		\item Ich arbeite mit Molekulardynamiksimulationen. / I'm working with molecular dynamics simulations.
+	\end{itemize}
+}
+
+In die Gruppe der Experten werden nur diejenigen aufgenommen, die sich für die letzte Antwortmöglichkeit entscheiden. Alle anderen werden zur Gruppe der Laien zugeteilt.
+
+\subsection*{Kodierung der Ereignisart}\label{sec:umfrage:art}
+Dieser Abschnitt dient zur Einschätzung der Qualität der erstellten symbolischen Gestaltung der Glyphen (siehe \autoref{sec:vis:glyph-art}) und besteht aus zwei Fragen für jeweils eine Gestaltungsvariante.
+
+Der Fragentyp wird als Bilderrangliste bezeichnet und beinhaltet eine Zuordnung von Bildern zu bestimmten Positionen per Drag \& Drop. Den Positionen wird dabei eine, für den Befragten durch die Fragestellung sichtbare, Semantik zugeteilt, so dass er selbstständig bestimmen muss, was auf dem Bild zu sehen ist.
+
+Die verwendeten Bilder sind in \autoref{fig:visualisierung:glyph-art} abgebildet. Sie werden in der Umfrage zufällig angeordnet.
+
+Es wird mit der abstrakt symbolischen Variante begonnen.
+
+\blockquote[Richard Hähne, Juli 2015]{
+	Es sind vier Glyphen zu sehen. Jeder Glyph steht für ein Strukturereignis. Bitte ordne die zufällig angeordneten Bilder nach ihrer Bedeutung (dazu das Bild mit der Maus in das Feld mit der Zahl hinüberziehen):\\
+	1 : Geburt\\
+	2 : Tod\\
+	3 : Verschmelzung\\
+	4 : Trennung
+	
+	Here you see four glyphs, each of one symbolizing either a birth, death, merge or split event. Drag and drop the random ordered images corresponding to their meaning:\\
+	1 : Birth\\
+	2 : Death\\
+	3 : Merge\\
+	4 : Split
+}
+
+Die Frage für die narrativ symbolische Glyphgestaltung ist analog.
+\blockquote[Richard Hähne, Juli 2015]{
+	Es sind vier weitere Glyphen zu sehen. Jeder Glyph steht wieder für ein Strukturereignis. Bitte ordne noch einmal die zufällig angeordneten Bilder nach ihrer Bedeutung:\\
+	1 : Geburt\\
+	2 : Tod\\
+	3 : Verschmelzung\\
+	4 : Trennung\\
+	
+	Here you see another four glyphs, each of one symbolizing either a birth, death, merge or split event. Drag and drop the random ordered images corresponding to their meaning again, please:\\
+	1 : Birth\\
+	2 : Death\\
+	3 : Merge\\
+	4 : Split
+}
 
 
+\subsection*{Position des Ereignisglyphs}
+Jeder Glyph steht für ein Ereignis und es soll mit der Umfrage geprüft werden, an welcher Stelle des Glyphen die meisten Anwender das Ereignis orten werden. Dabei kann eines der drei in \autoref{fig:visualisierung:glyph-position} befindlichen Bildern ausgewählt werden.
+
+\begin{figure}
+	\includegraphics[width=.2\textwidth]{umfrage/GlyphenEventPositionVariant1}
+	\hspace*{.1\textwidth}%
+	\includegraphics[width=.2\textwidth]{umfrage/GlyphenEventPositionVariant2}
+	\hspace*{.1\textwidth}%
+	\includegraphics[width=.2\textwidth]{umfrage/GlyphenEventPositionVariant3}
+	{\caption{Positionierung des \viss{Ereignisglyphs}{Ereignisglyph} im Verhältnis zum stattfindenden Ereignis, markiert durch eine blaue Kugel. Drei Varianten sind aufgezeigt.}\label{fig:visualisierung:glyph-position}}
+\end{figure}
+
+\blockquote[Richard Hähne, Juli 2015]{
+	Die Ereignisglyphen sind an der Stelle positioniert, wo das Ereignis stattfindet. Wo würdest Du die Position des Ereignisses am ehesten vermuten, wenn Du den Glyph betrachtest?
+	
+	The position of the event glyph marks the position of the event. Where would you locate the event when watching the glyph?
+}
+
+\subsection*{Kodierung des Zeitpunkts des Ereignisses}
+Für die Kodierung der Zeit gibt es drei Varianten (siehe \autoref{sec:vis:glyh-zeit}). In diesem Abschnitt soll ihre quantitative Zuortbarkeit zu bestimmten Zeitpunkten überprüft werden. Für jede Variante existiert eine Frage und als Methodik wird, wie in \autoref{sec:umfrage:art}, die Bilderrangliste verwendet. Als Bilder werden die in \autoref{fig:visualisierung:glyph-zeit} abgebildeten Glyphen verwendet. Sie werden in der Umfrage zufällig angeordnet.
+
+Es wird mit der Texturkodierung der Zeit begonnen, \ldots
+\blockquote[Richard Hähne, Juli 2015]{
+Der Füllstand steht für einen Zeitpunkt. Ordne den Bildern einen Zeitpunkt zu, der Deiner Meinung nach am Besten passt:\\
+1 : 0\% vergangene Zeit\\
+2 : 50\% vergangene Zeit\\
+3 : 100\% vergangene Zeit\\
+
+The fill level represents a point in time. Drag and drop the images which you think would fit best:\\
+1 : 0\% duration\\
+2 : 50\% duration\\
+3 : 100\% duration\\
+}
+
+\ldots danach folgt die Helligkeitskodierung \ldots
+\blockquote[Richard Hähne, Juli 2015]{
+Die Helligkeit steht für einen Zeitpunkt. Ordne den Bildern einen Zeitpunkt zu, der Deiner Meinung nach am Besten passt:\\
+1 : 0\% vergangene Zeit\\
+2 : 50\% vergangene Zeit\\
+3 : 100\% vergangene Zeit\\
+
+The brightness represents a point in time. Drag and drop the images which you think would fit best:\\
+1 : 0\% duration\\
+2 : 50\% duration\\
+3 : 100\% duration
+}
+
+\ldots und schließlich die Farbwertkodierung. Um den Teilnehmer nicht im Dunklen tappen zu lassen, wurde ein Bild des \gls{hsv}-Farbraums in Ringform eingefügt, das den Grad des Farbwertes als Markierung an der Außenkante inklusive Zahlenwerte enthält.
+
+\blockquote[Richard Hähne, Juli 2015]{
+	Die Farbe steht für einen Zeitpunkt. Der Farbwert ist entsprechend des \gls{hsv}-Farbraums aufsteigend sortiert. Ordne den Bildern einen Zeitpunkt zu, der Deiner Meinung nach am Besten passt:\\
+	1 : 0\% vergangene Zeit\\
+	2 : 50\% vergangene Zeit\\
+	3 : 100\% vergangene Zeit\\
+	
+	The brightness represents a point in time. Drag and drop the images which you think would fit best:\\
+	1 : 0\% duration\\
+	2 : 50\% duration\\
+	3 : 100\% duration
+}
+
+\subsection*{In situ Betrachtungen}
+Abschließend werden zwei Fragen zur Visualisierung der Ereignisse im Simulationsraum gestellt.
+
+\begin{figure}
+	\ffigbox[\FBwidth] {
+		\begin{subfloatrow}
+			\vbox {%
+				\ffigbox[\FBwidth][\FBheight]
+					{\includegraphics[width=.75\textwidth]{umfrage/time-visualization-5r-10_ms2-40_bd2_texture}}
+					{\caption{Texturkodierung der Zeit.}\label{fig:vis:insitu:zeitkodierung:textur}}\vss
+				\ffigbox[\FBwidth][\FBheight]
+					{\includegraphics[width=.75\textwidth]{umfrage/time-visualization-5r-10_ms2-40_bd2_brightness}}
+					{\caption{Helligkeitskodierung der Zeit.}\label{fig:vis:insitu:zeitkodierung:helligkeit}}\vss
+				\ffigbox[\FBwidth][\FBheight]
+					{\includegraphics[width=.75\textwidth]{umfrage/time-visualization-5r-10_ms2-40_bd2_hue}}
+					{\caption{Farbwertkodierung der Zeit.}\label{fig:vis:insitu:zeitkodierung:farbwert}}
+			}
+		\end{subfloatrow}
+	}
+	{\caption{In situ Darstellung von berechneten Ereignissen mit unterschiedlicher Zeitkodierung. Die Berechnungen erfolgten mit den Parametereinstellungen $\glssymbol{cradMod} = 5$, $\glssymbol{cminCG} = 10$,  $\glssymbol{emsP} = 2$,  $\glssymbol{emsA} = 40$ und $\glssymbol{ebd} = 2$.}\label{fig:vis:insitu:zeitkodierung}}
+\end{figure}
+
+Die erste Frage klärt die Unterscheidbarkeit der Zeitkodierungsart bei der Makrosicht, indem statische Abbildungen der berechneten Glyphen im Simulationsraum gezeigt werden (siehe \autoref{fig:vis:insitu:zeitkodierung}). Als Methodik kommt die aus \autoref{sec:umfrage:art} bekannte Bilderrangliste zum Einsatz und die Bilder werden auch hier in der Umfrage zufällig angeordnet.
+
+\blockquote[Richard Hähne, Juli 2015]{
+	Auf welchem Bild lassen sich Zeitunterschiede am Besten erkennen? (die Abbildungen lassen sich durch einen Klick auf das Lupensymbol unten rechts an jedem Bild vergrößern)\\
+	1 : Am Besten\\
+	2 : Geht so\\
+	3 : Am Schlechtesten
+	
+	Which image provides the best visible differentiation for the time code? (enlarge the images by clicking on the magnifying glass symbol in the bottom right of each figure)\\
+	1 : Best\\
+	2 : Ok\\
+	3 : Worst
+}
+
+Die zweite Frage ist an die Experten gerichtet und prüft die Qualität der Interpretation der berechneten Ereignisse. Dazu wird \href{https://www.youtube.com/watch?v=GiAkZTbgKsQ}{ein Video}\footnote{https://www.youtube.com/watch?v=GiAkZTbgKsQ} gezeigt, welches die gesamte Simulation in der Makrosicht mit einer vererbten Clustereinfärbung abbildet. Dazu sollte der in \autoref{fig:eva:EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small} zu sehende Ereignisverlauf verglichen werden.
+
+\blockquote[Richard Hähne, Juli 2015]{
+	Bitte schau Dir diese Simulation einer rasch expandierenden Flüssigkeit an. Dabei ist eine Entstehung von Tröpfchen und Filamenten zu beobachten.
+	
+	Please watch this simulation of a rapidly expanding fluid where a development of droplets and filaments can be observed.
+	
+	Im Vollbild anschauen für bessere Erkennbarkeit. / Watch in fullscreen.
+	[eingebundenes Video, siehe Erklärung]
+	
+	Das folgende Bild visualisiert die zugehörigen Strukturereignisse im selben Raum wie die Simulation im Video. Die Zeit der Ereignisses ist mit der Farbe kodiert. Vor allem im zweiten und vierten Fünftel sind horizontal langgestreckte, perlenkettenartige Verläufe der Ereignisglyphen zu sehen. Worauf weisen diese hin?
+	
+	The following image visualizes structural events that occurred during the simulation. The visualization is located in the same space as the simulation. The color encodes the time when the event happened. An elongated flow of the events can be observed most notably in the second and fourth quintile. What are they indicating?
+	
+	[eingebundenes Bild, siehe Erklärung]
+}
+
+Vier Antwortmöglichkeiten werden vorgegeben, von denen nur eine ausgewählt werden kann. Ein Rangsystem, vergleichbar zu den Bildern, wäre aufgrund der Teilnahme zahlreicher Laien (zu schwierig zu beantworten) und der kleinen, zu erwartenden Expertengruppe (Auswertung schwierig) nicht geeignet. Die, wie die Bilder in einer zufälligen Reihenfolge angeordneten, Antwortmöglichkeiten lauten:
+
+\blockquote[Richard Hähne, Juli 2015]{
+	\begin{enumerate}
+		\item Durch die Bewegung der Flüssigkeit nach außen entstehen Filamentstrukturen und verursachen die meisten der Strukturereignisse. / Due to the outwardly movement of the liquid, filaments are created that cause most of the structural events.
+		\item Durch die Bewegung der Flüssigkeit nach außen entstehen Tröpfchen und verursachen die meisten der Strukturereignisse. / Due to the outwardly movement of the liquid, droplets are created that cause most of the structural events.
+		\item Durch die rasche Bewegung der Flüssigkeit nach außen entstehen die Ereignisse entlang der Horizontalen, unabhängig der entstehenden Strukturen. / Due to the outwardly movement of the liquid most of the structural events emerges along the horizontal axis, independent from the molecular structures.
+		\item Die während der Simulation verbleibenden Flüssigkeitsblöcke verursachen die meisten Ereignisse und zufälligerweise sind sie perlenartig angeordnet. / The remaining liquids blocks cause most of the structural events. The horizontal arrangement is just random (or luck).
+	\end{enumerate}
+}
+
+Antwort eins ist korrekt. In einem abschließendem Feld können Fragen und Anmerkungen hinterlassen werden.
+
+\blockquote[Richard Hähne, Juli 2015]{
+	Zum Abschluss ist Platz für Deinen Kommentar. Zum Beispiel:\\
+	Für wie nützlich schätzt Du die Visualisierung von Molekularsimulationen ein? Wo setzt Du sie selbst ein? \\
+	War etwas unklar?\\
+	Mochtest Du etwas besonders?
+	
+	Here you can leave your comment. For example:\\
+	Does the visualization of molecular simulations have any value to you? Where do you use it?\\
+	Did you spot something vague?\\
+	What did you like most?
+}
+
+Daten zur Teilnehmerzahl können in \autoref{sec:trivia} eingesehen werden. Abschließend kann festgestellt werden:
+\blockquote[Portal, 2007]{
+	The cake is a lie!
+}
+;-)
 
 \section{Berechnungen Glyph}\label{sec:berechnungen:glyph}
 Die folgenden Berechnungen sind abhängig von der Ereigniszeit $t$ mit $t_{\text{max}}$ als höchsten Zeitpunkt aller Ereignisse. Die Farben werden im \gls{hsv}-Farbraum berechnet.
@@ -1629,32 +1873,35 @@ Die Berechnung aller Zeitschritte wurde aufgrund des hohen Ressourcenverbrauchs 
 
 \section{Werkzeuge und Bibliotheken}\label{sec:werkzeuge}
 
-\subsubsection{Mockup Visualisierung}
+\subsubsection{Mockup Visualisierung (Glyphprototyp)}
 \begin{description}
-	\item [Adobe Illustrator]
-	\item [Blender] mit Regular Solids
-	\item [Unity3D] mit \href{http://forum.unity3d.com/threads/a-working-stylable-combo-box-drop-down-list.264167/}{UIComboBox}, \href{http://forum.unity3d.com/threads/fly-cam-simple-cam-script.67042/}{Simple FlyCamera} 
+	\item [Adobe Illustrator] zur Erstellung von zweidimensionalen Mockups
+	\item [Blender] mit Regular Solids zur Erstellung der Glyphen
+	\item [Unity3D] mit \href{http://forum.unity3d.com/threads/a-working-stylable-combo-box-drop-down-list.264167/}{UIComboBox}, \href{http://forum.unity3d.com/threads/fly-cam-simple-cam-script.67042/}{Simple FlyCamera}, \href{http://wiki.unity3d.com/index.php?title=HSBColor}{HSBColor},  als Framework zur Entwicklung und zum Deploy auf Desktop sowie im Web.
 \end{description}
 
 \subsubsection{Dokumentation}
 \begin{description}
-	\item [Adobe Photoshop]
-	\item [Blender] mit Extra Objects
-	\item [Fraps] Aufnahme der visuellen MegaMol Ausgaben
-	\item [IrfanView] Bildumwandlung
-	\item [TeXstudio, TeXlive] mit tudscr, glossaries, tikz u.a.
+	\item [Adobe Photoshop] zur Bildbearbeitung
+	\item [Blender] mit Extra Objects zu Erstellung dreidimensionaler, schneller Mockups
+	\item [Microsoft Excel] zur Diagrammerstellung und Filterung der \gls{csv}-Protokolldateien
+	\item [Fraps] Aufnahme der visuellen \tool{MegaMol}-Ausgaben
+	\item [IrfanView] zur Bildumwandlung
+	\item [TeXstudio, TeXlive] mit tudscr, glossaries, xindy, tikz, biber u.a. zum Text- und Bildsatz.
 \end{description}
 
 \subsubsection{MegaMol Plugin}
 \begin{description}
-	\item [ActivePerl]
-	\item [Adobe Illustrator] zur Gestaltung der Glyphen
-	\item [Adobe Photoshop] zur Erstellung der Texturen
-	\item [\gls{glm}] eine Headerbibliothek zur Speicherung von Vektoren analog zu \OGL
-	\item [lodepng] zum Laden von Texturen
-	\item [MegaMol] mit der \ANN, AntTweakBar, mmstd\_datatools, vislib
-	\item [MegaMolConf]
-	\item [VisualStudio 2013] mit \href{http://openmp.org/}{OpenMP} und \href{https://msdn.microsoft.com/en-us/library/dd492418.aspx}{Parallel Patterns Library}
+	\item [ActivePerl] zur Konfiguration der \tool{MegaMol}-Module und für xindy.
+	\item [\ANN] zur Erstellung und Nutzung von \CFDterms{kD-Bäumen}{kD-Baum}.
+	\item [AntTweakBar] die in \tool{MegaMol} enthaltene GUI.
+	\item [Adobe Illustrator] zur Gestaltung der Glyphen.
+	\item [Adobe Photoshop] zur Erstellung der Texturen.
+	\item [\gls{glm}] eine Headerbibliothek zur Speicherung von Vektoren analog zu \OGL.
+	\item [lodepng] zum Laden von Texturen im \gls{png}-Format.
+	\item [MegaMol] mit vislib und dem Plugin mmstd\_datatools.
+	\item [MegaMolConf] zur schnellen Erstellung der \gls{xml}-Projekt- und -Jobdateien.
+	\item [VisualStudio 2013] mit \href{http://openmp.org/}{OpenMP} und \href{https://msdn.microsoft.com/en-us/library/dd492418.aspx}{Parallel Patterns Library} als Entwicklungsumgebung des Plugins.
 \end{description}
 
 \subsubsection{Konturbäume}
@@ -1675,6 +1922,19 @@ Dieser Algorithmus ist wegen der Entfernungsbestimmung über den Radius sehr lan
 oder es könnte eine Einteilung des Raumes in ein Gitter erfolgen und jede Zelle erhält ihre eigene Partikelliste. Bei der Suche nach benachbarten Partikeln werden nur die Nachbarzellen durchsucht. Allerdings ist auch bei diesen Varianten immer noch eine Entfernungsbestimmung notwendig, wenn auch mit wesentlich weniger Überprüfungen je Partikel.
 
 Daher werden diese Methoden nicht weiter verfolgt und stattdessen wird auf eine Baumstruktur zur Nachbarschaftsbildung zurückgegriffen und von diesen Daten aus eine Clusterbestimmung vorgenommen (siehe \autoref{sec:nachbarschaftssuche}).
+
+\section{Trivia: Die Arbeit in Zahlen}\label{sec:trivia}
+\begin{description}
+	\item[Umfrage] 70 Teilnehmer (davon acht Experten) haben die Umfrage gestartet, 50 (davon acht Experten) von ihnen haben sie abgeschlossen. Der Abbruch lag zum Teil an der Browserkompatibilität. Verteilung der Betriebssysteme: 42 nutzten Windows, 15 Android, 9 Linux (davon 5 Ubuntu), 6 iOS, 5 MacOS. Verteilung der Browser: 32 nutzten Chrome (davon 2 Iron), 29 Firefox (davon 1 Iceweasel), 12 Safari (davon 7 Mobile und 2 Webkit (iOS)), 2 Opera, 2 IE.
+	\item[Code] Es wurden mehr als 6200 Zeilen C++ Code verfasst (davon sind das \SECalc mit 3685 Zeilen und das \MMStruktur{StaticRenderer Modul} mit 1336 Zeilen am Größten), 631 Zeilen \wichtig{C\#}, 800 Zeilen \gls{xml} und 233 Zeilen \wichtig{GLSL}.
+	\blockquote[Bill Gates]{Measuring programming progress by lines of code is like measuring aircraft building progress by weight.}
+	\item[Berechnungen] Es fanden acht Berechnungsläufe der kompletten Simulation statt, die rund 2 Wochen andauerten. Dazu kommen über 300 Berechnungen einzelner Zeitpunkte für Entwicklung und Evaluation. Dabei wurden rund 4000 Protokolldateien mit einer Größe von rund 1,15 \gls{GiB} erzeugt, 1326 \gls{kiB} an Ereignisdaten und 62,56 \gls{GiB} an Partikeldaten zur Clusterfärbung (in den finalen Durchläufen).
+	\item[Medien] Über 50 Schemata und Bilder für Konzeption und Gestaltung und mehr als 30 für die Evaluation (nur ein Bruchteil wurde verwendet). Drei Videos wurden erstellt und online verfügbar gemacht. Keine Audiodaten wurden erzeugt.
+	\item[Papier] Dieses Dokument mit seinen Zusatzdateien besitzt zum Zeitpunkt des Schreibens dieses Abschnittes 2411 Zeilen. Dieser Informatiker weiß scheinbar nicht, dass das Zählen von Wörtern sinnvoller wäre und wie überflüssig das Zählen für eine Qualitätsaussage ist.
+\end{description}
+
+Für wie nützlich schätzt Du die Visualisierung von Molekularsimulationen ein: \blockquote[Nummer 159836867]{Für mich persönlich: Ich liebe bunte Bilder}
+
 
 %\backmatter %Nachspann: Römische Seitennummerierung
 

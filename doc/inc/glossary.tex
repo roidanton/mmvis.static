@@ -1,15 +1,88 @@
-\newglossaryentry{platonischer Körper}{
-	name = {platonischer Körper},
-	description = {fünf},
-	plural = {platonische Körper},
-	sort = {Körper}
-}
+%%%
+% Symbole, \glssymbol benutzen!
+%
 
-\newglossaryentry{3dRaum} {
-	name = {\ensuremath{\mathbb{R}^3}},
-	description = {Dreidimensionaler Raum},
-	sort = {R}
-}
+\glossarysymbol%First argument is newline, yeah.
+	{R3}%
+	{\mathbb{R}^3}%
+	{Dreidimensionaler Raum.}
+	{\emptyset}
+
+\glossarysymbol%
+	{reaModus}%
+	{r_\text{eaModus}}%
+	{Der Einstellungsparameter zum Filtern der anzuzeigenden Ereignisarten des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{rvisZeit}%
+	{r_\text{visZeit}}%
+	{Der Einstellungsparameter für die drei Varianten der visuellen Zeitkodierung von Ereignissen des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{rvisPos}%
+	{r_\text{visPos}}%
+	{Der Einstellungsparameter zur Änderung der visuellen Positionskodierung von Ereignissen des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{rvisArt}%
+	{r_\text{visArt}}%
+	{Der Einstellungsparameter zur Änderung der visuellen Artkodierung von Ereignissen des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{rglyph}%
+	{r_\text{Glyph}}%
+	{Der Einstellungsparameter für die Glyphgröße des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{rzeit}%
+	{r_\text{zeit}}%
+	{Der Einstellungsparameter für die anzuzeigende Zeitspanne des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{rzModus}%
+	{r_\text{zModus}}%
+	{Der Einstellungsparameter für verschiedene Zeitanzeigemodi des \MMStrukturs{StaticRenderer Moduls}{StaticRenderer Modul}.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{cradMod}%
+	{c_\text{radMod}}%
+	{Der Einstellungsparameter \CFDterm{Partikelradiusmultiplikator}. Er bestimmt die Reichweite der Nachbarschaftssuche der Partikel.}%
+	{\emptyset}
+
+\glossarysymbol%
+	{cminCG}%
+	{c_\text{minCG}}%
+	{Einstellungsparameter der Clusterreduktion für die Mindestclustergröße.}%
+	{Partikelanzahl (\emptyset)}
+
+\glossarysymbol%
+	{ebd}%
+	{e_\text{bd}}%
+	{Einstellungsparameter der \SECterm{Ereignisheuristik} für die Gesamtanteile an gemeinsamen Partikeln.}%
+	{\%}
+
+\glossarysymbol%
+	{emsA}%
+	{e_\text{msA}}%
+	{Einstellungsparameter der \SECterm{Ereignisheuristik} für die Anteile an gemeinsamen Partikeln der \SECterms{Großen Partner}{Großer Partner}.}%
+	{\%}
+	
+\glossarysymbol%
+	{emsP}%
+	{e_\text{msP}}%
+	{Einstellungsparameter der \SECterm{Ereignisheuristik} für die Anzahl der \SECterm{Partnercluster}}%
+	{Clusteranzahl (\emptyset)}
+	
+%%%
+% Akronyme
+%
 
 \newacronym[
 longplural={CSV}
@@ -84,7 +157,7 @@ description={Eine OpenSource Lizenz ursprünglich entstanden am Massachusetts In
 \newacronym[
 longplural={XML}
 description={Extensible Markup Language.}
-]{XML}{XML}{Extensible Markup Language}
+]{xml}{XML}{Extensible Markup Language}
 
 \newacronym[
 longplural={Fast Library for Approximate Nearest Neighbors}
