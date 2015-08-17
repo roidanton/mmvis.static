@@ -1094,7 +1094,7 @@ Aufgrund des Mangels eines optimalen Systems kann keine Bestimmung der Güte der
 In \autoref{fig:eva:EventFlow-Hue-5r-10-ms2-40-bd2-cropped-small} sind alle Ereignisse bei einem \CFDterm{Partikelradiusmultiplikator} der Größe $\glssymbol{cradMod} = 5$ visualisiert. Die Zeit des Ereignisses ist mit der Farbe kodiert. Vor allem im zweiten und vierten Fünftel sind deutlich horizontal langgestreckte, perlenkettenartige Verläufe der \viss{Ereignisglyphen}{Ereignisglyph} zu sehen. Die prominenten, blaugefärbten Ketten (mittlere Zeitschritte) sind mehrheitlich \ereignis{Birth}- und  \ereigniss{Deathereignisse}{Death}, enthalten jedoch daneben auch \ereignis{Merge}- und wenige \ereigniss{Splitereignisse}{Split}. Die letzteren beiden Ereignisarten bilden vor allem die horizontale, annähernd parallel verlaufende Struktur. Ihre Anordnung zeigt, dass die durch die Bewegung der Flüssigkeit nach außen entstehenden Filamentstrukturen die meisten der Strukturereignisse verursachen. Auch werden Ereignisse durch die Tröpfchen oder die Flüssigkeitsfronten erzeugt, jedoch ist die Zahl der durch die Tröpfchen verursachten Ereignisse geringer und die innerhalb der Fronten entstandenen Ereignisse sind gleichmäßig über die kurzen Achsen des Simulationsraumes verteilt angeordnet (siehe \autoref{sec:ereignisrauschen}). Dies kann während des Auftauchens der Glyphen während der Animation beurteilt werden, was ein \href{https://www.youtube.com/watch?v=0K7J3ISMrDM}{Video der Animation mit zufälliger Clustereinfärbung}\footnote{https://www.youtube.com/watch?v=0K7J3ISMrDM} zeigt.
 
 \subsubsection*{Interpretation der Glyphen in der Makrosicht}\label{sec:eva:ereignisse-quali-verlauf:umfrage}
-Dieses Phänomen wurde in der Umfrage bei Frage neun genutzt (siehe \autoref{sec:umfrage:insitu}), um zu überprüfen, ob die Visualisierung korrekte Rückschlüsse ziehen lässt. ist vor allem die Expertenbeurteilung von Belang. Aufgrund der kleinen Anzahl werden in \autoref{fig:eva:umfrage-letzte} auch die Antworten der Laien aufgeführt.
+Dieses Phänomen wurde in der Umfrage bei Frage neun genutzt (siehe \autoref{sec:umfrage:insitu}), um zu überprüfen, ob die Visualisierung korrekte Rückschlüsse ziehen lässt. Dabei ist vor allem die Expertenbeurteilung von Belang, jedoch werden aufgrund der kleinen Anzahl an Experten in \autoref{fig:eva:umfrage-letzte} auch die Antworten der Laien aufgeführt.
 
 \begin{figure}
 	\ffigbox[\FBwidth] {
@@ -1340,8 +1340,10 @@ Der nahezu halbierte Speicherverbrauch der Partikelliste im Vergleich zum Gesamt
 
 Diese Daten liefern eine wichtige Erkenntnis. Die Nachbarschaftssuche benötigt mit großem Abstand die meiste Zeit, danach folgt der \CFD mit etwa ein Viertel ihres Zeitverbrauchs. Die anderen Schritte liegen mit einer Dauer von maximale zwei Sekunden für den \SECC und wenigen Millisekunden für die Ereignisheuristik um zwei und mehr Größenordnungen darunter.
 
-Der Speicherverbrauch der Listen ist mit maximal 1,4 \gls{GiB} bei einem \CFDterm{Partikelradiusmultiplikator} von $\glssymbol{cradMod} = 10$ überschaubar. Der in Stichproben registrierte wesentlich höhere Gesamtspeicherverbrauch des Berechnungsprozesses zwischen elf und 13 \gls{GiB} ist vor allem auf das Vorhalten des gesamten Datensatzes der Simulation in Form des \gls{mmpld} im Speicher (über fünf \gls{GiB}) sowie auf den hohen Verbrauch bei der Durchsuchung des \CFDterms{kD-Baums}{kD-Baum} zurückzuführen.
+Der Speicherverbrauch der Listen ist mit maximal 14 \gls{GiB} bei einem \CFDterm{Partikelradiusmultiplikator} von $\glssymbol{cradMod} = 10$ groß. Hinzu kommen vor allem das Vorhalten des Datensatzes der Simulation in Form des \gls{mmpld} im Speicher (über fünf \gls{GiB}).
 
+%Der Speicherverbrauch der Listen ist mit maximal 1,4 \gls{GiB} bei einem \CFDterm{Partikelradiusmultiplikator} von $\glssymbol{cradMod} = 10$ überschaubar. Der in Stichproben registrierte wesentlich höhere Gesamtspeicherverbrauch des Berechnungsprozesses zwischen elf und 13 \gls{GiB} ist vor allem auf das Vorhalten des gesamten Datensatzes der Simulation in Form des \gls{mmpld} im Speicher (über fünf \gls{GiB}) sowie auf den hohen Verbrauch bei der Durchsuchung des \CFDterms{kD-Baums}{kD-Baum} zurückzuführen.
+%Falsch, in der Stelle verrutscht: Speicherverbrauch tatsächlich bei 14gb durch die Listen.
 
 \chapter{Diskussion der Ergebnisse}\label{sec:diskussion}
 
@@ -1751,6 +1753,7 @@ Es wird mit der abstrakt symbolischen Variante begonnen (Frage zwei).
 	2 : Death\\
 	3 : Merge\\
 	4 : Split
+	
 }
 
 Die Frage für die narrativ symbolische Glyphgestaltung ist analog (Frage drei).
@@ -1766,6 +1769,7 @@ Die Frage für die narrativ symbolische Glyphgestaltung ist analog (Frage drei).
 	2 : Death\\
 	3 : Merge\\
 	4 : Split
+	
 }
 
 
@@ -1884,8 +1888,7 @@ Frage neun ist an die Experten gerichtet und prüft die Qualität der Interpreta
 	
 	The following image visualizes structural events that occurred during the simulation. The visualization is located in the same space as the simulation. The color encodes the time when the event happened. An elongated flow of the events can be observed most notably in the second and fourth quintile. What are they indicating?
 	
-	[eingebundenes Bild, siehe Erklärung]
-	
+	[eingebundenes Bild, siehe Erklärung]	
 }
 
 Vier Antwortmöglichkeiten werden vorgegeben, von denen nur eine ausgewählt werden kann. Ein Rangsystem, vergleichbar zu den Bildern, wäre aufgrund der Teilnahme zahlreicher Laien (zu schwierig zu beantworten) und der kleinen, zu erwartenden Expertengruppe (Auswertung schwierig) nicht geeignet. Die, wie die Bilder in einer zufälligen Reihenfolge angeordneten, Antwortmöglichkeiten lauten:
