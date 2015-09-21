@@ -1,0 +1,382 @@
+\documentclass[10pt]{beamer}
+\usepackage[utf8x]{inputenc}
+\usepackage[ngerman]{babel}
+\usepackage{amsmath}
+
+\usepackage{listings}
+\usepackage{verbatim}
+
+\usepackage{multicol} %Spalten
+
+\setlength{\parskip}{0.5em} % Abstand nach Absatz
+
+%%%
+% TikZ
+%
+\usepackage{tikz}
+\usetikzlibrary{arrows,positioning,scopes,trees}
+
+\tikzset {
+	value/.style={rectangle, draw},
+	vocab/.style={rectangle, draw, rounded corners=.8ex},
+	verticalChild/.style={grow=down, xshift=.5em, anchor=west, font = \small,
+		edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}},
+	first/.style={level distance=6ex},
+	second/.style={level distance=12ex},
+	third/.style={level distance=18ex},
+	fourth/.style={level distance=24ex},
+	level 1/.style={sibling distance=3cm}
+}
+
+\usetheme{Dresden} %http://www.hartwork.org/beamer-theme-matrix/
+%\usetheme{Goettingen} 
+\usecolortheme{seahorse} %http://www.hartwork.org/beamer-theme-matrix/
+\setbeamercovered{transparent}
+
+\definecolor{orange}{rgb}{.99,.78,0}
+\definecolor{blau}{rgb}{0,.52,.73}
+\definecolor{blaurot}{rgb}{.8,.52,.73}
+\newcommand{\liquid}[1]{\textcolor{blau}{#1}}
+\newcommand{\liquidcenter}[1]{\textcolor{blaurot}{#1}}
+\newcommand{\wichtig}[1]{\textit{#1}}
+\newcommand{\gas}[1]{\textcolor{orange}{#1}}
+
+% Page number
+\addtobeamertemplate{navigation symbols}{}{%
+	\usebeamerfont{footline}%
+	\usebeamercolor[fg]{footline}%
+	\hspace{1em}%
+	\insertframenumber/\inserttotalframenumber
+}
+
+\title[Visualisierung von Strukturveränderungen in Molekulardynamikdaten]{Visualisierung von Strukturveränderungen in Molekulardynamikdaten}
+\subtitle[Bachelorarbeit Verteidigung]{Bachelorarbeit Verteidigung}
+\author[Richard Hähne]{Richard Hähne}
+\institute{Institut für Software- und Multimediatechnik}
+\date{\today}
+ 
+\begin{document}
+\maketitle
+\frame{\tableofcontents[hideallsubsections]}
+
+\section{Kontext}
+\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\subsection{Motivation}
+\begin{frame}
+	Visuelle Analyse für komplexe, partikelbasierte Daten mit der Darstellung zeitlicher Entwicklungen
+	\includegraphics*[width=11.5cm]{media/SignedDistanceColor-Show-Frame-60.png}
+\end{frame}
+
+\begin{frame}
+	Animation eines Flüssigkeitsfilms, der im Vakuum rasch expandiert.\\
+	Wie verhält sich die Flüssigkeit, welche Strukturereignisse treten auf?
+	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-000-letterbox.png}\\
+	%\includegraphics*[width=10cm]{media/SignedDistanceColor-Frame-010-letterbox.png}\\
+	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-020-letterbox.png}
+\end{frame}
+
+\begin{frame}
+	Animation eines Flüssigkeitsfilm, der im Vakuum rasch expandiert.\\
+	Wie verhält sich die Flüssigkeit, welche Strukturereignisse treten auf?
+	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-030-letterbox.png}\\
+	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-100-letterbox.png}
+\end{frame}
+
+\begin{frame}
+	Die vorliegende Animation ist zur Analyse nur bedingt geeignet:
+	\begin{itemize}
+		\item vieles geschieht gleichzeitig: Erfassung schwierig
+		\item sequentieller Ablauf: quantitiativer Vergleich schwierig
+		%\item Diagramm: unübersichtlich bei vielen und übereinanderlagernden Daten
+	\end{itemize}
+	Lösung: Darstellung der zeitlichen Entwicklung der Struktur der Partikel im geometrischen Kontext der Originaldaten.
+\end{frame}
+
+\subsection{Anforderungen}
+
+\begin{frame}
+	Folgende Schritte sind notwendig
+	\begin{enumerate}
+		\item Analyse der Partikelstruktur für jeden Zeitschritt
+		\item Erkennung von Änderungen an der Struktur von einem zum nächsten Zeitschritt (Strukturereignisse)
+		\item Anzeige dieser Ereignisse im Ortsraum der Partikel
+	\end{enumerate}
+\end{frame}
+
+\begin{frame}{Arten von Strukturereignissen}
+	\includegraphics*[height=6.7cm]{media/Strukturereignisse.png}
+\end{frame}
+
+\begin{frame}{Bedingungen für die Erkennung von Strukturereignissen}
+	\begin{itemize}
+		\item Einteilung der Partikelmenge in eine Menge von Clustern
+		% um zu wissen, welcher der Partikel wohin geht:
+		\item die Partikel müssen Clustern zugeordnet werden können
+	\end{itemize}
+\end{frame}
+
+\begin{frame}Cluster als Zusammenhangskomponenten
+	\includegraphics*[width=11cm]{media/cluster/SignedDistanceColor-Frame-090-clipplane20-letterbox.png}\\
+	\includegraphics*[width=11cm]{media/cluster/SignedDistanceColor-Frame-090-clipplane20-letterbox-Cluster.png}
+\end{frame}
+
+\begin{frame}Cluster innerhalb von Zusammenhangskomponenten
+	\includegraphics*[width=11cm]{media/cluster/SignedDistanceColor-Frame-016-clipplane20-letterbox.png}\\
+	\includegraphics*[width=11cm]{media/cluster/SignedDistanceColor-Frame-016-clipplane20-letterbox-Cluster.png}
+\end{frame}
+
+\section{Analyse der Partikelstruktur}
+\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\subsection{Datengrundlage}
+\begin{frame}{Vorliegende Daten}
+	\begin{itemize}
+		\item die Partikel sind eine Menge von Elementen mit diskreten Positionen
+		\item es gibt eine Grenzfläche zwischen Flüssig- und Gasphase, die auf einem Grenzwert in der lokalen Dichte basiert
+		\item gegeben für jeden Partikel ist der Abstand zur nächsten Grenzfläche (vorzeichenbehaftete Distanzfunktion)
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Vorliegende Daten - Tiefenwert}
+	\begin{itemize}
+		\item jeder Partikel hat einen bestimmten Abstand zum nächsten Randpartikel: Skalarfeld über der Menge von Partikeln (\wichtig{Tiefenwert})
+		\item Partikel mit \gas{negativem} Abstand liegen in der Gasphase
+		\item Partikel mit \liquid{positivem} Abstand liegen in der flüssigen Phase 
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Zusammenhänge zwischen den Partikeln}
+	Für die weiteren Schritte ist eine Kenntnis über die Zusammenhänge der Partikel notwendig. Dies 
+	\begin{itemize}
+		\item jeder Partikel hat einen bestimmten Abstand zum nächsten Randpartikel: Skalarfeld über der Menge von Partikeln (\wichtig{Tiefenwert})
+		\item Partikel mit \gas{negativem} Abstand liegen in der Gasphase
+		\item Partikel mit \liquid{positivem} Abstand liegen in der flüssigen Phase 
+	\end{itemize}
+\end{frame}
+
+\subsection{Cluster Fast Depth (CFD) Algorithmus}
+\begin{frame}
+	\begin{itemize}
+		\item alle Partikel werden sequentiell durchlaufen
+		\item dabei werden \gas{Gaspartikel} ignoriert und nur Partikel der \liquid{Flüssigkeitsphase} betrachtet, die noch keinem Cluster zugeordnet sind
+		\item ausgehend von einem solchen Partikel werden seine Nachbarn auf ihren \wichtig{Tiefenwert} hin untersucht
+		\item der Nachbar mit dem höchsten Wert wird selektiert und es wird wiederrum der \wichtig{Tiefenwert} von dessen Nachbarn betrachtet
+		\item diese Schleife läuft so lang, bis alle Nachbarn denselben oder einen geringeren \wichtig{Tiefenwert} aufweisen (\liquidcenter{lokales Maximum} erreicht)
+		\item alle auf dem Weg selektierten Partikel werden anschließend einem (neuen oder vorhandenen) Cluster zugeordnet
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Zusammenhangskomponente}
+	\includegraphics*[width=11cm]{media/cluster/cfd.png} \\
+\end{frame}
+
+\begin{frame}
+	\includegraphics*[width=3.7cm]{media/cluster/cfd000.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd001.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd002.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd003.png}
+\end{frame}
+
+\begin{frame}
+	\includegraphics*[width=3.7cm]{media/cluster/cfd000.png} \includegraphics*[width=3.7cm]{media/cluster/cfd004.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd001.png} \includegraphics*[width=3.7cm]{media/cluster/cfd005.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd002.png} \includegraphics*[width=3.7cm]{media/cluster/cfd006.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd003.png} \includegraphics*[width=3.7cm]{media/cluster/cfd007.png}
+\end{frame}
+
+\begin{frame}
+	\includegraphics*[width=3.7cm]{media/cluster/cfd000.png} \includegraphics*[width=3.7cm]{media/cluster/cfd004.png} 	\includegraphics*[width=3.7cm]{media/cluster/cfd008.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd001.png} \includegraphics*[width=3.7cm]{media/cluster/cfd005.png} 	\includegraphics*[width=3.7cm]{media/cluster/cfd009.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd002.png} \includegraphics*[width=3.7cm]{media/cluster/cfd006.png} 	\includegraphics*[width=3.7cm]{media/cluster/cfd010.png} \\
+	\includegraphics*[width=3.7cm]{media/cluster/cfd003.png} \includegraphics*[width=3.7cm]{media/cluster/cfd007.png}	\includegraphics*[width=3.7cm]{media/cluster/cfd011.png}
+\end{frame}
+
+%\subsection{Visualisierung der erzeugten Strukturen}
+\begin{frame}{Visualisierung der erzeugten Strukturen}
+	Einfärbung der Partikel, um die Clusterzugehörigkeit zu visualisieren. Dabei können Farben zufällig vergeben (links) oder von Clustern des vorangegangenen Zeitschritts vererbt werden (rechts).
+	
+	\includegraphics*[width=5.7cm]{media/eva/clusterfarbe-allRd-small.png}
+	\includegraphics*[width=5.7cm]{media/eva/clusterfarbe-rdInteritance-small.png}
+\end{frame}
+
+\section{Erkennung der Ereignisse}
+\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\subsection{Clustervergleich}
+
+\begin{frame}
+	Um Strukturereignisse zu erkennen, werden zwei aufeinanderfolgende Zeitschritte betrachtet und die Veränderung der Cluster zwischen diesen verfolgt. Anschließend werden daraus mit einer Heuristik Ereignisse abgeleitet.
+\end{frame}
+
+\begin{frame}{Clustervergleichsmatrix}
+	\begin{itemize}
+		\item Partikel sind Clustern zugeordnet
+		\item diese Zuordnung wird für zwei aufeinanderfolgende Zeitschritte betrachtet (aktueller und vorheriger Zeitschritt)
+		\item in einer n-m-Matrix, wobei n für die Cluster des aktuellen und m für die Cluster des vorhergehenden Zeitschritts steht, wird die Anzahl der Partikel beider Zeitschritte festgehalten
+
+		%clusterComparisonMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++;
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Partnercluster}
+TODO
+\end{frame}
+
+\subsection{Ereignisheuristik}
+\begin{frame}
+TODO
+\end{frame}
+
+\begin{frame}{Cluster- und Ereigniserkennungsschritte}
+	\begin{enumerate}
+		\item
+		\begin{enumerate}
+			\item Aufbau der Partikelliste mit den Daten des MultiParticleDataCalls.
+			\item Erstellung von \wichtig{kD-Bäumen} für die Nachbarschaftserkennung.
+			\item Nutzung des \wichtig{kD-Baum} Suchalgorithmus der \wichtig{ANN-Bibliothek}, um Nachbarn jedes Partikels, unter Berücksichtigung des \wichtig{Partikelradiusmultiplikator}, zu diesem hinzuzufügen.
+		\end{enumerate}
+		\item
+		\begin{enumerate}
+			\item Cluster erstellen unter Nutzung der Nachbarn.
+			\item Reduktion der \wichtig{Mindestgrößencluster} innerhalb von Zusammenhangskomponenten, die weniger Partikel besitzen als für die benutzerdefinierte minimale \wichtig{Clustergröße} erlaubt.
+		\end{enumerate}
+		\item Clustervergleich (\wichtig{SECC}) durch Nutzung der \wichtig{Clustervergleichsmatrix} und Erstellung von zwei Listen mit \wichtig{Partnerclustern} in Vorwärtsrichtung beziehungsweise rückwärtiger Richtung.
+		\item Anwendung von Verhältnisberechnungen auf diese Listen und Nutzung von benutzerdefinierten Grenzwerten für die \wichtig{Ereignisheuristik}.
+	\end{enumerate}
+\end{frame}
+
+\section{Visualisierung}
+\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\subsection{Strukturereignistaxonomie}
+\begin{frame}{Ereignisparameter}
+	Ein Ereignis hat folgende Parameter
+	\begin{itemize}
+		\item Ort: kontinuierlich
+		\item Zeitpunkt: kontinuierlich
+		\item Art: diskret (Birth, Death, Merge, Split)
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Visuelle Variablen}
+	Einteilung visueller Variablen
+	\begin{itemize}
+		\item Position (x, y, z): diskret und kontinuierlich
+		\item Farbe (Farbwert/Sättigung, Helligkeit): diskret und kontinuierlich
+		\item Größe: diskret und kontinuierlich
+		\item Form: diskret
+		\item Textur: diskret und kontinuierlich (endlich)
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Strukturereignistaxonomie}
+	Die Einteilung der Ereignisparamenter zusammen mit der Einteilung der visuellen Variablen bildet die Strukturereignistaxonomie. Die Prüfung der Variablenzuweisung erfolgt durch ein interaktives Mockup.
+
+	\includegraphics*[width=11cm]{media/vis/strukturereignistaxonomie.png}
+\end{frame}
+
+\begin{frame}{Mockup mit beispielhafter Variablenzuweisung (WebGL)}
+	\includegraphics*[height=6.9cm]{media/vis/MockupZufallsdatenOben45bunt.png}
+\end{frame}
+
+\begin{frame}{Zuweisung visueller Attribute}
+	Zuweisung von visuellen Attributen zu den Parametern
+	\begin{itemize}
+		\item Ort: Position im Raum (Aufgabenstellung)
+		\item Zeitpunkt: Farbwert, Helligkeit, Füllstand (Textur)
+		\item Art: abstrakt und narrativ symbolische Darstellung (Textur)
+	\end{itemize}
+\end{frame}
+
+\subsection{Glyphdarstellung} %	Glyph ist die grafische Darstellung eines Schriftzeichens!
+
+\begin{frame}{3D-Glyphen - Beleuchtung}
+	\includegraphics*[height=6.9cm]{media/vis/Mockup-Zufallsdaten-persp-ArtForm-vornEntfernter.png}
+\end{frame}
+
+\begin{frame}{3D-Darstellung}
+	Ergebnis durch die Nutzung des interaktiven Mockups: Die Erscheinung von Glyphen als Polygone ist blickwinkelabhängig (Form) und beleuchtungsabhängig (unterschiedliche Helligkeiten je nach Winkel der Flächen).
+	
+	Bewirkt Senkung der präattentiven Wirkung (kognitiver Aufwand). %präattentiv: Reiz erzeugen, der vom Nervensystem des Beobachters zwar wahrgenommen wird und einen Effekt erzeugt, jedoch nicht in das Bewusstsein dringt. Vorteil ist eine parallele, schnelle Verarbeitung (kürzer als 250	Millisekunden (ms)), die nicht gehemmt werden kann. Nachteilig ist, dass die Wahrnehmung	oberflächlich bleibt
+	
+	Erschwert Identifizierung bei Überlagerung mit der Partikeldarstellung (einzelne Polygone zwischen sehr vielen Kugeln) $\Rightarrow$ Wechsel zu 2D-Glyphen (Billboards).
+\end{frame}
+
+\begin{frame}{Glyphdarstellung Strukturereignis: Kodierung Ereignisart}
+	Abstrakt symbolische Darstellung\\
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeAbstractBirthWhite-bg}
+					\hspace*{.06\textwidth}%
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeAbstractDeathWhite-bg}
+					\hspace*{.06\textwidth}%
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeAbstractMergeWhite-bg}
+					\hspace*{.06\textwidth}%
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeAbstractSplitWhite-bg}
+					
+	Narrativ symbolische Darstellung\\
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeBirthWhite-bg}
+					\hspace*{.06\textwidth}%
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeDeathWhite-bg}
+					\hspace*{.06\textwidth}%
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeMergeWhite-bg}
+					\hspace*{.06\textwidth}%
+					\includegraphics[width=.18\textwidth]{media/vis/GlyphEventTypeSplitWhite-bg}
+					
+	Der Rahmen erfüllt das Gesetz der Geschlossenheit. Seine Form hebt sich von der Kreisform ab (Kontrast zur Kugeldarstellung der Partikel) und gibt Hinweis auf exakte Ereignisposition.
+\end{frame}
+
+\begin{frame}{Glyphdarstellung Strukturereignis: Zeitdarstellung}
+	Füllstand (Textur)\\
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeFill000}
+					\hspace*{.1\textwidth}%
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeFill050}
+					\hspace*{.1\textwidth}%
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeFill100}
+
+	Helligkeit\\
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeBrightness000}
+					\hspace*{.1\textwidth}%
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeBrightness050}
+					\hspace*{.1\textwidth}%
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeBrightness100}
+
+	Farbwert\\
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeHue000}
+					\hspace*{.1\textwidth}%
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeHue050}
+					\hspace*{.1\textwidth}%
+					\includegraphics[width=.14\textwidth]{media/vis/GlyphenEventTimeHue100}
+\end{frame}
+
+\section{Ergebnisse}
+\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\subsection{Cluster- und Ereigniserkennung}
+\begin{frame}
+	Umfrage mit reinbringen, quantitatives nur kurz!
+\end{frame}
+
+\subsection{Visualisierung}
+\begin{frame}
+	Umfrageergebnisse, v.a. in situ
+\end{frame}
+
+\end{document}
+
+%%%
+%%% Strukturereignisse Zwischenverteidigung
+%%%
+
+\section{Erkennung der Strukturereignisse}
+\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\begin{frame}
+	Durch Vergleich der Partikelzugehörigkeit zu Clustern über zwei Frames. Eventuell ein Vergleich von Cluster IDs bei Vorhandensein von Clusterlisten im vorhergehenden Schritt.
+	\begin{itemize}
+		\item Birth: Partikel hat neue Cluster ID und Cluster existierte vorher nicht
+		\item Death: Partikel hat keine Cluster ID, hatte vorher eine und dieser Cluster existiert nicht mehr
+		\item Merge: Partikel hat neue Cluster ID und alter Cluster existiert noch
+		\item Split: Partikel hat neue Cluster ID und alter Cluster existiert noch
+	\end{itemize}
+	Falls dem Cluster bereits ein Ereignis zugewiesen wurde, kein neues Ereignis erstellen.
+\end{frame}
