@@ -3,7 +3,6 @@
 \usepackage[ngerman]{babel}
 \usepackage{amsmath}
 
-\usepackage{listings}
 \usepackage{verbatim}
 
 \usepackage{multicol} %Spalten
@@ -11,21 +10,36 @@
 \setlength{\parskip}{0.5em} % Abstand nach Absatz
 
 %%%
-% TikZ
+% Quellcode
 %
-\usepackage{tikz}
-\usetikzlibrary{arrows,positioning,scopes,trees}
+\usepackage{xcolor}
+\usepackage{listings}
 
-\tikzset {
-	value/.style={rectangle, draw},
-	vocab/.style={rectangle, draw, rounded corners=.8ex},
-	verticalChild/.style={grow=down, xshift=.5em, anchor=west, font = \small,
-		edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}},
-	first/.style={level distance=6ex},
-	second/.style={level distance=12ex},
-	third/.style={level distance=18ex},
-	fourth/.style={level distance=24ex},
-	level 1/.style={sibling distance=3cm}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+\lstset{ %
+	backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+	basicstyle=\scriptsize,        % the size of the fonts that are used for the code
+	breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+	breaklines=false,                 % sets automatic line breaking
+	captionpos=b,                    % sets the caption-position to bottom
+	commentstyle=\color{dkgreen},    % comment style
+	escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+%	frame=single,                    % adds a frame around the code
+	keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+	keywordstyle=\color{blue},       % keyword style
+	numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+	numbersep=5pt,                   % how far the line-numbers are from the code
+	numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+	rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+	showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+	showstringspaces=false,          % underline spaces within strings only
+	showtabs=false,                  % show tabs within strings adding particular underscores
+	stepnumber=2,                    % the step between two line-numbers. If it's 1, each line will be numbered
+	stringstyle=\color{mymauve},     % string literal style
+	tabsize=2,                       % sets default tabsize to 2 spaces
+	title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
 }
 
 \usetheme{Dresden} %http://www.hartwork.org/beamer-theme-matrix/
@@ -147,12 +161,9 @@
 \end{frame}
 
 \begin{frame}{Zusammenhänge zwischen den Partikeln}
-	Für die weiteren Schritte ist eine Kenntnis über die Zusammenhänge der Partikel notwendig. Dies 
-	\begin{itemize}
-		\item jeder Partikel hat einen bestimmten Abstand zum nächsten Randpartikel: Skalarfeld über der Menge von Partikeln (\wichtig{Tiefenwert})
-		\item Partikel mit \gas{negativem} Abstand liegen in der Gasphase
-		\item Partikel mit \liquid{positivem} Abstand liegen in der flüssigen Phase 
-	\end{itemize}
+	Für die weiteren Schritte ist eine Kenntnis über die räumliche Nähe der Partikel zueinander notwendig. Zur Bestimmung dieser wird ein \wichtig{kD-Baum} angewandt mit $k=3$ für die drei Raumrichtungen.
+	
+	Die Bestimmung der Nachbarn mit Hilfe dieses Baumes berücksichtigt periodische Randbedingungen.
 \end{frame}
 
 \subsection{Cluster Fast Depth (CFD) Algorithmus}
@@ -203,46 +214,116 @@
 \section{Erkennung der Ereignisse}
 \frame{\tableofcontents[currentsection, hideothersubsections]}
 
-\subsection{Clustervergleich}
+\subsection{Clustervergleich (SECC)}
 
 \begin{frame}
 	Um Strukturereignisse zu erkennen, werden zwei aufeinanderfolgende Zeitschritte betrachtet und die Veränderung der Cluster zwischen diesen verfolgt. Anschließend werden daraus mit einer Heuristik Ereignisse abgeleitet.
 \end{frame}
 
-\begin{frame}{Clustervergleichsmatrix}
+\begin{frame}[fragile]{Clustervergleichsmatrix}
 	\begin{itemize}
 		\item Partikel sind Clustern zugeordnet
 		\item diese Zuordnung wird für zwei aufeinanderfolgende Zeitschritte betrachtet (aktueller und vorheriger Zeitschritt)
-		\item in einer n-m-Matrix, wobei n für die Cluster des aktuellen und m für die Cluster des vorhergehenden Zeitschritts steht, wird die Anzahl der Partikel beider Zeitschritte festgehalten
-
-		%clusterComparisonMatrix[this->particleList[pid].clusterID][this->previousParticleList[pid].clusterID]++;
+		\item die Anzahl der Partikel pro Cluster wird in einer n-m-Matrix festgehalten, wobei n für die Anzahl an Clustern des aktuellen und m für die Clusteranzahl des vorhergehenden Zeitschritts steht
+		\item der Zeilenindex steht für die Cluster ID des aktuellen und der Spaltenindex für die Cluster ID des vorhergehenden Zeitschritts
+		\item die Zellen enthalten die zugehörige Partikelanzahl; semantisch ist dies die Anzahl gemeinsamer Partikel der Cluster zweier Zeitschritte
 	\end{itemize}
+	
+	\begin{lstlisting}[language=c]
+	for (auto particleID : currentParticleList)
+		clusterComparisonMatrix
+			[currentParticleList[particleID].clusterID] // Aktueller Zeitschritt.
+			[previousParticleList[particleID].clusterID] // Vorhergehender.
+			++; // Anzahl der Partikel inkrementieren.
+	\end{lstlisting}
 \end{frame}
 
 \begin{frame}{Partnercluster}
-TODO
+	\begin{itemize}
+		\item die \wichtig{Clustervergleichsmatrix} wird sowohl Zeilen- als auch Spaltenweise betrachtet
+		\item dadurch kann das Verhältnis hinsichtlich der Partikelanzahl eines Clusters des aktuellen Zeitschrittes zu allen Clustern des vorhergehenden Zeitschrittes ermittelt werden (und umgekehrt)
+		\item diese zwei Richtungen werden vorwärtsgerichteter Vergleich (alter Zeitpunkt zu aktuellem) und rückwärtsgerichteter Vergleich (aktueller zu altem Zeitpunkt) genannt
+		\item Cluster mit gemeinsamen Partikeln werden als Partner bezeichnet
+	\end{itemize}
 \end{frame}
 
 \subsection{Ereignisheuristik}
-\begin{frame}
-TODO
+\begin{frame}{Relevante Werte}
+	\begin{itemize}
+		\item Gesamtanzahl der Partner
+		\item Anzahl an großen Partnern. Große Partner sind solche Partnercluster mit vielen gemeinsamen Partikeln.
+		\item Grenzwert, ab wann ein Partner ein großer Partner ist. Der Grenzwert ist das Verhältnis der gemeinsamen Partikel des Partners im Vergleich zu der Gesamtzahl gemeinsamer Partikel des Clusters.
+	\end{itemize}
 \end{frame}
 
-\begin{frame}{Cluster- und Ereigniserkennungsschritte}
+\begin{frame}{Birth und Death}
+	\begin{itemize}
+		\item Gesamtanzahl der Partner ist Null
+		\item Birth im rückwärtsgerichteten Vergleich: kein Partner des vorangegangenen Zeitschrittes enthält Partikel des derzeitigen Clusters
+		\item Death im vorwärtsgerichteten Vergleich: kein Partner des aktuellen Zeitschrittes enthält Partikel des vorangegangenen Clusters
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Birth und Death}
+	\begin{align*}
+	p_{\text{gesamt}_r}, p_{\text{gesamt}_v} &\ldots \text{Gesamtzahl an Partnern (rückwärts- und vorwärtsgerichtet)}\\
+	a_{\text{gesamt}_r}, a_{\text{gesamt}_v} &\ldots \text{Gesamtanteil gemeinsamer Partikel aller Partner}\\
+	e_{bd} &\ldots \text{benutzerdefinierter Anteil an gemeinsamen Partikeln}
+	\end{align*}
+	\begin{equation}
+	\begin{aligned}\label{eq:birth}
+		p_{\text{gesamt}_r} &= 0 &(B)\\
+		e_{bd} &\le a_{\text{gesamt}_r} &(C)
+	\end{aligned}
+	\end{equation}
+	\begin{equation}
+	\begin{aligned}\label{eq:death}
+		p_{\text{gesamt}_v} &= 0 &(D)\\
+		e_{bd} &\le a_{\text{gesamt}_v} &(E)
+	\end{aligned}
+	\end{equation}
+	
+	$\{B,C,D,E\}$ sind aussagenlogische Ausdrücke. Sie stehen für die mathematischen Ausdrücke. \wichtig{Birth} wird erkannt, wenn $(B \lor C) = \top$ und \wichtig{Death} wird erkannt, wenn $(D \lor E) = \top$.
+\end{frame}
+
+\begin{frame}{Merge und Split}
+	\begin{itemize}
+		\item Mindestanzahl großer Partner
+		\item Grenzwert für diese Partner (ein Grenzwert für alle)
+		\item Merge im rückwärtsgerichteten Vergleich: mehrere große Partner des vorangegangenen Zeitschrittes sind zum derzeitigen Cluster verschmolzen
+		\item Split im vorwärtsgerichteten Vergleich: mehrere große Partner des aktuellen Zeitschrittes sind aus einem vorangegangenen Cluster hervorgegangen
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Merge und Split}
+	\begin{align*}
+		p_{\text{groß}_r}, p_{\text{groß}_v} &\ldots \text{Anzahl großer Partner (rückwärts- und vorwärtsgerichtet)}\\
+		a_{\text{partner}_r}, a_{\text{partner}_v} &\ldots \text{Anteil gemeinsamer Partikel eines Partners}\\
+		e_{msA} &\ldots \text{benutzerdefinierter Anteil gemeinsamer Partikel}\\
+		e_{msP} &\ldots \text{benutzerdefinierte Anzahl großer Partner}
+	\end{align*}
+	Inkrementierung von $p_{\text{groß}}$, wenn $a_{\text{partner}} \ge e_{msA}$.
+	
+	\begin{equation}
+	\begin{aligned}\label{eq:merge}
+	p_{\text{groß}_r} &\ge e_{msP} &(M)
+	\end{aligned}
+	\end{equation}
+	\begin{equation}
+	\begin{aligned}\label{eq:split}
+	p_{\text{groß}_v} &\ge e_{msP} &(S)
+	\end{aligned}
+	\end{equation}
+	
+	 $\{M,S\}$ sind aussagenlogische Ausdrücke. Sie stehen für die mathematischen Ausdrücke. \wichtig{Merge} wird erkannt, wenn $M = \top$ und \wichtig{Split} wird erkannt, wenn $S = \top$.
+\end{frame}
+
+\begin{frame}{Zusammenfassung (wichtigste Schritte)}
 	\begin{enumerate}
-		\item
-		\begin{enumerate}
-			\item Aufbau der Partikelliste mit den Daten des MultiParticleDataCalls.
-			\item Erstellung von \wichtig{kD-Bäumen} für die Nachbarschaftserkennung.
-			\item Nutzung des \wichtig{kD-Baum} Suchalgorithmus der \wichtig{ANN-Bibliothek}, um Nachbarn jedes Partikels, unter Berücksichtigung des \wichtig{Partikelradiusmultiplikator}, zu diesem hinzuzufügen.
-		\end{enumerate}
-		\item
-		\begin{enumerate}
-			\item Cluster erstellen unter Nutzung der Nachbarn.
-			\item Reduktion der \wichtig{Mindestgrößencluster} innerhalb von Zusammenhangskomponenten, die weniger Partikel besitzen als für die benutzerdefinierte minimale \wichtig{Clustergröße} erlaubt.
-		\end{enumerate}
+		\item Finden der Partikelnachbarn mittels \wichtig{kD-Baum}, Berücksichtigung periodischer Randbedingungen
+		\item Cluster erstellen unter Nutzung der Nachbarn (\wichtig{CFD})
 		\item Clustervergleich (\wichtig{SECC}) durch Nutzung der \wichtig{Clustervergleichsmatrix} und Erstellung von zwei Listen mit \wichtig{Partnerclustern} in Vorwärtsrichtung beziehungsweise rückwärtiger Richtung.
-		\item Anwendung von Verhältnisberechnungen auf diese Listen und Nutzung von benutzerdefinierten Grenzwerten für die \wichtig{Ereignisheuristik}.
+		\item Bestimmung der Ereignisse durch Anwendung von Verhältnisberechnungen auf diese Listen und Nutzung von benutzerdefinierten Grenzwerten für die \wichtig{Ereignisheuristik}.
 	\end{enumerate}
 \end{frame}
 
@@ -362,6 +443,26 @@ TODO
 \end{frame}
 
 \end{document}
+
+
+
+\begin{frame}{Alle Cluster- und Ereigniserkennungsschritte}
+	\begin{enumerate}
+		\item
+		\begin{enumerate}
+			\item Aufbau der Partikelliste mit den Daten des MultiParticleDataCalls.
+			\item Erstellung von \wichtig{kD-Bäumen} für die Nachbarschaftserkennung.
+			\item Nutzung des \wichtig{kD-Baum} Suchalgorithmus der \wichtig{ANN-Bibliothek}, um Nachbarn jedes Partikels, unter Berücksichtigung des \wichtig{Partikelradiusmultiplikator}, zu diesem hinzuzufügen.
+		\end{enumerate}
+		\item
+		\begin{enumerate}
+			\item Cluster erstellen unter Nutzung der Nachbarn.
+			\item Reduktion der \wichtig{Mindestgrößencluster} innerhalb von Zusammenhangskomponenten, die weniger Partikel besitzen als für die benutzerdefinierte minimale \wichtig{Clustergröße} erlaubt.
+		\end{enumerate}
+		\item Clustervergleich (\wichtig{SECC}) durch Nutzung der \wichtig{Clustervergleichsmatrix} und Erstellung von zwei Listen mit \wichtig{Partnerclustern} in Vorwärtsrichtung beziehungsweise rückwärtiger Richtung.
+		\item Bestimmung der Ereignisse durch Anwendung von Verhältnisberechnungen auf diese Listen und Nutzung von benutzerdefinierten Grenzwerten für die \wichtig{Ereignisheuristik}.
+	\end{enumerate}
+\end{frame}
 
 %%%
 %%% Strukturereignisse Zwischenverteidigung
