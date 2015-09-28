@@ -66,73 +66,98 @@
 \title[Visualisierung von Strukturveränderungen in Molekulardynamikdaten]{Visualisierung von Strukturveränderungen in Molekulardynamikdaten}
 \subtitle[Bachelorarbeit Verteidigung]{Bachelorarbeit Verteidigung}
 \author[Richard Hähne]{Richard Hähne}
-\institute{Institut für Software- und Multimediatechnik}
+\institute[Professur für Computergraphik und Visualisierung]{Institut für Software- und Multimediatechnik\\Professur für Computergraphik und Visualisierung}
 \date{\today}
  
 \begin{document}
 \maketitle
-\frame{\tableofcontents[hideallsubsections]}
+%\frame{\tableofcontents[hideallsubsections]}
 
-\section{Kontext}
-\frame{\tableofcontents[currentsection, hideothersubsections]}
+\section{Einleitung}
+%\frame{\tableofcontents[currentsection, hideothersubsections]}
 
-\subsection{Motivation}
+\subsection{Strukturereignisse während einer Molekulardynamiksimulation}
+
 \begin{frame}
-	Visuelle Analyse für komplexe, partikelbasierte Daten mit der Darstellung zeitlicher Entwicklungen
-	\includegraphics*[width=11.5cm]{media/SignedDistanceColor-Show-Frame-60.png}
+	Partikelbasierte, zeitveränderliche Daten\\
+	Erkennung von Änderungen der Struktur über die Zeit
+	\includegraphics*[width=10.5cm]{media/SignedDistanceColor-Show-Frame-60.png}
+%	Text:
+%	- die Partikel sind eine Menge von Elementen mit diskreten Positionen
+%	- zwei Phasen: Flüssig (blaurot)- und Gasphase (gelb)
 \end{frame}
 
 \begin{frame}
-	Animation eines Flüssigkeitsfilms, der im Vakuum rasch expandiert.\\
+	\begin{columns}[T]
+		\begin{column}{5.5cm}
+		Expandierende Flüssigkeit:\\
+		{\scriptsize $t_S=0$}\\
+		\includegraphics*[width=5.5cm]{media/SignedDistanceColor-Frame-000-letterbox.png}\\
+		%\includegraphics*[width=10cm]{media/SignedDistanceColor-Frame-010-letterbox.png}\\
+
+		{\scriptsize $t_S=20$}\\		
+		\includegraphics*[width=5.5cm]{media/SignedDistanceColor-Frame-020-letterbox.png}\\
+
+		{\scriptsize $t_S=30$}\\		
+		\includegraphics*[width=5.5cm]{media/SignedDistanceColor-Frame-030-letterbox.png}\\
+
+		{\scriptsize $t_S=100$}\\		
+		\includegraphics*[width=5.5cm]{media/SignedDistanceColor-Frame-100-letterbox.png}\\
+		\end{column}
+		\begin{column}{6.5cm}
+			Auftretende \wichtig{Strukturereignisse}:\\
+			TODO: Pfeil nach rechts hinzu
+			\includegraphics*[width=6.5cm]{media/Strukturereignisse.png}
+		\end{column}
+	\end{columns}
+
+%	Beschreibung Animation:
+%	- Flüssigkeitsfilm umgeben von Vakuum -> expandiert rapide
+%	Ziel:
+%	- es soll erkannt werden, was währenddessen mit der Struktur passiert -> Strukturereignisse
+\end{frame}
+
+\subsection{Erkennung und Visualisierung der Strukturereignisse}
+\begin{frame}
 	Wie verhält sich die Flüssigkeit, welche Strukturereignisse treten auf?
-	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-000-letterbox.png}\\
-	%\includegraphics*[width=10cm]{media/SignedDistanceColor-Frame-010-letterbox.png}\\
-	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-020-letterbox.png}
-\end{frame}
-
-\begin{frame}
-	Animation eines Flüssigkeitsfilm, der im Vakuum rasch expandiert.\\
-	Wie verhält sich die Flüssigkeit, welche Strukturereignisse treten auf?
-	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-030-letterbox.png}\\
-	\includegraphics*[width=11cm]{media/SignedDistanceColor-Frame-100-letterbox.png}
-\end{frame}
-
-\begin{frame}
+	
 	Die vorliegende Animation ist zur Analyse nur bedingt geeignet:
 	\begin{itemize}
 		\item vieles geschieht gleichzeitig: Erfassung schwierig
 		\item sequentieller Ablauf: quantitiativer Vergleich schwierig
 		%\item Diagramm: unübersichtlich bei vielen und übereinanderlagernden Daten
 	\end{itemize}
-	Lösung: Darstellung der zeitlichen Entwicklung der Struktur der Partikel im geometrischen Kontext der Originaldaten.
+	Lösung: Darstellung der zeitlichen Entwicklung der Struktur der Partikel im geometrischen Kontext der Originaldaten. Zwei Schritte erforderlich:
+	\begin{enumerate}
+		\item Analyse der Struktur
+		\item Darstellung der Analyseergebnisse
+	\end{enumerate}
+	
+%	mit dieser Arbeit wurden beide Schritte durchgeführt
 \end{frame}
 
-\subsection{Anforderungen}
 
 \begin{frame}
-	Folgende Schritte sind notwendig
-	\begin{enumerate}
-		\item Analyse der Partikelstruktur für jeden Zeitschritt
-		\item Erkennung von Änderungen an der Struktur von einem zum nächsten Zeitschritt (Strukturereignisse)
-		\item Anzeige dieser Ereignisse im Ortsraum der Partikel
-	\end{enumerate}
+	\includegraphics*[width=11.5cm]{media/VisMD-Ablaufschema}
+	
+	TODO: Schema ohne Pfeilbeschriftungen/ohne UserInput (baut sich über den Vortragsverlauf in drei Schritten auf), Nachbar/CFD hervorheben
+
+	%	- Analyse der Partikelstruktur für jeden Zeitschritt
+	%	- Erkennung von Änderungen an der Struktur von einem zum nächsten Zeitschritt (Strukturereignisse)
+	%	- Anzeige dieser Ereignisse im Ortsraum der Partikel
+	%
+	%	- Begriff CLUSTER muss hier fallen! -> Einteilung der Partikel in Cluster
 \end{frame}
 
-\begin{frame}{Arten von Strukturereignissen}
-	\includegraphics*[height=6.7cm]{media/Strukturereignisse.png}
-\end{frame}
+\section{Analyse der Partikelstruktur}
+%\frame{\tableofcontents[currentsection, hideothersubsections]}
 
-\begin{frame}{Bedingungen für die Erkennung von Strukturereignissen}
-	\begin{itemize}
-		\item Einteilung der Partikelmenge in eine Menge von Clustern
-		% um zu wissen, welcher der Partikel wohin geht:
-		\item die Partikel müssen Clustern zugeordnet werden können
-	\end{itemize}
-\end{frame}
+\subsection{Anforderungen}
 
 \begin{frame}Cluster als Zusammenhangskomponenten
 	\includegraphics*[width=11cm]{media/cluster/SignedDistanceColor-Frame-090-clipplane20-letterbox.png}\\
 	\includegraphics*[width=11cm]{media/cluster/SignedDistanceColor-Frame-090-clipplane20-letterbox-Cluster.png}
+%	Einteilung der Partikelmenge in Cluster!
 \end{frame}
 
 \begin{frame}Cluster innerhalb von Zusammenhangskomponenten
@@ -140,44 +165,45 @@
 	\includegraphics*[width=11cm]{media/cluster/SignedDistanceColor-Frame-016-clipplane20-letterbox-Cluster.png}
 \end{frame}
 
-\section{Analyse der Partikelstruktur}
-\frame{\tableofcontents[currentsection, hideothersubsections]}
+\begin{frame}{Einteilung der Partikelmenge in eine Menge von Clustern}
 
-\subsection{Datengrundlage}
-\begin{frame}{Vorliegende Daten}
+	Zur Verfügung stehende Daten für die Clustereinteilung:
 	\begin{itemize}
-		\item die Partikel sind eine Menge von Elementen mit diskreten Positionen
-		\item es gibt eine Grenzfläche zwischen Flüssig- und Gasphase, die auf einem Grenzwert in der lokalen Dichte basiert
-		\item gegeben für jeden Partikel ist der Abstand zur nächsten Grenzfläche (vorzeichenbehaftete Distanzfunktion)
+		\item Partikelposition (durch Datensatz gegeben)
+		\item Partikeldistanz zur nächsten Grenzfläche (durch Datensatz gegeben):
+		\begin{itemize}
+			\item die Grenzfläche zwischen Flüssig- und Gasphase ist bekannt
+			%basiert auf einem Grenzwert in der lokalen Dichte basiert
+			\item gegeben für jeden Partikel ist der Abstand zur nächsten Grenzfläche (\wichtig{Distanz})
+			%(vorzeichenbehaftete Distanzfunktion):
+			%Partikel mit \gas{negativem} Abstand liegen in der Gasphase
+			%Partikel mit \liquid{positivem} Abstand liegen in der flüssigen Phase 
+		\end{itemize}
+		\item Nachbarschaftsbeziehungen der Partikel (mit Hilfe eines kD-Baums berechnet)
 	\end{itemize}
+	TODO: Evtl Bild für Distanz einfügen, allerdings wird dies durch das folgende CFD Schema sichtbar
 \end{frame}
-
-\begin{frame}{Vorliegende Daten - Tiefenwert}
-	\begin{itemize}
-		\item jeder Partikel hat einen bestimmten Abstand zum nächsten Randpartikel: Skalarfeld über der Menge von Partikeln (\wichtig{Tiefenwert})
-		\item Partikel mit \gas{negativem} Abstand liegen in der Gasphase
-		\item Partikel mit \liquid{positivem} Abstand liegen in der flüssigen Phase 
-	\end{itemize}
-\end{frame}
-
-\begin{frame}{Zusammenhänge zwischen den Partikeln}
-	Für die weiteren Schritte ist eine Kenntnis über die räumliche Nähe der Partikel zueinander notwendig. Zur Bestimmung dieser wird ein \wichtig{kD-Baum} angewandt mit $k=3$ für die drei Raumrichtungen.
 	
-	Die Bestimmung der Nachbarn mit Hilfe dieses Baumes berücksichtigt periodische Randbedingungen.
-\end{frame}
-
 \subsection{Cluster Fast Depth (CFD) Algorithmus}
-\begin{frame}
-	\begin{itemize}
-		\item alle Partikel werden sequentiell durchlaufen
-		\item dabei werden \gas{Gaspartikel} ignoriert und nur Partikel der \liquid{Flüssigkeitsphase} betrachtet, die noch keinem Cluster zugeordnet sind
-		\item ausgehend von einem solchen Partikel werden seine Nachbarn auf ihren \wichtig{Tiefenwert} hin untersucht
-		\item der Nachbar mit dem höchsten Wert wird selektiert und es wird wiederrum der \wichtig{Tiefenwert} von dessen Nachbarn betrachtet
-		\item diese Schleife läuft so lang, bis alle Nachbarn denselben oder einen geringeren \wichtig{Tiefenwert} aufweisen (\liquidcenter{lokales Maximum} erreicht)
-		\item alle auf dem Weg selektierten Partikel werden anschließend einem (neuen oder vorhandenen) Cluster zugeordnet
-	\end{itemize}
-\end{frame}
+% Inhalt dieses Frames während der Bilder erklären
+%\begin{frame}
+%	\begin{itemize}
+%		\item alle Partikel werden sequentiell durchlaufen
+%		\item dabei werden \gas{Gaspartikel} ignoriert und nur Partikel der \liquid{Flüssigkeitsphase} betrachtet, die noch keinem Cluster zugeordnet sind
+%		\item ausgehend von einem solchen Partikel werden seine Nachbarn auf ihren \wichtig{Tiefenwert} hin untersucht
+%		\item der Nachbar mit dem höchsten Wert wird selektiert und es wird wiederrum der \wichtig{Distanzwert} von dessen Nachbarn betrachtet
+%		\item diese Schleife läuft so lang, bis alle Nachbarn denselben oder einen geringeren \wichtig{Distanzwert} aufweisen (\liquidcenter{lokales Maximum} erreicht)
+%		\item alle auf dem Weg selektierten Partikel werden anschließend einem (neuen oder vorhandenen) Cluster zugeordnet
+%	\end{itemize}
+%\end{frame}
 
+%
+% Zusammenhangskomponente vgl "Cluster innerhalb von Zusammenhangskomponenten"
+% Gas wäre außen drumherum: Interessiert nicht.
+% Große Zahl = Distanz, kleine = ID der Partikel
+% 0 = Grenzfläche
+% idealisiertes Beispiel (Distanz Gleitkommawert)
+%
 \begin{frame}{Zusammenhangskomponente}
 	\includegraphics*[width=11cm]{media/cluster/cfd.png} \\
 \end{frame}
@@ -203,16 +229,30 @@
 	\includegraphics*[width=3.7cm]{media/cluster/cfd003.png} \includegraphics*[width=3.7cm]{media/cluster/cfd007.png}	\includegraphics*[width=3.7cm]{media/cluster/cfd011.png}
 \end{frame}
 
-%\subsection{Visualisierung der erzeugten Strukturen}
-\begin{frame}{Visualisierung der erzeugten Strukturen}
-	Einfärbung der Partikel, um die Clusterzugehörigkeit zu visualisieren. Dabei können Farben zufällig vergeben (links) oder von Clustern des vorangegangenen Zeitschritts vererbt werden (rechts).
+%
+% Schön zu sehen sind die gleiche Färbung nebeneinanderliegender Cluster
+%
+\begin{frame}{Überprüfung der erzeugten Cluster}
+	Einfärbung der Partikel zur Clusterüberprüfung:
+	\begin{itemize}
+		\item zufällige Färbung in jedem Zeitschritt (links)
+		\item Färbung anhand von Clusterparametern und
+		\item Vererbung vom vorhergehenden Zeitschritt (rechts)
+	\end{itemize}
 	
 	\includegraphics*[width=5.7cm]{media/eva/clusterfarbe-allRd-small.png}
 	\includegraphics*[width=5.7cm]{media/eva/clusterfarbe-rdInteritance-small.png}
+	
+	Vererbung geschieht unter Nutzung des Clustervergleichs. % über den ich jetzt rede
 \end{frame}
 
 \section{Erkennung der Ereignisse}
-\frame{\tableofcontents[currentsection, hideothersubsections]}
+%\frame{\tableofcontents[currentsection, hideothersubsections]}
+\begin{frame}
+	\includegraphics*[width=11.5cm]{media/VisMD-Ablaufschema}
+	
+	TODO: Attributen/UserInput nur bei Nachbar/CFD, SECC und Heuristik hervorheben
+\end{frame}
 
 \subsection{Clustervergleich (SECC)}
 
@@ -220,51 +260,58 @@
 	Um Strukturereignisse zu erkennen, werden zwei aufeinanderfolgende Zeitschritte betrachtet und die Veränderung der Cluster zwischen diesen verfolgt. Anschließend werden daraus mit einer Heuristik Ereignisse abgeleitet.
 \end{frame}
 
-\begin{frame}[fragile]{Clustervergleichsmatrix}
-	\begin{itemize}
-		\item Partikel sind Clustern zugeordnet
-		\item diese Zuordnung wird für zwei aufeinanderfolgende Zeitschritte betrachtet (aktueller und vorheriger Zeitschritt)
-		\item die Anzahl der Partikel pro Cluster wird in einer n-m-Matrix festgehalten, wobei n für die Anzahl an Clustern des aktuellen und m für die Clusteranzahl des vorhergehenden Zeitschritts steht
-		\item der Zeilenindex steht für die Cluster ID des aktuellen und der Spaltenindex für die Cluster ID des vorhergehenden Zeitschritts
-		\item die Zellen enthalten die zugehörige Partikelanzahl; semantisch ist dies die Anzahl gemeinsamer Partikel der Cluster zweier Zeitschritte
-	\end{itemize}
-	
-	\begin{lstlisting}[language=c]
-	for (auto particleID : currentParticleList)
-		clusterComparisonMatrix
-			[currentParticleList[particleID].clusterID] // Aktueller Zeitschritt.
-			[previousParticleList[particleID].clusterID] // Vorhergehender.
-			++; // Anzahl der Partikel inkrementieren.
-	\end{lstlisting}
+\begin{frame}{Clustervergleichsmatrix}
+
+	TODO: Bild Clustervergleichsmatrix vorauss. 5x5 nötig:\\
+	mit ClusterIDs und Kennzeichnung aktueller/vorhergehender Zeitschritt,\\
+	mit Clustergröße,\\
+	mit Partikelmengen
+
+	%\item diese Zuordnung wird für zwei aufeinanderfolgende Zeitschritte betrachtet (aktueller und vorheriger Zeitschritt)
+	%\item die Anzahl der Partikel pro Cluster wird in einer n-m-Matrix festgehalten, wobei n für die Anzahl an Clustern des aktuellen und m für die Clusteranzahl des vorhergehenden Zeitschritts steht
+	%\item der Zeilenindex steht für die Cluster ID des aktuellen und der Spaltenindex für die Cluster ID des vorhergehenden Zeitschritts
+	%\item die Zellen enthalten die zugehörige Partikelanzahl; semantisch ist dies die Anzahl gemeinsamer Partikel der Cluster zweier Zeitschritte
 \end{frame}
 
 \begin{frame}{Partnercluster}
-	\begin{itemize}
-		\item die \wichtig{Clustervergleichsmatrix} wird sowohl Zeilen- als auch Spaltenweise betrachtet
-		\item dadurch kann das Verhältnis hinsichtlich der Partikelanzahl eines Clusters des aktuellen Zeitschrittes zu allen Clustern des vorhergehenden Zeitschrittes ermittelt werden (und umgekehrt)
-		\item diese zwei Richtungen werden vorwärtsgerichteter Vergleich (alter Zeitpunkt zu aktuellem) und rückwärtsgerichteter Vergleich (aktueller zu altem Zeitpunkt) genannt
-		\item Cluster mit gemeinsamen Partikeln werden als Partner bezeichnet
-	\end{itemize}
+	
+	TODO: Bild Clustervergleichsmatrix:\\
+	Spalten und Zeileneinfärbung (Rückwärts-/Vorwärtsgerichteter Vergleich)
+	
+	%\item die \wichtig{Clustervergleichsmatrix} wird sowohl Zeilen- als auch Spaltenweise betrachtet
+	%\item dadurch kann das Verhältnis hinsichtlich der Partikelanzahl eines Clusters des aktuellen Zeitschrittes zu allen Clustern des vorhergehenden Zeitschrittes ermittelt werden (und umgekehrt)
+	%\item diese zwei Richtungen werden vorwärtsgerichteter Vergleich (alter Zeitpunkt zu aktuellem) und rückwärtsgerichteter Vergleich (aktueller zu altem Zeitpunkt) genannt
+	%\item Cluster mit gemeinsamen Partikeln werden als Partner bezeichnet
+\end{frame}
+
+\begin{frame}{Relevante Werte}
+	TODO: Bild Clustervergleichsmatrix:\\
+	Summen und Anteile in Extrazeile/Spalte außen dran\\
+	Große Partner eventuell erst bei Split/Merge hervorheben (dort erst gebraucht!)
+	
+	Kann u.U. mit vorhergehender Folie verschmelzen (hängt von der Komplexität der Grafik ab).
+
+	%\item Gesamtanzahl der Partner
+	%\item Anzahl an großen Partnern. Große Partner sind solche Partnercluster mit vielen gemeinsamen Partikeln.
+	%\item Grenzwert, ab wann ein Partner ein großer Partner ist. Der Grenzwert ist das Verhältnis der gemeinsamen Partikel des Partners im Vergleich zu der Gesamtzahl gemeinsamer Partikel des Clusters.
 \end{frame}
 
 \subsection{Ereignisheuristik}
-\begin{frame}{Relevante Werte}
-	\begin{itemize}
-		\item Gesamtanzahl der Partner
-		\item Anzahl an großen Partnern. Große Partner sind solche Partnercluster mit vielen gemeinsamen Partikeln.
-		\item Grenzwert, ab wann ein Partner ein großer Partner ist. Der Grenzwert ist das Verhältnis der gemeinsamen Partikel des Partners im Vergleich zu der Gesamtzahl gemeinsamer Partikel des Clusters.
-	\end{itemize}
+
+\begin{frame}{Birth und Death}
+	
+	TODO: Bild Clustervergleichsmatrix:\\
+	Spalte ohne gemeinsame Anteile\\
+	Zeile ohne gemeinsame Anteile
+	
+	%\item Gesamtanzahl der Partner ist Null
+	%\item Birth im rückwärtsgerichteten Vergleich: kein Partner des vorangegangenen Zeitschrittes enthält Partikel des derzeitigen Clusters
+	%\item Death im vorwärtsgerichteten Vergleich: kein Partner des aktuellen Zeitschrittes enthält Partikel des vorangegangenen Clusters
 \end{frame}
 
 \begin{frame}{Birth und Death}
-	\begin{itemize}
-		\item Gesamtanzahl der Partner ist Null
-		\item Birth im rückwärtsgerichteten Vergleich: kein Partner des vorangegangenen Zeitschrittes enthält Partikel des derzeitigen Clusters
-		\item Death im vorwärtsgerichteten Vergleich: kein Partner des aktuellen Zeitschrittes enthält Partikel des vorangegangenen Clusters
-	\end{itemize}
-\end{frame}
-
-\begin{frame}{Birth und Death}
+	EVTL GANZ RAUS!
+	
 	\begin{align*}
 	p_{\text{gesamt}_r}, p_{\text{gesamt}_v} &\ldots \text{Gesamtzahl an Partnern (rückwärts- und vorwärtsgerichtet)}\\
 	a_{\text{gesamt}_r}, a_{\text{gesamt}_v} &\ldots \text{Gesamtanteil gemeinsamer Partikel aller Partner}\\
@@ -283,19 +330,24 @@
 	\end{aligned}
 	\end{equation}
 	
-	$\{B,C,D,E\}$ sind aussagenlogische Ausdrücke. Sie stehen für die mathematischen Ausdrücke. \wichtig{Birth} wird erkannt, wenn $(B \lor C) = \top$ und \wichtig{Death} wird erkannt, wenn $(D \lor E) = \top$.
+	\wichtig{Birth} wird erkannt, wenn $(B \lor C) = \top$ und \wichtig{Death} wird erkannt, wenn $(D \lor E) = \top$.
 \end{frame}
 
 \begin{frame}{Merge und Split}
-	\begin{itemize}
-		\item Mindestanzahl großer Partner
-		\item Grenzwert für diese Partner (ein Grenzwert für alle)
-		\item Merge im rückwärtsgerichteten Vergleich: mehrere große Partner des vorangegangenen Zeitschrittes sind zum derzeitigen Cluster verschmolzen
-		\item Split im vorwärtsgerichteten Vergleich: mehrere große Partner des aktuellen Zeitschrittes sind aus einem vorangegangenen Cluster hervorgegangen
-	\end{itemize}
+	
+	TODO: Bild Clustervergleichsmatrix:\\
+	Spalte mit großen Partnern und Grenzwert\\
+	Spalte mit großen Partnern und Grenzwert
+	
+	%\item Mindestanzahl großer Partner
+	%\item Grenzwert für diese Partner (ein Grenzwert für alle)
+	%\item Merge im rückwärtsgerichteten Vergleich: mehrere große Partner des vorangegangenen Zeitschrittes sind zum derzeitigen Cluster verschmolzen
+	%\item Split im vorwärtsgerichteten Vergleich: mehrere große Partner des aktuellen Zeitschrittes sind aus einem vorangegangenen Cluster hervorgegangen
 \end{frame}
 
 \begin{frame}{Merge und Split}
+	EVTL GANZ RAUS!
+	
 	\begin{align*}
 		p_{\text{groß}_r}, p_{\text{groß}_v} &\ldots \text{Anzahl großer Partner (rückwärts- und vorwärtsgerichtet)}\\
 		a_{\text{partner}_r}, a_{\text{partner}_v} &\ldots \text{Anteil gemeinsamer Partikel eines Partners}\\
@@ -315,50 +367,27 @@
 	\end{aligned}
 	\end{equation}
 	
-	 $\{M,S\}$ sind aussagenlogische Ausdrücke. Sie stehen für die mathematischen Ausdrücke. \wichtig{Merge} wird erkannt, wenn $M = \top$ und \wichtig{Split} wird erkannt, wenn $S = \top$.
+	\wichtig{Merge} wird erkannt, wenn $M = \top$ und \wichtig{Split} wird erkannt, wenn $S = \top$.
 \end{frame}
 
-\begin{frame}{Zusammenfassung (wichtigste Schritte)}
-	\begin{enumerate}
-		\item Finden der Partikelnachbarn mittels \wichtig{kD-Baum}, Berücksichtigung periodischer Randbedingungen
-		\item Cluster erstellen unter Nutzung der Nachbarn (\wichtig{CFD})
-		\item Clustervergleich (\wichtig{SECC}) durch Nutzung der \wichtig{Clustervergleichsmatrix} und Erstellung von zwei Listen mit \wichtig{Partnerclustern} in Vorwärtsrichtung beziehungsweise rückwärtiger Richtung.
-		\item Bestimmung der Ereignisse durch Anwendung von Verhältnisberechnungen auf diese Listen und Nutzung von benutzerdefinierten Grenzwerten für die \wichtig{Ereignisheuristik}.
-	\end{enumerate}
-\end{frame}
 
 \section{Visualisierung}
-\frame{\tableofcontents[currentsection, hideothersubsections]}
+%\frame{\tableofcontents[currentsection, hideothersubsections]}
+\begin{frame}
+	\includegraphics*[width=11.5cm]{media/VisMD-Ablaufschema}
+	
+	TODO: Attributen/UserInput bei Nachbar/CFD, SECC/Heuristik, Visualisierung hervorheben
+\end{frame}
 
 \subsection{Strukturereignistaxonomie}
-\begin{frame}{Ereignisparameter}
-	Ein Ereignis hat folgende Parameter
-	\begin{itemize}
-		\item Ort: kontinuierlich
-		\item Zeitpunkt: kontinuierlich
-		\item Art: diskret (Birth, Death, Merge, Split)
-	\end{itemize}
-\end{frame}
 
-\begin{frame}{Visuelle Variablen}
-	Einteilung visueller Variablen
-	\begin{itemize}
-		\item Position (x, y, z): diskret und kontinuierlich
-		\item Farbe (Farbwert/Sättigung, Helligkeit): diskret und kontinuierlich
-		\item Größe: diskret und kontinuierlich
-		\item Form: diskret
-		\item Textur: diskret und kontinuierlich (endlich)
-	\end{itemize}
-\end{frame}
-
+%
+% numerische Werte und Kategorien mit vorstellen
+%
 \begin{frame}{Strukturereignistaxonomie}
-	Die Einteilung der Ereignisparamenter zusammen mit der Einteilung der visuellen Variablen bildet die Strukturereignistaxonomie. Die Prüfung der Variablenzuweisung erfolgt durch ein interaktives Mockup.
+	Ereignisparamenter sowie Einteilung möglicher visuellen Variablen für die Zuweisung der Parameter.
 
 	\includegraphics*[width=11cm]{media/vis/strukturereignistaxonomie.png}
-\end{frame}
-
-\begin{frame}{Mockup mit beispielhafter Variablenzuweisung (WebGL)}
-	\includegraphics*[height=6.9cm]{media/vis/MockupZufallsdatenOben45bunt.png}
 \end{frame}
 
 \begin{frame}{Zuweisung visueller Attribute}
@@ -370,19 +399,18 @@
 	\end{itemize}
 \end{frame}
 
+%
+% Beispielhafte Zuweisung
+% 3D-Darstellung schlecht:
+% Die Erscheinung von Glyphen als Polygone ist blickwinkelabhängig (Form) und beleuchtungsabhängig (unterschiedliche Helligkeiten je nach Winkel der Flächen).
+% Bewirkt Senkung der präattentiven Wirkung (kognitiver Aufwand). %präattentiv: Reiz erzeugen, der vom Nervensystem des Beobachters zwar wahrgenommen wird und einen Effekt erzeugt, jedoch nicht in das Bewusstsein dringt. Vorteil ist eine parallele, schnelle Verarbeitung (kürzer als 250	Millisekunden (ms)), die nicht gehemmt werden kann. Nachteilig ist, dass die Wahrnehmung	oberflächlich bleibt
+% Erschwert Identifizierung bei Überlagerung mit der Partikeldarstellung (einzelne Polygone zwischen sehr vielen Kugeln) $\Rightarrow$ Wechsel zu 2D-Glyphen (Billboards).
+%
+\begin{frame}{Mockup mit beispielhafter Variablenzuweisung (WebGL)}
+	\includegraphics*[height=6.9cm]{media/vis/MockupZufallsdatenOben45bunt.png}
+\end{frame}
+
 \subsection{Glyphdarstellung} %	Glyph ist die grafische Darstellung eines Schriftzeichens!
-
-\begin{frame}{3D-Glyphen - Beleuchtung}
-	\includegraphics*[height=6.9cm]{media/vis/Mockup-Zufallsdaten-persp-ArtForm-vornEntfernter.png}
-\end{frame}
-
-\begin{frame}{3D-Darstellung}
-	Ergebnis durch die Nutzung des interaktiven Mockups: Die Erscheinung von Glyphen als Polygone ist blickwinkelabhängig (Form) und beleuchtungsabhängig (unterschiedliche Helligkeiten je nach Winkel der Flächen).
-	
-	Bewirkt Senkung der präattentiven Wirkung (kognitiver Aufwand). %präattentiv: Reiz erzeugen, der vom Nervensystem des Beobachters zwar wahrgenommen wird und einen Effekt erzeugt, jedoch nicht in das Bewusstsein dringt. Vorteil ist eine parallele, schnelle Verarbeitung (kürzer als 250	Millisekunden (ms)), die nicht gehemmt werden kann. Nachteilig ist, dass die Wahrnehmung	oberflächlich bleibt
-	
-	Erschwert Identifizierung bei Überlagerung mit der Partikeldarstellung (einzelne Polygone zwischen sehr vielen Kugeln) $\Rightarrow$ Wechsel zu 2D-Glyphen (Billboards).
-\end{frame}
 
 \begin{frame}{Glyphdarstellung Strukturereignis: Kodierung Ereignisart}
 	Abstrakt symbolische Darstellung\\
@@ -434,7 +462,9 @@
 
 \subsection{Cluster- und Ereigniserkennung}
 \begin{frame}
-	Umfrage mit reinbringen, quantitatives nur kurz!
+	Abbildung 7.3.
+	Abbildung 7.4.
+	Umfrage mit reinbringen, quantitatives nur kurz, Performance weglassen!
 \end{frame}
 
 \subsection{Visualisierung}
@@ -442,9 +472,35 @@
 	Umfrageergebnisse, v.a. in situ
 \end{frame}
 
+\begin{frame}{Bewertung und Ausblick}
+	Nötig?
+	
+	Erweiterung der Algos kann bei Ergebnisse kurz genannt werden
+	Nutzung des Programms kann in Demo gezeigt werden
+\end{frame}
+
+\begin{frame}{Danksagung}
+		Danksagung als Folie üblich?
+\end{frame}
+
 \end{document}
 
 
+
+
+
+\begin{frame}{3D-Glyphen - Beleuchtung}
+	\includegraphics*[height=6.9cm]{media/vis/Mockup-Zufallsdaten-persp-ArtForm-vornEntfernter.png}
+\end{frame}
+
+\begin{frame}{Zusammenfassung (wichtigste Schritte)}
+	\begin{enumerate}
+		\item Finden der Partikelnachbarn mittels \wichtig{kD-Baum}, Berücksichtigung periodischer Randbedingungen
+		\item Cluster erstellen unter Nutzung der Nachbarn (\wichtig{CFD})
+		\item Clustervergleich (\wichtig{SECC}) durch Nutzung der \wichtig{Clustervergleichsmatrix} und Erstellung von zwei Listen mit \wichtig{Partnerclustern} in Vorwärtsrichtung beziehungsweise rückwärtiger Richtung.
+		\item Bestimmung der Ereignisse durch Anwendung von Verhältnisberechnungen auf diese Listen und Nutzung von benutzerdefinierten Grenzwerten für die \wichtig{Ereignisheuristik}.
+	\end{enumerate}
+\end{frame}
 
 \begin{frame}{Alle Cluster- und Ereigniserkennungsschritte}
 	\begin{enumerate}
