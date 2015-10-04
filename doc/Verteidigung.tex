@@ -96,7 +96,13 @@
 \title[Visualisierung von Strukturveränderungen in Molekulardynamikdaten]{Visualisierung von Strukturveränderungen in Molekulardynamikdaten}
 \subtitle[Bachelorarbeit Verteidigung]{Bachelorarbeit Verteidigung}
 \author[Richard Hähne]{Richard Hähne}
-\institute[Fakultät Informatik – Institut SMT - Professur für Computergraphik und Visualisierung]{Institut für Software- und Multimediatechnik\\Professur für Computergraphik und Visualisierung}
+\institute[Professur für Computergraphik und Visualisierung]{Institut für Software- und Multimediatechnik\\Professur für Computergraphik und Visualisierung}
+%\institute[Fakultät Informatik – Institut SMT - Professur für Computergraphik und Visualisierung]{Institut für Software- und Multimediatechnik\\Professur für Computergraphik und Visualisierung}
+% logo of my university
+\titlegraphic{\includegraphics[height=.7cm]{mediaDefense/3rdparty/tulogosw}%
+	\hspace{2cm}%
+	\includegraphics[height=.7cm]{mediaDefense/3rdparty/computergrafikVisualisierungLogo}%
+	}
 \date{\today}
  
 \begin{document}
@@ -114,44 +120,33 @@
 %
 \begin{frame}[<+->]{Motivation}
 	\begin{itemize}
-		\item Molekulardynamik betrachtet Atome und Moleküle (\wichtig{Partikel}) begrenzter Zahl über kurze Zeiträume
+		\item durch Molekulardynamik können Vorhersagen über Materialverhalten getroffen werden
+		\item dazu werden meist Atome und Moleküle (\wichtig{Partikel}) begrenzter Zahl über kurze Zeiträume betrachtet
 		\item durch räumliche Nähe der \wichtig{Partikel} bilden sich Strukturen
-		\item hier: Phasenübergang zwischen Gas und Flüssigkeit begrenzt Strukturen
+		\item hier: Phasenübergang zwischen \gas{Gas} und \liquid{Flüssigkeit} begrenzt Strukturen
 		\item Partikel bewegen sich, Strukturen werden verändert
-		\item über die Struktur-Eigenschafts-Beziehungen der \wichtig{Partikel} können Vorhersagen über Materialverhalten getroffen werden
 		\item daher ist es sinnvoll, Strukturveränderungen zu erkennen
 	\end{itemize}
 \end{frame}
 
-%	- zwei Phasen: Flüssig (blaurot)- und Gasphase (gelb)
-\begin{frame}{Vorliegender Datensatz}
-	\begin{columns}[T]
-		\begin{column}{0.5\textwidth}
-			%TODO: Bild Distanz!
-			\includegraphics*<5->[width=\textwidth]{mediaDefense/SignedDistanceColor-Show-Frame-60}
-		\end{column}
-		\begin{column}{0.5\textwidth}
-			\begin{itemize}[<+->]
-				\item zerreißender Flüssigkeitsfilm
-				\item 150 Zeitschritte
-				\item 2 Millionen Partikel
-				\item Partikelposition je Zeitschritt
-				\item Partikelabstand zur am nächsten gelegenen Phasengrenze
-			\end{itemize}
-		\end{column}
-	\end{columns}
-\end{frame}
+%\includegraphics*<1->[width=\textwidth]{mediaDefense/SignedDistanceColor-Show-Frame-60}
 
 %
-%	Animation:
-%	- Flüssigkeitsfilm umgeben von Vakuum -> expandiert rapide
+%	Datensatz:
+%	- Flüssigkeitsfilm umgeben von Vakuum
+%	- expandiert rapide (zerreißt)
+%	- es entsteht eine Gasphase (Partikel lösen sich aus der Flüssigkeit)
+%	- zwei Fronten: dazwischen Filamente und Tröpfchen
+%	- dargestellt durch eine Animation mit 150 Zeitschritten!
+%	- Strukturbestimmend sind die Position und der Abstand zur Phasengrenze!
 %	Ziel:
-%	- es soll erkannt werden, was währenddessen mit der Struktur passiert -> Strukturereignisse
+%	- interessant zu wissen, was währenddessen mit der Struktur passiert
+%	-> Strukturereignisse
 %
 \begin{frame}
 	\begin{columns}[T]
 		\begin{column}{5.5cm}
-			Expandierende Flüssigkeit:\\
+			Zerreißender Flüssigkeitsfilm:\\
 			\visible<1->{
 				{\scriptsize $t_S=0$}\\
 				\includegraphics*[width=5.5cm]{mediaDefense/SignedDistanceColor-Frame-000-letterbox.png}
@@ -173,7 +168,27 @@
 			}\\
 		\end{column}
 		\begin{column}{6.5cm}
-			\visible<5->{
+			\only<1-5>{
+				\begin{itemize}
+					\item Flüssigkeitsfilm umgeben von Vakuum
+					\item<2-> zerreißt
+					\item<2-> zwei Phasen
+					\begin{itemize}
+						\item \liquid{Flüssigphase} (blau - lila)
+						\item \gas{Gasphase}
+					\end{itemize}
+					\item<3-> Entstehung von Filamenten
+					\item<4-> Entstehung von Tröpfchen
+				\end{itemize}
+				\onslide<5->{Datensatz}
+				\begin{itemize}
+					\item<5-> zwei Millionen Partikel
+					\item<5-> 150 Zeitschritte
+					\item<5-> Partikelposition je Zeitschritt
+					\item<5-> Partikelabstand zur am nächsten gelegenen Phasengrenze % (lila Partikel besitzen größten Abstand)
+				\end{itemize}
+			}
+			\only<6->{
 				Auftretende \wichtig{Strukturereignisse}:\\
 				\includegraphics*[width=6.5cm]{mediaDefense/Strukturereignisse.png}
 			}
@@ -183,8 +198,9 @@
 
 %TODO evtl Folie mit Video
 
-\subsection{Erkennung und Visualisierung der Strukturereignisse}
-
+%
+% Lösung = Aufgabenstellung
+%
 \begin{frame}{Ziel}
 	Wie verhält sich die Flüssigkeit, welche Strukturveränderungen treten auf?
 	
@@ -197,45 +213,75 @@
 	Lösung: Darstellung der zeitlichen Entwicklung der Strukturveränderungen im geometrischen Kontext der Originaldaten.
 \end{frame}
 
+%
+% Abbildung eines Ergebnisses der Arbeit
+%
 \begin{frame}{Ziel}
-	TODO: Makrobild, Seitenansicht, mit überlagerter Darstellung
+	\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/5r-10-ms2-40-bd2-allRd02-shot-f80-2-brightness-small}
 \end{frame}
 
+\subsection{Erkennung und Visualisierung der Strukturereignisse}
+
+%
+% Wie lassen sich diese Strukturereignisse erkennen und darstellen?
+% Partikeldaten: nur die hier relevanten
+% Vorzeichenbehaftete Distanz = Abstand zum Phasenübergang
+% Gliederung des Vortrags entspricht der Sequenz der Berechnungsschritte
+%
 % 1) Analyse der Struktur: Analyse der Partikelstruktur für jeden Zeitschritt
-% 2) Erkennung von Veränderungen Erkennung von Änderungen an der Struktur von einem zum nächsten Zeitschritt (Strukturereignisse)
+% 2) Erkennung von Veränderungen: Erkennung von Änderungen an der Struktur von einem zum nächsten Zeitschritt (Strukturereignisse)
 % 3) Darstellung: Anzeige dieser Ereignisse im Ortsraum der Partikel
 \begin{wideframe}
 	\includegraphics*[width=\textwidth]{mediaDefense/VisMD-Ablaufschema-EinAusgang}
 \end{wideframe}
 
+%
+% Erinnerung: Strukturen bestimmt durch die Position und den Abstand zur Phasengrenze
+% Es verlangsamt die Entwicklung, wenn ich sehr lang auf die Ergebnisse warten muss.
+%
 \begin{frame}{Herausforderungen}
 	\begin{itemize}
 		\item Sinnvolle Einteilung der Partikel in Strukturen, um Ereignisse erkennen zu können.
 		\item Vorgehen, um Veränderungen der Struktur über die Zeit verfolgen zu können.
 		\item Berechnungsdauer überschaubar halten (Überprüfung der Algorithmen).
+		\item Darstellung der Ereignisse.
 	\end{itemize}
 \end{frame}
 
 %
+% An den Berechnungsschritten und Herausforderungen ist ersichtlich, dass sich die Arbeit mehreren Themenbereichen zuordnen lässt:
+% •	Strukturanalyse VOR ALLEM
+% •	schauen, was in der Molekulardynamik üblich ist
+% •	Visualisierungsmethoden im Allgemeinen
+%
+% hier im Vortrag Konzentration auf Strukturanalyse
+%
 % Skelettext: Oberflächen, Volumen, Punktdaten: umfangreiche Pre- oder Postprocessingverfahren zum Entfernen von Artefakten
-% Konturbäume (u.a. Bajaj et al., Carr et al., temporal: u.a. Laney et al., Bajaj et al.): Datenelemente anhand ihres Funktionswertes zu gruppieren und für verschiedene Funktionswerte Zusammenhangskomponenten erkennen zu können
+%
+% Konturbäume: Datenelemente anhand ihres Funktionswertes gruppieren und für verschiedene Funktionswerte Zusammenhangskomponenten erkennen
 % basierend auf Skelettextraktion (Nachbarschaftsbildung über Reichweite: Klasing et al.)
 % basierend auf Konturbaum: Nutzung kritischer Funktionswert im CFD: Carr et al.
 %
+% Einordnung dieser Arbeit:
+% - Strukturuntersuchung von Punktdaten
+% - Element- und Zeitdarstellung in Molekulardynamiksimulationen
+% ALT:
+% - Visualisierung (zeitabhängiger) Elemente im Ortsraum visualisierter Punktdaten
+% - Verfolgung zeitveränderlicher Daten ohne Baumstrukturen
+%
 \begin{frame}{Verwandte Arbeiten}
 	\begin{itemize}
-		\item Strukturanalyse großer Datensätze
+		\item<1-> Strukturanalyse räumlicher Datensätze
 		\begin{itemize}
 			\item Skelettextraktion
 			\item Konturbäume (Funktionswert, Zusammenhangskomponenten)
-			\item Nutzung von Konturbäumen zur 
 		\end{itemize}
-		\item Element- und Zeitdarstellung in Molekulardynamiksimulationen
+		\item<2-> Element- und Zeitdarstellung in Molekulardynamiksimulationen
 		\begin{itemize}
 			\item Elemente sind meist dreidimensional, farbkodiert
 			\item Zeitdarstellung durch Animation oder Diagramme
 		\end{itemize}
-		\item Visualisierung
+		\item<3-> Visualisierung
 		\begin{itemize}
 			\item Anordnung und Filterung von Datenobjekten
 			%\item Anordnung (Gleicher et al.) und Filterung von Datenobjekten (Lima)
@@ -244,50 +290,96 @@
 	\end{itemize}
 \end{frame}
 
-\begin{frame}{Einordnung dieser Arbeit}
-	\begin{itemize}
-		\item Strukturuntersuchung von Punktdaten
-		\item Visualisierung (zeitabhängiger) Elemente im Ortsraum visualisierter Punktdaten
-%		\item einfacher Algorithmus für die Strukturanalyse, basieren auf Ideen der Skelettextraktion und Konturbäume
-%		\item Verfolgung zeitveränderlicher Daten ohne Baumstrukturen
-	\end{itemize}
+%
+% Arbeiten aus der Strukturanalyse
+%
+% 1:
+% Vulkansee mit Insel in der Mitte
+% Kraterrand, Berg, Tal haben eine Höhe: Höhendaten = Skalarfeld über dem Gebiet, den Orten auf der Karte
+% anhand der Höhe werden die Orte auf der Karte in einen Baum überführt:
+% kritische Punkte wie Maxima, Minima, Sattelpunkte repräsentieren Knoten
+% Höhe im Baum gestrichelte Linien
+% Besonderheit: liegt ein Tal zwischen zwei Bergkuppen, dann befinden sich diese Bergkuppen in separaten Ästen
+% Kraterrand A und Berg B sind getrennt durch Tal D
+% A und B sind also für die Höhe >12 und auch noch Höhe >8 separate Zusammenhangskomponenten
+% Übertragung auf die Partikeldaten heißt: Zusammenhangskomponenten durch Phasenübergang Gasphase <-> Flüssig
+% Strukturanalyse daraus vereinfacht abgeleitet: Nutzung Distanzwert zum Phasenübergang: Beschränkung auf Maxima
+%
+% Oberflächenrelief eines Vulkankratersees mit einer Insel in der Mitte (links) sowie der zugehörige Konturbaum (rechts). A: Maximum der Kraterkante; B: Maximum des inneren Berges; C und D: Sattelpunkte; E,F: Minima
+% Bild Höhendaten: Ablaufen der Daten nach der Höhe => komme ich an ein Maximum oder Minimum, bin ich fertig (A,B,E,F). Sattelpunkte teilen den Baum (C,D)
+%
+%
+% 2: Temporal
+% Konturbäume auch zur temporalen Verfolgung
+% Weiterer Graph dazu (Änderungsgraph)
+% farbie Linien zeigen Datenpunkte mit - Übertragung auf Partikeldatensatz - bestimmter Distanzwerte: sagen wir den Wert 0 für die Phasengrenze
+% jede Farbe schließt eine Zusammenhangskomponente ein
+% Zeitverfolgung über Volumen => hier Partikelmenge statt Volumen
+%
+% Evolution of three isosurfaces. An intersection point on an edge of a contour tree represents a contour component. (a) By using precomputed correspondence information in time-dependent contour trees and (b) a graph representing the topology changes of time-varying isosurfaces is immediately constructed for any selected isovalue. (c) Seed sets generated from the contour trees are used for rapid extraction of the time-dependent surfaces of segmented contours. Note that colors represent correspondence among intersection points in contour trees, nodes of the graph, and contour components.
+% Achtung (b) hat nichts mit Konturbäumen zu tun (Verfolgung über die Zeit anstatt über Skalarfeldwerten)
+%
+\begin{frame}{Verwandte Arbeiten: Strukturanalyse: Konturbäume}
+	\begin{columns}[T]
+		\begin{column}{.5\textwidth}
+			\scriptsize {
+				H. Carr et al.: \textit{Flexible isosurfaces: Simplifying and displaying scalar topology using the contour tree.} (2010)
+			
+				\begin{itemize}
+					\item ein Skalarfeld (links) wird in einen Baum überführt durch Beachtung kritischer Punkte (Konturbaum, rechts)
+					\item Selektion von Zusammenhangskomponenten %aus Niveaumengen (Datenpunkte mit festgelegter Höhe)
+					%\item Selektion bestimmter Niveaumengen und Zusammenhangskomponenten
+				\end{itemize}
+			}
+		\end{column}
+		\begin{column}{.5\textwidth}
+			\includegraphics*[width=\textwidth]{mediaDefense/3rdparty/Carr2010FlexibleIsosurfacesScalarContourTree}
+		\end{column}
+	\end{columns}
+	\vspace{.08\textheight}
+	\visible<2>{
+		\begin{columns}[T]
+			\begin{column}{.5\textwidth}
+				\scriptsize {
+					B.-S. Sohn und C. Bajaj: \textit{Time-Varying Contour Topology.} (2006)
+
+					\begin{itemize}
+						\item zeitliche Änderung wird in topologischem Änderungsgraph gespeichert (b)
+						\item Nutzung von (b) in Verbindung mit Konturbaum - Veränderung von Zusammenhangskomponenten verfolgbar (c)
+						\item zeitlicher Vergleich durch Prüfung der sich überschneidenden Volumen
+					\end{itemize}
+				}
+			\end{column}
+			\begin{column}{.5\textwidth}
+				\includegraphics*[width=\textwidth]{mediaDefense/3rdparty/Sohn2006Time-VaryingContourTopology}
+			\end{column}
+		\end{columns}
+	}
 \end{frame}
 
 
 \section{Analyse der Partikelstruktur}
 %\frame{\tableofcontents[currentsection, hideothersubsections]}
 
+\subsection{Anforderungen}
+
 %	- Begriff CLUSTER muss hier fallen! -> Einteilung der Partikel in Cluster
 \begin{wideframe}
 	\includegraphics*[width=\textwidth]{mediaDefense/VisMD-Ablaufschema-Strukturanalyse}
 \end{wideframe}
 
-\subsection{Anforderungen}
-
 \begin{frame}Cluster als Zusammenhangskomponenten
 	\includegraphics*[width=11cm]{mediaDefense/cluster/SignedDistanceColor-Frame-090-clipplane20-letterbox.png}\\
-	\includegraphics*[width=11cm]{mediaDefense/cluster/SignedDistanceColor-Frame-090-clipplane20-letterbox-Cluster.png}
+	\visible<2>{\includegraphics*[width=11cm]{mediaDefense/cluster/SignedDistanceColor-Frame-090-clipplane20-letterbox-Cluster.png}}
 %	Einteilung der Partikelmenge in Cluster!
 \end{frame}
 
 \begin{frame}Cluster innerhalb von Zusammenhangskomponenten
 	\includegraphics*[width=11cm]{mediaDefense/cluster/SignedDistanceColor-Frame-016-clipplane20-letterbox.png}\\
-	\includegraphics*[width=11cm]{mediaDefense/cluster/SignedDistanceColor-Frame-016-clipplane20-letterbox-Cluster.png}
+	\visible<2>{\includegraphics*[width=11cm]{mediaDefense/cluster/SignedDistanceColor-Frame-016-clipplane20-letterbox-Cluster.png}}
 \end{frame}
 
 \subsection{Cluster Fast Depth (CFD) Algorithmus}
-% Inhalt dieses Frames während der Bilder erklären
-%\begin{frame}
-%	\begin{itemize}
-%		\item alle Partikel werden sequentiell durchlaufen
-%		\item dabei werden \gas{Gaspartikel} ignoriert und nur Partikel der \liquid{Flüssigkeitsphase} betrachtet, die noch keinem Cluster zugeordnet sind
-%		\item ausgehend von einem solchen Partikel werden seine Nachbarn auf ihren \wichtig{Tiefenwert} hin untersucht
-%		\item der Nachbar mit dem höchsten Wert wird selektiert und es wird wiederrum der \wichtig{Distanzwert} von dessen Nachbarn betrachtet
-%		\item diese Schleife läuft so lang, bis alle Nachbarn denselben oder einen geringeren \wichtig{Distanzwert} aufweisen (\liquidcenter{lokales Maximum} erreicht)
-%		\item alle auf dem Weg selektierten Partikel werden anschließend einem (neuen oder vorhandenen) Cluster zugeordnet
-%	\end{itemize}
-%\end{frame}
-
 %
 % Zusammenhangskomponente vgl "Cluster innerhalb von Zusammenhangskomponenten"
 % Gas wäre außen drumherum: Interessiert nicht.
@@ -299,46 +391,73 @@
 	\includegraphics*[width=11cm]{mediaDefense/cluster/cfd.png} \\
 \end{frame}
 
+%
+% alle Partikel werden sequentiell durchlaufen
+% dabei werden \gas{Gaspartikel} ignoriert und nur Partikel der {Flüssigkeitsphase} betrachtet, die noch keinem Cluster zugeordnet sind
+% ausgehend von einem solchen Partikel werden seine Nachbarn auf ihren {Distanzwert} hin untersucht
+% der Nachbar mit dem höchsten Wert wird selektiert und es wird wiederrum der {Distanzwert} von dessen Nachbarn betrachtet
+% diese Schleife läuft so lang, bis alle Nachbarn denselben oder einen geringeren {Distanzwert} aufweisen ({lokales Maximum} erreicht)
+% alle auf dem Weg selektierten Partikel werden anschließend einem (neuen oder vorhandenen) Cluster zugeordnet
+%
+% Bei 1-3: Partikel 6 wird gewählt, überspringen einiger Schritte (analog): 2-3
+% 2-3 Pfad ist rotmarkiert und da 77 schon Cluster hat, werden die markierten Partikel hinzugefügt: 2-4
+% 2-4: Partikel 9 wird gewählt, analog
+% 3-3: Aufgrund der Abbruchbedingung schon bei 42 schluss: zwei Cluster
+%
+% < statt <= als Abbruchbedingung, da Rechenaufwand u.U. lang und Vorteil Zwischencluster, der aber eher unerwünschte Ergebnisse liefern könnte -> aus Designsicht doofe Entscheidung
+%
 \begin{frame}
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd000.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd001.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd002.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd003.png}
-\end{frame}
-
-\begin{frame}
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd000.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd004.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd001.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd005.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd002.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd006.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd003.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd007.png}
-\end{frame}
-
-\begin{frame}
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd000.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd004.png} 	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd008.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd001.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd005.png} 	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd009.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd002.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd006.png} 	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd010.png} \\
-	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd003.png} \includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd007.png}	\includegraphics*[width=3.7cm]{mediaDefense/cluster/cfd011.png}
+%	\visible<1->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd.png}}
+	\visible<2->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd000.png}}
+	\visible<3->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd001.png}}
+	\visible<4->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd002.png}}
+	\visible<5->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd003.png}
+		\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd004.png}
+		\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd005.png}
+	}
+	\visible<6->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd006.png}}
+	\visible<7->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd007.png}
+		\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd008.png}
+		\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd009.png}
+	}
+	\visible<8->{\includegraphics*[width=.08\textwidth]{mediaDefense/cluster/cfd010.png}}
+	
+	\only<1>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd000.png}}
+	\only<2>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd001.png}}
+	\only<3>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd002.png}}
+	\only<4>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd003.png}}
+	\only<5>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd006.png}}
+	\only<6>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd007.png}}
+	\only<7>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd010.png}}
+	\only<8>{\includegraphics*[width=\textwidth]{mediaDefense/cluster/cfd011.png}}
 \end{frame}
 
 %
-% Schön zu sehen sind die gleiche Färbung nebeneinanderliegender Cluster
+% Cluster in Filamenten
+% Farbe ändert sich => noch keine Zusammenhänge zwischen den Zeitschritten
 %
 \begin{frame}{Überprüfung der erzeugten Cluster}
 	Einfärbung der Partikel zur Clusterüberprüfung:
 	\begin{itemize}
-		\item zufällige Färbung in jedem Zeitschritt (links)
-		\item Färbung anhand von Clusterparametern und
-		\item Vererbung vom vorhergehenden Zeitschritt (rechts)
+		\item zufällige Färbung in jedem Zeitschritt
+		\item es existieren keine Zusammenhänge zwischen den Zeitschritten
 	\end{itemize}
+	%\includegraphics*[width=5.7cm]{mediaDefense/eva/clusterfarbe-allRd-small.png}
+	%\includegraphics*[width=5.7cm]{mediaDefense/eva/clusterfarbe-rdInteritance-small.png}
 	
-	\includegraphics*[width=5.7cm]{mediaDefense/eva/clusterfarbe-allRd-small.png}
-	\includegraphics*[width=5.7cm]{mediaDefense/eva/clusterfarbe-rdInteritance-small.png}
+	{\scriptsize $t_S=63$}
+	\hspace{.41\textwidth}
+	{\scriptsize $t_S=64$}
 	
-	Vererbung geschieht unter Nutzung des Clustervergleichs. % über den ich jetzt rede
+	\includegraphics*[width=.47\textwidth]{mediaDefense/cluster/5r-10ms2-40bd2allRd02_clusterfarben_f63_crop}%
+	\hspace{.04\textwidth}%
+	\includegraphics*[width=.47\textwidth]{mediaDefense/cluster/5r-10ms2-40bd2allRd02_clusterfarben_f64_crop}
 \end{frame}
 
 \section{Erkennung der Ereignisse}
 %\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\subsection{Clustervergleich (SECC)}
 
 %
 % SECC: Vergleich von Clustern zweier aufeinanderfolgender Zeitschritte
@@ -348,86 +467,86 @@
 	\includegraphics*[width=\textwidth]{mediaDefense/VisMD-Ablaufschema-Ereigniserkennung}
 \end{wideframe}
 
-\subsection{Clustervergleich (SECC)}
-
 %
+% 1: vor 
+%
+% 2:
 % zwei aufeinanderfolgende Zeitschritte
-% Zusammenhang durch gemeinsame Partikel
+% die Farben entsprechen der zufälligen Clustereinfärbung
+% 
 %
-\begin{frame}{Clustervergleichsmatrix}
-
-	TODO: Bild Clustervergleichsmatrix vorauss. 5x5 nötig:\\
-	mit ClusterIDs und Kennzeichnung aktueller/vorhergehender Zeitschritt,\\
-	mit Clustergröße,\\
-	mit Partikelmengen
-
-	%\item diese Zuordnung wird für zwei aufeinanderfolgende Zeitschritte betrachtet (aktueller und vorheriger Zeitschritt)
-	%\item die Anzahl der Partikel pro Cluster wird in einer n-m-Matrix festgehalten, wobei n für die Anzahl an Clustern des aktuellen und m für die Clusteranzahl des vorhergehenden Zeitschritts steht
-	%\item der Zeilenindex steht für die Cluster ID des aktuellen und der Spaltenindex für die Cluster ID des vorhergehenden Zeitschritts
-	%\item die Zellen enthalten die zugehörige Partikelanzahl; semantisch ist dies die Anzahl gemeinsamer Partikel der Cluster zweier Zeitschritte
+\begin{frame}
+	\visible<2>{\includegraphics*[height=.48\textheight]{mediaDefense/ereigniserkennung/cluster-ti-1}}\\
+	\includegraphics*[height=.48\textheight]{mediaDefense/ereigniserkennung/cluster-ti}
 \end{frame}
 
-\begin{frame}{Partnercluster}
+%
+% Alter Zeitschritt
+% CLUSTERGRÖßE: Anzahl enthaltener Partikel
+% aktueller analog (drei Cluster): Zusammenhang durch GEMEINSAME PARTIKEL
+%
+\begin{wideframe}Clustervergleichsmatrix
 	
-	TODO: Bild Clustervergleichsmatrix:\\
-	Spalten und Zeileneinfärbung (Rückwärts-/Vorwärtsgerichteter Vergleich)
-	
-	%\item die \wichtig{Clustervergleichsmatrix} wird sowohl Zeilen- als auch Spaltenweise betrachtet
-	%\item dadurch kann das Verhältnis hinsichtlich der Partikelanzahl eines Clusters des aktuellen Zeitschrittes zu allen Clustern des vorhergehenden Zeitschrittes ermittelt werden (und umgekehrt)
-	%\item diese zwei Richtungen werden vorwärtsgerichteter Vergleich (alter Zeitpunkt zu aktuellem) und rückwärtsgerichteter Vergleich (aktueller zu altem Zeitpunkt) genannt
-	%\item Cluster mit gemeinsamen Partikeln werden als Partner bezeichnet
-\end{frame}
+	\only<1>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-clustervergleichsmatrix-ti-1}}
+	\only<2>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-clustervergleichsmatrix-ti-1-clustergroesze}}
+	\only<3>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-clustervergleichsmatrix-ti}}
+	\only<4>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-clustervergleichsmatrix-ti-clustergroesze}}
+\end{wideframe}
 
-\begin{frame}{Relevante Werte}
-	TODO: Bild Clustervergleichsmatrix:\\
-	Summen und Anteile in Extrazeile/Spalte außen dran\\
-	Große Partner eventuell erst bei Split/Merge hervorheben (dort erst gebraucht!)
+%
+% Gemeinsame Partikel: PARTNERCLUSTER, kurz PARTNER
+% Verhältnisse: gemeinsame Partikel zu Clustergröße, separat für beide Zeitschritte
+% Prozentangabe: übersichtlicher, nun Werte anschauen
+%
+\begin{wideframe}Partnercluster
 	
-	Kann u.U. mit vorhergehender Folie verschmelzen (hängt von der Komplexität der Grafik ab).
-
-	%\item Gesamtanzahl der Partner
-	%\item Anzahl an großen Partnern. Große Partner sind solche Partnercluster mit vielen gemeinsamen Partikeln.
-	%\item Grenzwert, ab wann ein Partner ein großer Partner ist. Der Grenzwert ist das Verhältnis der gemeinsamen Partikel des Partners im Vergleich zu der Gesamtzahl gemeinsamer Partikel des Clusters.
-\end{frame}
+	\only<1>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-partnercluster-gemPartikel}}
+	\only<2>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-partnercluster-verhaeltnis}}
+	\only<3>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-partnercluster-prozent}}
+\end{wideframe}
 
 \subsection{Ereignisheuristik}
 
-\begin{frame}{Birth und Death}
+\begin{wideframe}Ereigniserkennung: Death
 	
-	TODO: Bild Clustervergleichsmatrix:\\
-	Spalte ohne gemeinsame Anteile\\
-	Zeile ohne gemeinsame Anteile
-	
-	%\item Gesamtanzahl der Partner ist Null
-	%\item Birth im rückwärtsgerichteten Vergleich: kein Partner des vorangegangenen Zeitschrittes enthält Partikel des derzeitigen Clusters
-	%\item Death im vorwärtsgerichteten Vergleich: kein Partner des aktuellen Zeitschrittes enthält Partikel des vorangegangenen Clusters
-\end{frame}
+	\only<1>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-heuristik-death1}}
+	\only<2>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-heuristik-death2}}
+\end{wideframe}
 
+\begin{wideframe}Ereigniserkennung: Merge
+	
+	\only<1>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-heuristik-merge1}}
+	\only<2>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-heuristik-merge2}}
+\end{wideframe}
 
-\begin{frame}{Merge und Split}
+\begin{wideframe}Ereigniserkennung: Fehldetektion (Split)
 	
-	TODO: Bild Clustervergleichsmatrix:\\
-	Spalte mit großen Partnern und Grenzwert\\
-	Spalte mit großen Partnern und Grenzwert
+	\only<1>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-heuristik-split1}}
+	\only<2>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-heuristik-split2}}
+\end{wideframe}
+
+\begin{wideframe}Ereigniserkennung: Zusammenfassung
 	
-	%\item Mindestanzahl großer Partner
-	%\item Grenzwert für diese Partner (ein Grenzwert für alle)
-	%\item Merge im rückwärtsgerichteten Vergleich: mehrere große Partner des vorangegangenen Zeitschrittes sind zum derzeitigen Cluster verschmolzen
-	%\item Split im vorwärtsgerichteten Vergleich: mehrere große Partner des aktuellen Zeitschrittes sind aus einem vorangegangenen Cluster hervorgegangen
-\end{frame}
+	\only<1>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-richtung-vorwaerts}}
+	\only<2>{\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/ereigniserkennung-richtung-rueckwaerts}}
+\end{wideframe}
 
 \section{Visualisierung}
 %\frame{\tableofcontents[currentsection, hideothersubsections]}
+
+\subsection{Grundlagen}
 \begin{wideframe}
 	\includegraphics*[width=\textwidth]{mediaDefense/VisMD-Ablaufschema-Visualisierung}
 \end{wideframe}
 
-\subsection{Strukturereignistaxonomie}
+\begin{frame}{Glyphen in situ}
+	\includegraphics*[width=\textwidth]{mediaDefense/ereigniserkennung/5r-10-ms2-40-bd2-allRd02-shot-f80-hue-small}
+\end{frame}
 
 %
 % Ereignisparameter
 % Einteilung visueller Variablen
-% numerische Werte (metrische Skala) und Kategorien (Nominalskala) mit vorstellen
+% numerische Werte (metrische Skala) und Kategorien (Nominalskala)
 %
 \begin{frame}{Ereignisparameter und visuelle Variablen}
 	\includegraphics*[width=\textwidth]{mediaDefense/vis/strukturereignistaxonomie}
@@ -446,7 +565,7 @@
 % Beispielhafte Zuweisung
 % 3D-Darstellung schlecht:
 % Die Erscheinung von Glyphen als Polygone ist blickwinkelabhängig (Form) und beleuchtungsabhängig (unterschiedliche Helligkeiten je nach Winkel der Flächen).
-% Bewirkt Senkung der präattentiven Wirkung (kognitiver Aufwand). %präattentiv: Reiz erzeugen, der vom Nervensystem des Beobachters zwar wahrgenommen wird und einen Effekt erzeugt, jedoch nicht in das Bewusstsein dringt. Vorteil ist eine parallele, schnelle Verarbeitung (kürzer als 250	Millisekunden (ms)), die nicht gehemmt werden kann. Nachteilig ist, dass die Wahrnehmung	oberflächlich bleibt
+% Bewirkt Senkung der präattentiven Wirkung (kognitiver Aufwand). %präattentiv: Reiz erzeugen, der vom Nervensystem des Beobachters zwar wahrgenommen wird und einen Effekt erzeugt, jedoch nicht in das Bewusstsein dringt. Vorteil ist eine parallele, schnelle Verarbeitung (kürzer als 250 Millisekunden (ms)), die nicht gehemmt werden kann. Nachteilig ist, dass die Wahrnehmung oberflächlich bleibt
 % Erschwert Identifizierung bei Überlagerung mit der Partikeldarstellung (einzelne Polygone zwischen sehr vielen Kugeln) $\Rightarrow$ Wechsel zu 2D-Glyphen (Billboards).
 %
 \begin{frame}{Mockup mit beispielhafter Variablenzuweisung (WebGL)}
@@ -455,95 +574,151 @@
 
 \subsection{Glyphdarstellung} %	Glyph ist die grafische Darstellung eines Schriftzeichens!
 
-\begin{frame}{Glyphen in situ}
-	TODO: Abbildung Glyphen im Partikelraum (identisch zur Eingangsfolie <-> Wiedererkennung!)
-\end{frame}
-
 %
 % Förderung präattentive Wahrnehmung: möglichst einfach gestaltet, wenig Variablen
 % -> unterstützt durch Gesetz der Geschlossenheit
+% gutes Rand-Flächen-Verhältnis, um Platz für Symbolik innerhalb zu haben => Form sollte wenig spitze Winkel besitzen => Kreis bietet optimales Verhältnis, hebt sich aber zu wenig ab
 %
 \begin{frame}{Glyphdarstellung Strukturereignis: Kodierung Ereignisart}
-	Abstrakt symbolische Darstellung\\
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractBirthWhite-bg}
-					\hspace*{.06\textwidth}%
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractDeathWhite-bg}
-					\hspace*{.06\textwidth}%
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractMergeWhite-bg}
-					\hspace*{.06\textwidth}%
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractSplitWhite-bg}
-					
-	Narrativ symbolische Darstellung\\
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeBirthWhite-bg}
-					\hspace*{.06\textwidth}%
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeDeathWhite-bg}
-					\hspace*{.06\textwidth}%
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeMergeWhite-bg}
-					\hspace*{.06\textwidth}%
-					\includegraphics[width=.18\textwidth]{mediaDefense/vis/GlyphEventTypeSplitWhite-bg}
-					
-	Der Rahmen erfüllt das Gesetz der Geschlossenheit. Seine Form hebt sich von der Kreisform ab (Kontrast zur Kugeldarstellung der Partikel) und gibt Hinweis auf exakte Ereignisposition.
+	\begin{columns}[T]
+		\begin{column}{.5\textwidth}
+			\only<1>{\includegraphics[width=.5\textwidth]{mediaDefense/vis/GlyphRahmenKreis}}
+			\only<2>{\includegraphics[width=.5\textwidth]{mediaDefense/vis/GlyphRahmenOhnePos}}
+			\only<3-4>{\includegraphics[width=.5\textwidth]{mediaDefense/vis/GlyphRahmen}}
+			\only<4>{
+				
+				\vspace{1mm}%
+				\hspace{.2\textwidth}%
+				\includegraphics[width=.1\textwidth]{mediaDefense/vis/Partikel-blau}}
+			\only<5->{
+				Narrativ symbolische Darstellung\\
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeBirthWhite-bg}
+				\hspace*{.04\textwidth}%
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeDeathWhite-bg}
+				\hspace*{.04\textwidth}%
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeMergeWhite-bg}
+				\hspace*{.04\textwidth}%
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeSplitWhite-bg}
+			}
+			\only<6->{
+				Abstrakt symbolische Darstellung\\
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractBirthWhite-bg}
+				\hspace*{.04\textwidth}%
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractDeathWhite-bg}
+				\hspace*{.04\textwidth}%
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractMergeWhite-bg}
+				\hspace*{.04\textwidth}%
+				\includegraphics[width=.22\textwidth]{mediaDefense/vis/GlyphEventTypeAbstractSplitWhite-bg}
+			}
+		\end{column}
+		\begin{column}{.5\textwidth}
+			\begin{itemize}
+				\item<1-> Rahmen ist geschlossen
+				\item<1-> gutes Rand-Flächen-Verhältnis (Platz für Symbolik)
+				\item<2-> Abheben von der Kugeldarstellung der Partikel
+				\item<3-> Hinweis auf exakte Ereignisposition
+				\item<5-> Ereignisart ohne Legende erkennbar
+			\end{itemize}
+		\end{column}
+	\end{columns}
 \end{frame}
 
 \begin{frame}{Glyphdarstellung Strukturereignis: Zeitdarstellung}
-	%TODO Farbskala
-	Füllstand (Textur)\\
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeFill000}
-					\hspace*{.1\textwidth}%
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeFill050}
-					\hspace*{.1\textwidth}%
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeFill100}
-
-	Helligkeit\\
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeBrightness000}
-					\hspace*{.1\textwidth}%
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeBrightness050}
-					\hspace*{.1\textwidth}%
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeBrightness100}
-
-	Farbwert\\
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeHue000}
-					\hspace*{.1\textwidth}%
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeHue050}
-					\hspace*{.1\textwidth}%
-					\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeHue100}
+	\visible<1->{
+		Füllstand (Textur)\\
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeFill000}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeFill050}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeFill100}
+	}
+	
+	\visible<2->{
+		Helligkeit\\
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeBrightness000}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeBrightness050}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeBrightness100}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.3\textwidth]{mediaDefense/vis/Farbskala-Helligkeit}
+	}
+	
+	\visible<3->{
+		Farbwert\\
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeHue000}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeHue050}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.14\textwidth]{mediaDefense/vis/GlyphenEventTimeHue100}
+		\hspace*{.1\textwidth}%
+		\includegraphics[width=.3\textwidth]{mediaDefense/vis/Farbskala-Farbton}
+	}
 \end{frame}
 
 \section{Ergebnisse}
-\frame{\tableofcontents[currentsection, hideothersubsections]}
+%\frame{\tableofcontents[currentsection, hideothersubsections]}
 
+%
+% Ziel: Bewertung der Visualisierung
+% Umfrage hat einfache Erklärungen und Fragestellungen -> Zielgruppe: Laien und Professionelle
+% Abgeschlossen haben 50 TN: 8 Profis, 42 Laien
+% Glyphdesign: intuitive Erkennung der Ereignisart, Zeitkodierung (Helligkeit: Erkennung ohne Farbskala) in Makrosicht, Positionierung
+%
+% Art: Erkennbarkeit hoch für beide Varianten (84+%)
+% Zeit: intuitive Wertzuordnung bei Füllstand mit Abstand am Besten, Erkennung der Farbe in der Makrosicht mit Abstand am Besten bewertet (74%)
+%
 \subsection{Umfrage}
-\begin{frame}
-	\begin{itemize}
-		\item Ziel: Bewertung der Visualisierung
-		\item Zielgruppe: Laien und Professionelle
-		\item Glyphdesign: intuitive Erkennung der Ereignisart, Zeitkodierung (Helligkeit: Erkennung ohne Farbskala) in Makrosicht, Positionierung, ...
-		\item fachliche Interpretation Visualisierung
-	\end{itemize}
+\begin{frame}{Zuordbarkeit der Kodierung}
+	Es sind vier Glyphen zu sehen. Jeder Glyph steht für ein Strukturereignis. Bitte ordne die zufällig angeordneten Bilder nach ihrer Bedeutung:\\
+	\includegraphics*[height=.7\textheight]{mediaDefense/eva/umfrage-ereignisart}
 \end{frame}
 
-\begin{frame}
-	Bilder der Fragestellung: Auswertungsbilder nur nennen
-	oder maximal als Zahl
+%
+% fachliche Interpretation Visualisierung
+% Experten hatte ihre Schwierigkeiten: 63% (5) lagen richtig, ((25% (2) sogar ganz falsch (strukturunabhängig)))
+% Laien geraten (gleichverteilte Antworten)
+%
+\begin{wideframe}
+	\includegraphics*[width=\textwidth]{mediaDefense/eva/EventFlow-Hue-5r-10-ms2-40-bd2-cropped-zeilen}
+%TODO Fragestellung, Antwortmöglichkeiten: Filamente, Tröpfchen, Fronten, strukturunabhängig
+\end{wideframe}
 
-	\begin{itemize}
-		\item 
-	\end{itemize}
-\end{frame}
-
-\begin{wideframe}{Zusammenfassung}
+\subsection{Zusammenfassung, Bewertung und Ausblick}
+\begin{wideframe}
 	\includegraphics*[width=\textwidth]{mediaDefense/VisMD-Ablaufschema-komplett}
 \end{wideframe}
 
-\subsection{Bewertung}
-\begin{frame}{Bewertung und Ausblick}
-
-- ganz wenige Stichpunkte: was funktioniert gut (als Überleitung zur Zusammenfassung), was funktioniert nicht (als Überleitung zum Ausblick)
-
-- Ausblick
+% viele stattfindende Ereignisse können erfolgreich detektiert werden
+% Unterscheidung von Fehldetektionen und tatsächlichen Ereignissen schwierig: nur in der direkten Überlagerung mit der Partikelansicht möglich
+\begin{wideframe}
+	{\scriptsize $t_S=101$}
+	\hspace{.41\textwidth}
+	{\scriptsize $t_S=102$}
 	
-	Erweiterung der Algos kann bei Ergebnisse kurz genannt werden
-	Nutzung des Programms kann in Demo gezeigt werden
+	\includegraphics*[width=.5\textwidth]{mediaDefense/eva/spliterkennung-ms2-40-f101-small}
+	\hspace{.01\textwidth}
+	\includegraphics*[width=.5\textwidth]{mediaDefense/eva/spliterkennung-ms2-40-f102-small}
+%TODO besseres Beispiel finden oder sagen, warum Split schon bei Zeitschritt 101 auftaucht
+	\begin{itemize}[<+->]
+		\item stattfindende Ereignisse können detektiert und visualisiert werden
+		\item Unterscheidung von Fehldetektionen und tatsächlichen Ereignissen schwierig
+	\end{itemize}
+\end{wideframe}
+
+%
+% Ausblick
+% weiteres:
+% Filterung anhand Clustergröße
+% größere Mindestclustergrößen (weniger Fehldetektionen)
+% Nebeneinanderstellung mit Beziehung zwischen den Elementen (explizite Verschlüsselung)
+%
+\begin{frame}{Ausblick}
+	\begin{itemize}
+		\item Betrachtung über mehrere Zeitschritte $\rightarrow$ Ereignisse können miteinander in Beziehung gesetzt werden
+		\item Clusternachbarschaftsgraph ergänzend zur Heuristik
+		\item Nutzung von \wichtig{Konturbäumen} anstatt des \wichtig{CFD}
+	\end{itemize}
 \end{frame}
 
 \begin{frame}{Fragen}
